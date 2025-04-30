@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Path, Query
 import os
 import json
 
 router = APIRouter()
+
+# Define the directory where files are saved
 SAVE_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "json_files", "genredecade")
 
 @router.get("/saved-files")
@@ -22,11 +23,13 @@ def list_saved_files():
         raise HTTPException(status_code=500, detail=f"Error listing files: {e}")
 
 @router.get("/saved-files/{decade}/{filename}")
-def get_saved_file(decade: str, filename: str):
+def get_saved_file(
+    decade: str = Path(..., description="Decade folder name, e.g. '1960s'"),
+    filename: str = Path(..., description="JSON filename, e.g. 'rock_1960s.json'")
+):
     filepath = os.path.join(SAVE_DIR, decade, filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="File not found")
-
     try:
         with open(filepath, "r") as f:
             return json.load(f)
@@ -34,11 +37,13 @@ def get_saved_file(decade: str, filename: str):
         raise HTTPException(status_code=500, detail=f"Error reading file: {e}")
 
 @router.delete("/saved-files/{decade}/{filename}")
-def delete_saved_file(decade: str, filename: str):
+def delete_saved_file(
+    decade: str = Path(..., description="Decade folder name"),
+    filename: str = Path(..., description="File to delete")
+):
     filepath = os.path.join(SAVE_DIR, decade, filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="File not found")
-
     try:
         os.remove(filepath)
         return {"message": f"{filename} deleted successfully."}
@@ -46,13 +51,16 @@ def delete_saved_file(decade: str, filename: str):
         raise HTTPException(status_code=500, detail=f"Error deleting file: {e}")
 
 @router.put("/saved-files/rename/{decade}/{old_filename}")
-def rename_saved_file(decade: str, old_filename: str, new_filename: str):
+def rename_saved_file(
+    decade: str = Path(..., description="Decade folder name"),
+    old_filename: str = Path(..., description="Current file name"),
+    new_filename: str = Query(..., description="New name for the file")
+):
     old_path = os.path.join(SAVE_DIR, decade, old_filename)
     new_path = os.path.join(SAVE_DIR, decade, new_filename)
 
     if not os.path.exists(old_path):
         raise HTTPException(status_code=404, detail="Original file not found")
-
     if os.path.exists(new_path):
         raise HTTPException(status_code=400, detail="New filename already exists")
 

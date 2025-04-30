@@ -25,6 +25,14 @@ def get_top_tracks_from_xai(category: str, genre: str, num_tracks: int, language
     )
 
     result = response.json()
+
+    print("XAI result returned:", result)
+
+    if "choices" not in result:
+        raise ValueError(f"❌ XAI call failed or unexpected response: {result}")
+
+    return result["choices"][0]["message"]["content"]
+
     text = result["choices"][0]["message"]["content"]
 
     try:
