@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["language", "category", "genre", "tracks"],
+  "properties": {
+    "language": { "type": "string" },
+    "category": { "type": "string" },
+    "genre": { "type": "string" },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rank", "trackName", "artistName", "yearReleased"],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "trackName": { "type": "string", "minLength": 1 },
+          "artistName": { "type": "string", "minLength": 1 },
+          "yearReleased": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+          "intro": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      }
+    }
+  }
+}

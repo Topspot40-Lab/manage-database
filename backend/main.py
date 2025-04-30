@@ -1,12 +1,11 @@
 import os
 import sys
 
-# Forcefully add the project root to sys.path so we can find shared/, services/, etc.
+# Forcefully add the project root to sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Only now import everything else
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -31,26 +30,28 @@ class TrackRequest(BaseModel):
 
 @app.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 def generate_track_json(request: TrackRequest):
-    # Step 1: Get track list from XAI
-    raw_tracks = get_top_tracks_from_xai(
+    # Step 1: Get wrapped track list from XAI
+    wrapped = get_top_tracks_from_xai(
         category=request.category,
         genre=request.genre,
         num_tracks=request.num_tracks,
         language=request.language
     )
 
-    if not raw_tracks:
+    if not wrapped or "tracks" not in wrapped:
         raise HTTPException(status_code=500, detail="Failed to retrieve track list from XAI")
 
+    track_list = wrapped["tracks"]
+
     # Step 2: Get intros and details
-    descriptions = get_track_descriptions_from_xai(
-        track_data=raw_tracks,
+    enriched = get_track_descriptions_from_xai(
+        track_data=wrapped,
         language=request.language,
         category=request.category,
         genre=request.genre
     )
 
-    if not descriptions or len(descriptions) != len(raw_tracks):
+    if not enriched or "tracks" not in enriched or len(enriched["tracks"]) != len(track_list):
         raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
     now = datetime.now().isoformat()
@@ -58,8 +59,7 @@ def generate_track_json(request: TrackRequest):
     tracks = []
     rankings = []
 
-    for i, base in enumerate(raw_tracks):
-        desc = descriptions[i]
+    for i, base in enumerate(enriched["tracks"]):
         spotify_data = get_spotify_data(base['trackName'], base['artistName'])
 
         # Add artist (if new)
@@ -95,8 +95,8 @@ def generate_track_json(request: TrackRequest):
             "decade": request.category,
             "tracklist": "TopSpot Autogen",
             "rank": base["rank"],
-            "intro": desc.get("intro"),
-            "detail": desc.get("detail"),
+            "intro": base.get("intro"),
+            "detail": base.get("detail"),
             "description_language": request.language,
             "ranking_date": now[:10]
         })
@@ -129,9 +129,9 @@ def generate_track_json(request: TrackRequest):
 
     filepath = get_json_path(request.category, request.genre, request.language[:2])
     try:
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to write JSON: {e}")
 
-    return {"message": "JSON created successfully", "file": str(filepath)}
+    return {"message": "🎉 JSON created successfully", "file": str(filepath)}

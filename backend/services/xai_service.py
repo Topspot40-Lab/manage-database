@@ -21,10 +21,10 @@ with open(SCHEMA_PATH, "r") as f:
     TRACK_SCHEMA = json.load(f)
 
 
-def validate_tracks(tracks):
-    """Validate tracks against schema."""
+def validate_tracks(data):
+    """Validate the full wrapped track data against the schema."""
     try:
-        validate(instance=tracks, schema=TRACK_SCHEMA)
+        validate(instance=data, schema=TRACK_SCHEMA)
         return True
     except ValidationError as e:
         logging.error(f"❌ Schema validation failed: {e.message}")
@@ -66,13 +66,15 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         content = result["choices"][0]["message"]["content"]
         tracks = json.loads(content)
 
-        if validate_tracks(tracks):
-            wrapped = {
-                "language": language,
-                "category": category,
-                "genre": genre,
-                "tracks": tracks
-            }
+        # ✅ Wrap result before validating
+        wrapped = {
+            "language": language,
+            "category": category,
+            "genre": genre,
+            "tracks": tracks
+        }
+
+        if validate_tracks(wrapped):
             logging.info(f"✅ Wrapped and returned {len(tracks)} tracks in new JSON format.")
             return wrapped
         else:
