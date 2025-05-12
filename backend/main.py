@@ -1,5 +1,5 @@
 import os, sys
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 # 1) Add project root to path
 project_root = os.path.abspath(os.path.dirname(__file__))
@@ -7,7 +7,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # 2) Load .env
-load_dotenv()
+# load_dotenv()
 
 from fastapi import FastAPI
 from backend.database import init_db
