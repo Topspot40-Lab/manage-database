@@ -180,7 +180,11 @@ def validate_json_file(
 
 # === /insert-json-to-db ===
 
-@router.post("/insert-json-to-db")
+# routers/loader.py
+@router.post(
+    "/insert-json-to-db/{decade}/{filename:path}",   # ⬅ includes both params
+    summary="Load a JSON file from disk and insert it into the DB",
+)
 def insert_json_to_db(
     decade: str = Path(..., description="Decade folder name"),
     filename: str = Path(..., description="JSON file name"),
@@ -228,11 +232,11 @@ def insert_json_to_db(
         for track_data in data["track_tables"]["track"]:
             artist = db.exec(select(Artist).where(Artist.name == track_data["artistName"])).first()
             existing = db.exec(select(Track).where(
-                Track.name == track_data["name"], Track.artist_id == artist.id)).first()
+                Track.name == track_data["name"], Track.artistid == artist.id)).first()
             if not existing:
                 track = Track(
                     name=track_data["name"],
-                    artist_id=artist.id,
+                    artistid=artist.id,
                     genre_id=genre.id,
                     decade_id=decade.id,
                     spotify_track_id=track_data["spotify_track_id"],
@@ -248,11 +252,11 @@ def insert_json_to_db(
 
         for rank_data in data["ranking_tables"]["trackranking"]:
             artist = db.exec(select(Artist).where(Artist.name == rank_data["artistName"])).first()
-            track = db.exec(select(Track).where(Track.name == rank_data["trackName"], Track.artist_id == artist.id)).first()
-            existing = db.exec(select(TrackRanking).where(TrackRanking.track_id == track.id)).first()
+            track = db.exec(select(Track).where(Track.name == rank_data["trackName"], Track.artistid == artist.id)).first()
+            existing = db.exec(select(TrackRanking).where(TrackRanking.trackid == track.id)).first()
             if not existing:
                 ranking = TrackRanking(
-                    track_id=track.id,
+                    trackid=track.id,
                     genre_id=genre.id,
                     decade_id=decade.id,
                     rank=rank_data["rank"],
