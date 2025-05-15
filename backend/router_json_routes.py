@@ -11,7 +11,7 @@ from backend.services.spotify_service import get_spotify_data
 from backend.services.xai_service import get_top_tracks_from_xai, get_track_descriptions_from_xai
 from backend.database import get_db
 # new (relative) import
-from .dbmodels import Genre, Decade, Artist, Track, TrackRanking
+from models.dbmodels import Genre, Decade, Artist, Track, TrackRanking
 from shared.filepaths import get_json_path
 
 router = APIRouter()
