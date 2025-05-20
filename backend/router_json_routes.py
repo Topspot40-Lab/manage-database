@@ -1,7 +1,6 @@
 import os
 import json
 from datetime import datetime
-# from pathlib import Path
 from fastapi import APIRouter, HTTPException, Path, Depends
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -10,8 +9,7 @@ from sqlmodel import Session, select
 from backend.services.spotify_service import get_spotify_data
 from backend.services.xai_service import get_top_tracks_from_xai, get_track_descriptions_from_xai
 from backend.database import get_db
-# new (relative) import
-from models.dbmodels import Genre, Decade, Artist, Track, TrackRanking
+from models.dbmodels import Genre, Decade, Artist, Track, TrackRanking, DecadeGenre, Tracklist
 from shared.filepaths import get_json_path
 
 router = APIRouter()
@@ -66,8 +64,8 @@ def generate_track_json(request: TrackRequest):
             artists.append(artist_entry)
 
         track_entry = {
-            "name": base["trackName"],
-            "artistName": base["artistName"],
+            "track_name": base["trackName"],
+            "artist_name": base["artistName"],
             "genre": request.genre,
             "decade": request.category,
             "spotify_track_id": spotify_data.get("id") if spotify_data else None,
@@ -76,20 +74,21 @@ def generate_track_json(request: TrackRequest):
             "album_artwork": spotify_data.get("trackImage") if spotify_data else None,
             "year_released": int(base["yearReleased"]),
             "is_explicit": False,
-            "created_at": now
+            "created_at": now,
+            "detail": base.get("detail")
         }
+
         tracks.append(track_entry)
 
         rankings.append({
-            "trackName": base["trackName"],
-            "artistName": base["artistName"],
+            "track_name": base["trackName"],
+            "artist_name": base["artistName"],
             "genre": request.genre,
             "decade": request.category,
             "tracklist": "TopSpot Autogen",
             "rank": base["rank"],
             "intro": base.get("intro"),
-            "detail": base.get("detail"),
-            "description_language": request.language,
+            "intro_mp3_url": base.get("intro_mp3_url"),
             "ranking_date": now[:10]
         })
 
@@ -97,9 +96,7 @@ def generate_track_json(request: TrackRequest):
         "core_tables": {
             "genre": [{"name": request.genre}],
             "decade": [{"name": request.category}],
-            "artist": artists,
-            "language": [{"code": request.language[:2].lower(), "name": request.language}],
-            "specialty": []
+            "artist": artists
         },
         "track_tables": {
             "track": tracks,
@@ -128,12 +125,10 @@ def generate_track_json(request: TrackRequest):
 
     return {"message": "🎉 JSON created successfully", "file": str(filepath)}
 
-
 # === /validate-json ===
 
 REQUIRED_FIELDS = [
-    "rank", "trackName", "artistName", "durationMs", "trackId", "artistId",
-    "albumArtwork", "intro", "detail", "yearReleased"
+    "rank", "track_name", "artist_name", "intro", "intro_mp3_url", "ranking_date"
 ]
 
 @router.get("/validate-json/{decade}/{filename}")
@@ -149,16 +144,16 @@ def validate_json_file(
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        tracks = data.get("ranking_tables", {}).get("trackranking", [])
+        rankings = data.get("ranking_tables", {}).get("trackranking", [])
         errors = []
 
-        for idx, track in enumerate(tracks, start=1):
+        for idx, track in enumerate(rankings, start=1):
             missing = [field for field in REQUIRED_FIELDS if field not in track]
             if missing:
                 errors.append({
                     "rank": track.get("rank", idx),
-                    "trackName": track.get("trackName", "Unknown"),
-                    "missingFields": missing
+                    "track_name": track.get("track_name", "Unknown"),
+                    "missing_fields": missing
                 })
 
         if errors:
@@ -171,20 +166,15 @@ def validate_json_file(
             return {
                 "status": "success",
                 "message": "All tracks are valid ✅",
-                "totalTracks": len(tracks)
+                "totalTracks": len(rankings)
             }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error validating JSON file: {e}")
 
-
 # === /insert-json-to-db ===
 
-# routers/loader.py
-@router.post(
-    "/insert-json-to-db/{decade}/{filename:path}",   # ⬅ includes both params
-    summary="Load a JSON file from disk and insert it into the DB",
-)
+@router.post("/insert-json-to-db/{decade}/{filename:path}", summary="Load a JSON file from disk and insert it into the DB")
 def insert_json_to_db(
     decade: str = Path(..., description="Decade folder name"),
     filename: str = Path(..., description="JSON file name"),
@@ -230,12 +220,12 @@ def insert_json_to_db(
         db.commit()
 
         for track_data in data["track_tables"]["track"]:
-            artist = db.exec(select(Artist).where(Artist.name == track_data["artistName"])).first()
+            artist = db.exec(select(Artist).where(Artist.name == track_data["artist_name"])).first()
             existing = db.exec(select(Track).where(
-                Track.name == track_data["name"], Track.artistid == artist.id)).first()
+                Track.name == track_data["track_name"], Track.artistid == artist.id)).first()
             if not existing:
                 track = Track(
-                    name=track_data["name"],
+                    name=track_data["track_name"],
                     artistid=artist.id,
                     genre_id=genre.id,
                     decade_id=decade.id,
@@ -245,30 +235,45 @@ def insert_json_to_db(
                     album_artwork=track_data["album_artwork"],
                     year_released=track_data["year_released"],
                     is_explicit=track_data["is_explicit"],
-                    created_at=track_data["created_at"]
+                    created_at=track_data["created_at"],
+                    detail=track_data.get("detail")
                 )
                 db.add(track)
         db.commit()
 
         for rank_data in data["ranking_tables"]["trackranking"]:
-            artist = db.exec(select(Artist).where(Artist.name == rank_data["artistName"])).first()
-            track = db.exec(select(Track).where(Track.name == rank_data["trackName"], Track.artistid == artist.id)).first()
-            existing = db.exec(select(TrackRanking).where(TrackRanking.trackid == track.id)).first()
+            artist = db.exec(select(Artist).where(Artist.name == rank_data["artist_name"])).first()
+            track = db.exec(select(Track).where(Track.name == rank_data["track_name"], Track.artistid == artist.id)).first()
+
+            decade_genre = db.exec(
+                select(DecadeGenre).where(
+                    DecadeGenre.decade_id == decade.id,
+                    DecadeGenre.genre_id == genre.id
+                )
+            ).first()
+
+            tracklist = db.exec(select(Tracklist).where(Tracklist.name == rank_data["tracklist"])).first()
+            tracklist_id = tracklist.id if tracklist else 1
+
+            existing = db.exec(select(TrackRanking).where(
+                TrackRanking.track_id == track.id,
+                TrackRanking.decade_genre_id == decade_genre.id,
+                TrackRanking.tracklist_id == tracklist_id
+            )).first()
+
             if not existing:
                 ranking = TrackRanking(
-                    trackid=track.id,
-                    genre_id=genre.id,
-                    decade_id=decade.id,
-                    rank=rank_data["rank"],
-                    tracklist=rank_data["tracklist"],
-                    intro=rank_data["intro"],
-                    detail=rank_data["detail"],
-                    description_language=rank_data["description_language"],
+                    track_id=track.id,
+                    decade_genre_id=decade_genre.id,
+                    tracklist_id=tracklist_id,
+                    ranking=rank_data["rank"],
+                    intro=rank_data.get("intro"),
+                    intro_mp3_url=rank_data.get("intro_mp3_url"),
                     ranking_date=rank_data["ranking_date"]
                 )
                 db.add(ranking)
-        db.commit()
 
+        db.commit()
         return {"status": "success", "message": f"Inserted data from {filename} into database"}
 
     except Exception as e:

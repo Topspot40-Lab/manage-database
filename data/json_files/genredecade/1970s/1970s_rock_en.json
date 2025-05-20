@@ -1,0 +1,196 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "name": "rock"
+      }
+    ],
+    "decade": [
+      {
+        "name": "1970s"
+      }
+    ],
+    "artist": [
+      {
+        "name": "Led Zeppelin",
+        "spotify_artist_id": "36QJpDe2go2KgaRleHCDTp",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "Queen",
+        "spotify_artist_id": "1dfeR4HaWDbWqFHLkxsg1d",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "Eagles",
+        "spotify_artist_id": "0ECwFtbIWEVNwjlrfc6xoL",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "Aerosmith",
+        "spotify_artist_id": "7Ey4PD4MYsKc5I2dolUwbH",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "Lynyrd Skynyrd",
+        "spotify_artist_id": "4MVyzYMgTwdP7Z49wAZHx0",
+        "artist_artwork": null,
+        "artist_description": ""
+      }
+    ],
+    "language": [
+      {
+        "code": "en",
+        "name": "English"
+      }
+    ],
+    "specialty": []
+  },
+  "track_tables": {
+    "track": [
+      {
+        "name": "Stairway to Heaven",
+        "artistName": "Led Zeppelin",
+        "genre": "rock",
+        "decade": "1970s",
+        "spotify_track_id": "5CQ30WqJwcep0pYcV4AMNc",
+        "duration_ms": 482830,
+        "popularity": 82,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273c8a11e48c91a982d086afc69",
+        "year_released": 1971,
+        "is_explicit": false,
+        "created_at": "2025-05-17T16:17:36.796179+00:00"
+      },
+      {
+        "name": "Bohemian Rhapsody",
+        "artistName": "Queen",
+        "genre": "rock",
+        "decade": "1970s",
+        "spotify_track_id": "7tFiyTwD0nx5a1eklYtX2J",
+        "duration_ms": 354320,
+        "popularity": 75,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273ce4f1737bc8a646c8c4bd25a",
+        "year_released": 1975,
+        "is_explicit": false,
+        "created_at": "2025-05-17T16:17:36.796179+00:00"
+      },
+      {
+        "name": "Hotel California",
+        "artistName": "Eagles",
+        "genre": "rock",
+        "decade": "1970s",
+        "spotify_track_id": "40riOy7x9W7GXjyGp4pjAv",
+        "duration_ms": 391376,
+        "popularity": 87,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2734637341b9f507521afa9a778",
+        "year_released": 1976,
+        "is_explicit": false,
+        "created_at": "2025-05-17T16:17:36.796179+00:00"
+      },
+      {
+        "name": "Dream On",
+        "artistName": "Aerosmith",
+        "genre": "rock",
+        "decade": "1970s",
+        "spotify_track_id": "1xsYj84j7hUDDnTTerGWlH",
+        "duration_ms": 267596,
+        "popularity": 85,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273bbf0146981704a073405b6c2",
+        "year_released": 1973,
+        "is_explicit": false,
+        "created_at": "2025-05-17T16:17:36.796179+00:00"
+      },
+      {
+        "name": "Free Bird",
+        "artistName": "Lynyrd Skynyrd",
+        "genre": "rock",
+        "decade": "1970s",
+        "spotify_track_id": "5EWPGh7jbTNO2wakv8LjUI",
+        "duration_ms": 547106,
+        "popularity": 81,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273128450651c9f0442780d8eb8",
+        "year_released": 1973,
+        "is_explicit": false,
+        "created_at": "2025-05-17T16:17:36.796179+00:00"
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 1970s - rock",
+        "created_at": "2025-05-17T16:17:36.796179+00:00"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "trackranking": [
+      {
+        "trackName": "Stairway to Heaven",
+        "artistName": "Led Zeppelin",
+        "genre": "rock",
+        "decade": "1970s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off our list at number 1 in the 1970s rock category, 'Stairway to Heaven' by Led Zeppelin invites listeners on an epic musical journey.",
+        "detail": "This masterpiece, released in 1971, was never officially released as a single, yet it became one of the most iconic songs in rock history. Its intricate composition and mystical lyrics have inspired countless musicians and fans alike. The song's length and complexity were groundbreaking at the time, pushing the boundaries of what was expected from a rock song. It has been played at numerous weddings, funerals, and even featured in movies, cementing its place in popular culture. The band's refusal to allow it to be used in commercials has only added to its legendary status.",
+        "description_language": "English",
+        "ranking_date": "2025-05-17"
+      },
+      {
+        "trackName": "Bohemian Rhapsody",
+        "artistName": "Queen",
+        "genre": "rock",
+        "decade": "1970s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1970s rock classic 'Bohemian Rhapsody' by Queen is a groundbreaking masterpiece that continues to captivate audiences.",
+        "detail": "Released in 1975, this six-minute suite defied all conventions of popular music at the time. Its operatic section and eclectic mix of genres were unheard of on the radio. The song's innovative music video, one of the earliest to gain widespread popularity, played a significant role in the rise of MTV. It has been covered, parodied, and featured in numerous films, including the blockbuster 'Wayne's World,' which reintroduced it to a new generation. The song's enduring popularity is a testament to its timeless appeal and the genius of its creators.",
+        "description_language": "English",
+        "ranking_date": "2025-05-17"
+      },
+      {
+        "trackName": "Hotel California",
+        "artistName": "Eagles",
+        "genre": "rock",
+        "decade": "1970s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, 'Hotel California' by Eagles, a staple of 1970s rock, takes us on a haunting journey through the American dream.",
+        "detail": "This 1976 release became an instant classic, with its evocative lyrics and smooth guitar work. The song's mysterious narrative has been interpreted in countless ways, from a critique of the excesses of the music industry to a metaphor for the American dream. It won the Grammy for Record of the Year in 1978, and its iconic guitar solo has been ranked among the greatest in rock history. The song's enduring popularity has made it a staple of classic rock radio and a symbol of the era's cultural landscape.",
+        "description_language": "English",
+        "ranking_date": "2025-05-17"
+      },
+      {
+        "trackName": "Dream On",
+        "artistName": "Aerosmith",
+        "genre": "rock",
+        "decade": "1970s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 4,
+        "intro": "Number 4 brings us 'Dream On' by Aerosmith, a powerful 1970s rock ballad that showcases the band's raw talent and emotional depth.",
+        "detail": "Released in 1973, this song was a breakthrough for the band, showcasing Steven Tyler's soaring vocals and the group's ability to craft emotionally resonant music. Its piano-driven intro and epic build-up have made it a favorite at live performances, where it often serves as a climactic moment. The song's themes of perseverance and hope have resonated with audiences for decades, making it a timeless anthem. Its inclusion in various films and TV shows has further cemented its place in popular culture.",
+        "description_language": "English",
+        "ranking_date": "2025-05-17"
+      },
+      {
+        "trackName": "Free Bird",
+        "artistName": "Lynyrd Skynyrd",
+        "genre": "rock",
+        "decade": "1970s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 5,
+        "intro": "Rounding out our top 5 at number 5, 'Free Bird' by Lynyrd Skynyrd is a quintessential 1970s rock anthem that embodies the spirit of freedom.",
+        "detail": "This 1973 release, with its iconic guitar solos and heartfelt lyrics, has become a staple of Southern rock. The song's extended live versions, often stretching to over 10 minutes, have become legendary, showcasing the band's virtuosity and passion. It has been played at countless weddings, funerals, and memorials, symbolizing freedom and the human spirit. The tragic plane crash that claimed the lives of several band members in 1977 only added to the song's mythic status, making it a poignant reminder of the band's legacy.",
+        "description_language": "English",
+        "ranking_date": "2025-05-17"
+      }
+    ]
+  }
+}

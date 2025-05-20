@@ -44,15 +44,15 @@ class ArtistGenre(SQLModel, table=True):
     __table_args__ = {"schema": "join_tables"}
 
     id: int = Field(default=None, primary_key=True)
-    artistid: Optional[int] = Field(default=None, foreign_key="core_tables.artist.id")
-    genreid: int = Field(foreign_key="core_tables.genre.id")
+    artist_id: Optional[int] = Field(default=None, foreign_key="core_tables.artist.id")
+    genre_id: int = Field(foreign_key="core_tables.genre.id")
 
 class DecadeGenre(SQLModel, table=True):
     __table_args__ = {"schema": "join_tables"}
 
     id: int = Field(default=None, primary_key=True)
-    decadeid: Optional[int] = Field(default=None, foreign_key="core_tables.decade.id")
-    genreid: Optional[int] = Field(default=None, foreign_key="core_tables.genre.id")
+    decade_id: Optional[int] = Field(default=None, foreign_key="core_tables.decade.id")
+    genre_id: Optional[int] = Field(default=None, foreign_key="core_tables.genre.id")
 
 class TrackGenre(SQLModel, table=True):
     __table_args__ = {"schema": "join_tables"}
@@ -66,53 +66,52 @@ class SpecialtyRanking(SQLModel, table=True):
     __table_args__ = {"schema": "ranking_tables"}
 
     id: int = Field(default=None, primary_key=True)
-    trackid: Optional[int] = Field(default=None, foreign_key="track_tables.track.id")
-    specialtyid: Optional[int] = Field(default=None, foreign_key="core_tables.specialty.id")
-    tracklistid: Optional[int] = Field(default=None, foreign_key="track_tables.tracklist.id")
+    track_id: Optional[int] = Field(default=None, foreign_key="track_tables.track.id")
+    specialty_id: Optional[int] = Field(default=None, foreign_key="core_tables.specialty.id")
+    tracklist_id: int = Field(default=1, foreign_key="track_tables.tracklist.id")
     rank: Optional[int] = Field(default=None)
     intro: Optional[str] = Field(default=None)
     detail: Optional[str] = Field(default=None)
-    descriptionlanguage: Optional[str] = Field(default="English", foreign_key="core_tables.language.code")
-    artistid: Optional[int] = Field(default=None, foreign_key="core_tables.artist.id")
-    rankingdate: Optional[datetime] = Field(default=None)
+    intro_mp3_url: Optional[str] = Field(default=None)
+    artist_id: Optional[int] = Field(default=None, foreign_key="core_tables.artist.id")
+    ranking_date: Optional[datetime] = Field(default=None)
 
 class Top40GenreRanking(SQLModel, table=True):
     __table_args__ = {"schema": "ranking_tables"}
 
     id: int = Field(default=None, primary_key=True)
-    genreid: int = Field(foreign_key="core_tables.genre.id")
-    artistid: int = Field(foreign_key="core_tables.artist.id")
-    trackid: int = Field(foreign_key="track_tables.track.id")
+    genre_id: int = Field(foreign_key="core_tables.genre.id")
+    artist_id: int = Field(foreign_key="core_tables.artist.id")
+    track_id: int = Field(foreign_key="track_tables.track.id")
     rank: int = Field(nullable=False)
     info: Optional[str] = Field(default=None)
     detail: Optional[str] = Field(default=None)
-    rankingdate: Optional[datetime] = Field(default=None)
+    ranking_date: Optional[datetime] = Field(default=None)
 
 class TrackRanking(SQLModel, table=True):
     __table_args__ = {"schema": "ranking_tables"}
 
     id: int = Field(default=None, primary_key=True)
-    trackid: int = Field(foreign_key="track_tables.track.id")
-    decadegenreid: int = Field(foreign_key="join_tables.decadegenre.id")
-    tracklistid: int = Field(default=1)
+    track_id: int = Field(foreign_key="track_tables.track.id")
+    decade_genre_id: int = Field(foreign_key="join_tables.decadegenre.id")
+    tracklist_id: int = Field(default=1, foreign_key="track_tables.tracklist.id")
     rank: int = Field(nullable=False)
     intro: Optional[str] = Field(default=None)
-    detail: Optional[str] = Field(default=None)
-    descriptionlanguage: str = Field(default="english", foreign_key="core_tables.language.code")
-    rankingdate: Optional[datetime] = Field(default=None)
+    intro_mp3_url: Optional[str] = Field(default=None)
+    ranking_date: Optional[datetime] = Field(default=None)
 
 # === track_tables schema ===
 
-class TrackList(SQLModel, table=True):
+class Tracklist(SQLModel, table=True):
     __table_args__ = {"schema": "track_tables"}
 
     id: int = Field(default=None, primary_key=True)
     name: str = Field(nullable=False)
     curator: Optional[str] = Field(default=None)
-    isofficial: Optional[bool] = Field(default=False)
+    is_official: Optional[bool] = Field(default=False)
     language: Optional[str] = Field(default="English")
     notes: Optional[str] = Field(default=None)
-    createdat: Optional[datetime] = Field(default=None)
+    created_at: Optional[datetime] = Field(default=None)
 
 class Track(SQLModel, table=True):
     __table_args__ = {"schema": "track_tables"}
@@ -124,6 +123,7 @@ class Track(SQLModel, table=True):
     popularity: Optional[int] = Field(default=None)
     album_artwork: Optional[str] = Field(default=None)
     year_released: Optional[int] = Field(default=None)
-    artistid: int = Field(foreign_key="core_tables.artist.id")
+    artist_id: int = Field(foreign_key="core_tables.artist.id")
     is_explicit: Optional[bool] = Field(default=False)
-    createdat: Optional[datetime] = Field(default=None)
+    created_at: Optional[datetime] = Field(default=None)
+    detail: Optional[str] = Field(default=None)
