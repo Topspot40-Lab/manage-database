@@ -18,7 +18,7 @@ if not DATABASE_URL:
     raise RuntimeError("POSTGRES_URL is not set in .env")
 
 # 3) Create the engine
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def init_db() -> None:
     """Create all tables (if they don't exist). Call once at startup."""

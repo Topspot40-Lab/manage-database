@@ -197,6 +197,8 @@ def get_artist_description(artist_name: str, language: str = "English") -> str:
         "temperature": 0.5
     }
 
+    logging.info(f"📨 Prompt sent to XAI:\n{json.dumps(payload, indent=2)}")
+
     try:
         logging.info(f"📚 Requesting artist bio for: {artist_name}")
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
@@ -211,7 +213,13 @@ def get_artist_description(artist_name: str, language: str = "English") -> str:
         logging.info(f"📦 XAI Response JSON:\n{json.dumps(result, indent=2)}")
 
         content = result["choices"][0]["message"]["content"]
-        return content.strip() if content else f"(No description found for {artist_name})"
+        if not content.strip():
+            logging.warning(f"⚠️ Empty description returned for artist: {artist_name}")
+            print(f"⚠️ XAI returned EMPTY content for {artist_name}")
+            return f"(No description found for {artist_name})"
+        return content.strip()
+
+
     except requests.exceptions.HTTPError as e:
         # Try to get the response text if it's available
         try:

@@ -1,0 +1,72 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "name": "jazz"
+      }
+    ],
+    "decade": [
+      {
+        "name": "1960s"
+      }
+    ],
+    "artist": [
+      {
+        "name": "Miles Davis",
+        "spotify_artist_id": "0kbYTNQb4Pb1rPbbaF0pT4",
+        "artist_artwork": null,
+        "artist_description": ""
+      }
+    ],
+    "language": [
+      {
+        "code": "en",
+        "name": "English"
+      }
+    ],
+    "specialty": []
+  },
+  "track_tables": {
+    "track": [
+      {
+        "name": "So What",
+        "artistName": "Miles Davis",
+        "genre": "jazz",
+        "decade": "1960s",
+        "spotify_track_id": "4vLYewWIvqHfKtJDk8c8tq",
+        "duration_ms": 562640,
+        "popularity": 64,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2730ebc17239b6b18ba88cfb8ca",
+        "year_released": 1959,
+        "is_explicit": false,
+        "created_at": "2025-05-21T21:15:38.379910+00:00"
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 1960s - jazz",
+        "created_at": "2025-05-21T21:15:38.379910+00:00"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "trackranking": [
+      {
+        "trackName": "So What",
+        "artistName": "Miles Davis",
+        "genre": "jazz",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off at number 1 in our 1960s jazz category, dive into 'So What' by Miles Davis!",
+        "detail": "This track, released in 1959, is a cornerstone of modal jazz, a genre that revolutionized the way jazz musicians approached improvisation. The song's minimalist structure, with its iconic bass line by Paul Chambers, allowed for endless exploration by the ensemble, including the legendary solos by John Coltrane and Cannonball Adderley. It's not just a song; it's a journey through the minds of some of the greatest jazz musicians of all time. The album it's from, 'Kind of Blue,' remains the best-selling jazz record ever, influencing countless artists across genres and continuing to inspire new generations of musicians and listeners alike.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      }
+    ]
+  }
+}

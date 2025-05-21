@@ -18,6 +18,8 @@ from backend.database import get_db
 from models.dbmodels import Genre, Decade, Artist, Track, TrackRanking, DecadeGenre, Tracklist
 from shared.filepaths import get_json_path
 
+print("Running generate-json v3")
+
 router = APIRouter()
 
 # === /generate-json ===
@@ -30,6 +32,8 @@ class TrackRequest(BaseModel):
 
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 def generate_track_json(request: TrackRequest):
+    print("✅ A. Start generate_track_json")
+
     wrapped = get_top_tracks_from_xai(
         category=request.category,
         genre=request.genre,
@@ -67,6 +71,8 @@ def generate_track_json(request: TrackRequest):
         artist_name = base["artistName"]
 
         # Cache description
+        print(f"👀 Checking artist: {artist_name}")
+
         if artist_name not in description_cache:
             logging.info(f"🔍 Fetching description for: {artist_name}")
             desc = get_artist_description(artist_name, language=request.language)
@@ -239,8 +245,10 @@ def insert_json_to_db(
                 artist = Artist(
                     name=artist_data["name"],
                     spotify_artist_id=artist_data["spotify_artist_id"],
-                    artist_artwork=artist_data.get("artist_artwork")
+                    artist_artwork=artist_data.get("artist_artwork"),
+                    artist_description=artist_data.get("artist_description")  # ✅ ADD THIS LINE
                 )
+
                 db.add(artist)
         db.commit()
 

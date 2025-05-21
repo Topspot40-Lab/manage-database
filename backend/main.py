@@ -27,15 +27,32 @@ from backend.router_saved_files import router as save_router
 
 logging.basicConfig(level=logging.INFO)
 
+
+# Reduce SQLAlchemy verbosity
+# logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+# logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+# logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
+
+
 # ---------------------------------------------------------------------------
 # 4) Build the FastAPI app and plug everything in
 # ---------------------------------------------------------------------------
+
+
+
 app = FastAPI(
     title="TopSpot API",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+
+# ✅ Add this root route here
+@app.get("/")
+def read_root():
+    return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator🐴"}
+
 
 init_db()                      # create tables / run migrations if needed
 app.include_router(json_router)  # /generate-json, /validate-json, /insert-json…
