@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Path, Depends
 from pydantic import BaseModel, Field
@@ -48,6 +49,9 @@ def generate_track_json(request: TrackRequest):
         genre=request.genre
     )
 
+    logging.info(f"🔍 Enriched keys: {list(enriched.keys())}")
+    logging.info(f"🔢 Track count in enriched['tracks']: {len(enriched.get('tracks', []))}")
+
     if not enriched or "tracks" not in enriched or len(enriched["tracks"]) != len(track_list):
         raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
@@ -55,6 +59,7 @@ def generate_track_json(request: TrackRequest):
     artists = []
     tracks = []
     rankings = []
+
     description_cache = {}
 
     for base in enriched["tracks"]:
@@ -63,7 +68,9 @@ def generate_track_json(request: TrackRequest):
 
         # Cache description
         if artist_name not in description_cache:
+            logging.info(f"🔍 Fetching description for: {artist_name}")
             desc = get_artist_description(artist_name, language=request.language)
+            logging.info(f"✅ Got description: {desc}")
             if not desc:
                 desc = "No biography available at this time."
             description_cache[artist_name] = desc
@@ -75,7 +82,7 @@ def generate_track_json(request: TrackRequest):
             "artist_description": description_cache[artist_name]
         }
 
-        if artist_entry not in artists:
+        if not any(a["name"] == artist_name for a in artists):
             artists.append(artist_entry)
 
         track_entry = {
@@ -106,6 +113,9 @@ def generate_track_json(request: TrackRequest):
             "intro_mp3_url": base.get("intro_mp3_url"),
             "ranking_date": now[:10]
         })
+
+    print("👀 Artists list before writing JSON:")
+    print(json.dumps(artists, indent=2))
 
     final_json = {
         "core_tables": {

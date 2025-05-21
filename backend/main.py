@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 from fastapi import FastAPI
+import logging
 
 # ---------------------------------------------------------------------------
 # 1) Ensure the project root is at the front of sys.path
@@ -23,6 +24,8 @@ if str(project_root) not in sys.path:
 from backend.database import init_db
 from backend.routers import router as json_router          # <-- NEW PACKAGE
 from backend.router_saved_files import router as save_router
+
+logging.basicConfig(level=logging.INFO)
 
 # ---------------------------------------------------------------------------
 # 4) Build the FastAPI app and plug everything in

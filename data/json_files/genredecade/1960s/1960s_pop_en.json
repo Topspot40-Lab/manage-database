@@ -18,14 +18,20 @@
         "artist_description": ""
       },
       {
-        "name": "Petula Clark",
-        "spotify_artist_id": "6nKqt1nbSBEq3iUXD1Xgz8",
+        "name": "The Rolling Stones",
+        "spotify_artist_id": "22bE4uQ6baNwSHPVcDxLCe",
         "artist_artwork": null,
         "artist_description": ""
       },
       {
-        "name": "The Righteous Brothers",
-        "spotify_artist_id": "4b0WsB47XCa9F83BmwQ7WX",
+        "name": "The Beach Boys",
+        "spotify_artist_id": "3oDbviiivRWhXwIE8hxkVV",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "Aretha Franklin",
+        "spotify_artist_id": "7nwUJBm0HE4ZxD3f5cy5ok",
         "artist_artwork": null,
         "artist_description": ""
       }
@@ -41,19 +47,6 @@
   "track_tables": {
     "track": [
       {
-        "name": "She Loves You",
-        "artistName": "The Beatles",
-        "genre": "pop",
-        "decade": "1960s",
-        "spotify_track_id": "0qsS2A3hwicJCLtcaR6JRQ",
-        "duration_ms": 142653,
-        "popularity": 64,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2735ef4660298ae29ee18799fc2",
-        "year_released": 1963,
-        "is_explicit": false,
-        "created_at": "2025-05-21T02:40:55.875144+00:00"
-      },
-      {
         "name": "I Want to Hold Your Hand",
         "artistName": "The Beatles",
         "genre": "pop",
@@ -64,46 +57,59 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2735ef4660298ae29ee18799fc2",
         "year_released": 1963,
         "is_explicit": false,
-        "created_at": "2025-05-21T02:40:55.875144+00:00"
+        "created_at": "2025-05-21T02:47:53.599917+00:00"
       },
       {
-        "name": "Can't Buy Me Love",
+        "name": "Hey Jude",
         "artistName": "The Beatles",
         "genre": "pop",
         "decade": "1960s",
-        "spotify_track_id": "3SdingSsFcZDZAyvcJbgAw",
-        "duration_ms": 131866,
-        "popularity": 68,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273e230f303815e82a86713eedd",
-        "year_released": 1964,
+        "spotify_track_id": "0aym2LBJBk9DAYuHHutrIl",
+        "duration_ms": 425653,
+        "popularity": 73,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273582d56ce20fe0146ffa0e5cf",
+        "year_released": 1968,
         "is_explicit": false,
-        "created_at": "2025-05-21T02:40:55.875144+00:00"
+        "created_at": "2025-05-21T02:47:53.599917+00:00"
       },
       {
-        "name": "Downtown",
-        "artistName": "Petula Clark",
+        "name": "Satisfaction",
+        "artistName": "The Rolling Stones",
         "genre": "pop",
         "decade": "1960s",
-        "spotify_track_id": "6S55C80YzjhSrCRRd1p80b",
-        "duration_ms": 187760,
-        "popularity": 66,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27351c5bc666e98ec2ec7dd303c",
-        "year_released": 1964,
+        "spotify_track_id": "2PzU4IB8Dr6mxV3lHuaG34",
+        "duration_ms": 222813,
+        "popularity": 79,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27305c5be85b64eaff732f7cb0b",
+        "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-05-21T02:40:55.875144+00:00"
+        "created_at": "2025-05-21T02:47:53.599917+00:00"
       },
       {
-        "name": "You've Lost That Lovin' Feelin'",
-        "artistName": "The Righteous Brothers",
+        "name": "Good Vibrations",
+        "artistName": "The Beach Boys",
         "genre": "pop",
         "decade": "1960s",
-        "spotify_track_id": "6AeyHqzNHJthYJbn0tvJ4b",
-        "duration_ms": 226453,
-        "popularity": 66,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273f62ec50234d5578631792ea8",
-        "year_released": 1964,
+        "spotify_track_id": "5t9KYe0Fhd5cW6UYT4qP8f",
+        "duration_ms": 219026,
+        "popularity": 75,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273fb9dac3244b8486758058a81",
+        "year_released": 1966,
         "is_explicit": false,
-        "created_at": "2025-05-21T02:40:55.875144+00:00"
+        "created_at": "2025-05-21T02:47:53.599917+00:00"
+      },
+      {
+        "name": "Respect",
+        "artistName": "Aretha Franklin",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "7s25THrKz86DM225dOYwnr",
+        "duration_ms": 147600,
+        "popularity": 77,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2736aa9314b7ddfbd8f036ba3ac",
+        "year_released": 1967,
+        "is_explicit": false,
+        "created_at": "2025-05-21T02:47:53.599917+00:00"
       }
     ],
     "tracklist": [
@@ -113,69 +119,69 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 1960s - pop",
-        "created_at": "2025-05-21T02:40:55.875144+00:00"
+        "created_at": "2025-05-21T02:47:53.599917+00:00"
       }
     ]
   },
   "ranking_tables": {
     "trackranking": [
       {
-        "trackName": "She Loves You",
-        "artistName": "The Beatles",
-        "genre": "pop",
-        "decade": "1960s",
-        "tracklist": "TopSpot Autogen",
-        "rank": 1,
-        "intro": "Kicking off at number 1 in the 1960s pop category, 'She Loves You' by The Beatles is a timeless classic that captured hearts worldwide!",
-        "detail": "This track, released in 1963, was a pivotal moment in music history. It was the band's second single to hit number one in the UK and their first to do so in the US. The song's infectious 'yeah, yeah, yeah' chorus became a cultural phenomenon, echoing through the streets and inspiring countless covers. Its success helped launch the British Invasion, bringing a fresh sound to American audiences and setting the stage for the band's meteoric rise. The energy and joy of this song continue to resonate, reminding us of a time when music could change the world.",
-        "description_language": "English",
-        "ranking_date": "2025-05-21"
-      },
-      {
         "trackName": "I Want to Hold Your Hand",
         "artistName": "The Beatles",
         "genre": "pop",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "rank": 2,
-        "intro": "Coming in at number 2, the 1960s pop hit 'I Want to Hold Your Hand' by The Beatles is a love song that gripped the world!",
-        "detail": "Released in 1963, this track quickly became a global sensation, topping charts in both the UK and the US. It was the band's first number one hit in America, marking the beginning of Beatlemania. The song's simple yet powerful message of love and connection struck a chord with listeners, leading to an unprecedented level of fan devotion. Its impact was so profound that it inspired a new wave of music and fashion, forever changing the cultural landscape. This song remains a testament to the enduring power of love and music.",
+        "rank": 1,
+        "intro": "Kicking off at number 1 in the 1960s pop category, 'I Want to Hold Your Hand' by The Beatles is a timeless classic that captured hearts worldwide.",
+        "detail": "This song, released in 1963, marked the beginning of Beatlemania in the United States. It was the band's first number-one hit on the Billboard Hot 100, staying at the top for seven weeks. The infectious energy and simple yet profound lyrics about love and connection resonated deeply with fans, sparking a cultural phenomenon. The track's success paved the way for the British Invasion, influencing countless musicians and shaping the course of pop music history.",
         "description_language": "English",
         "ranking_date": "2025-05-21"
       },
       {
-        "trackName": "Can't Buy Me Love",
+        "trackName": "Hey Jude",
         "artistName": "The Beatles",
         "genre": "pop",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "rank": 3,
-        "intro": "At number 3 in the 1960s pop charts, 'Can't Buy Me Love' by The Beatles proves that love is priceless!",
-        "detail": "This track, released in 1964, was recorded in Paris during a brief break from their hectic tour schedule. It became the band's fourth consecutive number one hit in the US, showcasing their incredible songwriting and performance skills. The song's message that money can't buy happiness resonated deeply with audiences, reflecting the changing values of the time. Its catchy melody and upbeat tempo made it a favorite at parties and on the radio, cementing its place in pop culture. This song continues to inspire listeners to seek true happiness beyond material wealth.",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1960s pop masterpiece 'Hey Jude' by The Beatles is an anthem of comfort and encouragement.",
+        "detail": "Released in 1968, this epic ballad, originally titled 'Hey Jules,' was written by Paul McCartney to comfort John Lennon's son Julian during his parents' divorce. Clocking in at over seven minutes, it was one of the longest singles to top the charts at the time. The song's uplifting message and sing-along chorus made it a favorite at gatherings and concerts, symbolizing hope and resilience. Its enduring popularity has cemented its place as one of the most beloved songs in music history.",
         "description_language": "English",
         "ranking_date": "2025-05-21"
       },
       {
-        "trackName": "Downtown",
-        "artistName": "Petula Clark",
+        "trackName": "Satisfaction",
+        "artistName": "The Rolling Stones",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, the 1960s pop hit 'Satisfaction' by The Rolling Stones delivers a raw and rebellious energy that defined a generation.",
+        "detail": "Released in 1965, this track became an anthem for the youth, encapsulating the frustration and desire for change during the turbulent 1960s. The iconic riff, crafted by Keith Richards, was reportedly inspired by a dream, and the song's candid lyrics struck a chord with listeners. It topped the charts in multiple countries and became a symbol of the counterculture movement. The Rolling Stones' bold sound and attitude left an indelible mark on rock music, influencing countless artists to follow.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      },
+      {
+        "trackName": "Good Vibrations",
+        "artistName": "The Beach Boys",
         "genre": "pop",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
         "rank": 4,
-        "intro": "Landing at number 4, the 1960s pop gem 'Downtown' by Petula Clark invites you to escape the daily grind!",
-        "detail": "Released in 1964, this song became an instant classic, topping charts around the world. It was written by Tony Hatch, who drew inspiration from his own experiences in New York City. The song's uplifting message of finding solace and excitement in the city's vibrant atmosphere struck a chord with listeners, offering a much-needed escape from the stresses of everyday life. Its success helped pave the way for other female artists in the pop genre, breaking down barriers and inspiring a new generation of musicians. This song remains a timeless anthem for anyone seeking a little adventure and joy.",
+        "intro": "Landing at number 4, the 1960s pop gem 'Good Vibrations' by The Beach Boys is a sonic masterpiece that pushes the boundaries of music production.",
+        "detail": "Released in 1966, this song was a groundbreaking achievement in studio recording, with Brian Wilson spending months and over $50,000 to perfect it. The innovative use of instruments and recording techniques created a rich tapestry of sound that was unlike anything heard before. 'Good Vibrations' topped the charts and became a cultural phenomenon, inspiring other artists to experiment with their music. Its uplifting message and unique sound continue to captivate listeners, showcasing the genius of The Beach Boys.",
         "description_language": "English",
         "ranking_date": "2025-05-21"
       },
       {
-        "trackName": "You've Lost That Lovin' Feelin'",
-        "artistName": "The Righteous Brothers",
+        "trackName": "Respect",
+        "artistName": "Aretha Franklin",
         "genre": "pop",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
         "rank": 5,
-        "intro": "Rounding out the top 5 in the 1960s pop category, 'You've Lost That Lovin' Feelin'' by The Righteous Brothers is a soulful ballad that tugs at the heartstrings!",
-        "detail": "Released in 1964, this track became one of the most played songs in radio history, thanks to its emotional depth and powerful vocals. It was written by the legendary songwriting team of Phil Spector, Barry Mann, and Cynthia Weil, who crafted a masterpiece that captured the pain of lost love. The song's dramatic arrangement and heartfelt lyrics resonated with audiences, making it a staple at weddings and romantic events. Its influence can be heard in countless covers and tributes, cementing its place as a timeless classic. This song continues to move listeners, reminding us of the power of love and the pain of its loss.",
+        "intro": "Rounding out the top 5 at number 5, the 1960s pop powerhouse 'Respect' by Aretha Franklin demands attention and celebrates empowerment.",
+        "detail": "Released in 1967, this song became an anthem for the civil rights and women's liberation movements. Originally written and recorded by Otis Redding, Aretha's version transformed it into a declaration of self-worth and respect. Her powerful vocals and the song's infectious groove made it an instant classic, topping the charts and earning her two Grammy Awards. 'Respect' not only showcased Aretha's incredible talent but also became a timeless symbol of strength and dignity, influencing generations to come.",
         "description_language": "English",
         "ranking_date": "2025-05-21"
       }

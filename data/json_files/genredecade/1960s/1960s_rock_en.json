@@ -24,6 +24,12 @@
         "artist_description": ""
       },
       {
+        "name": "Bob Dylan",
+        "spotify_artist_id": "74ASZWbe4lXaubB36ztrGX",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
         "name": "The Who",
         "spotify_artist_id": "67ea9eGLXYMsO2eYQRui3w",
         "artist_artwork": null,
@@ -32,12 +38,6 @@
       {
         "name": "Jimi Hendrix",
         "spotify_artist_id": "776Uo845nYHJpNaStv1Ds4",
-        "artist_artwork": null,
-        "artist_description": ""
-      },
-      {
-        "name": "The Doors",
-        "spotify_artist_id": "22WZ7M8sxp5THdruNY3gXt",
         "artist_artwork": null,
         "artist_description": ""
       }
@@ -63,7 +63,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27305c5be85b64eaff732f7cb0b",
         "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-04-30T17:08:19.214591"
+        "created_at": "2025-05-21T03:15:24.967100+00:00"
       },
       {
         "name": "Hey Jude",
@@ -76,7 +76,20 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273582d56ce20fe0146ffa0e5cf",
         "year_released": 1968,
         "is_explicit": false,
-        "created_at": "2025-04-30T17:08:19.214591"
+        "created_at": "2025-05-21T03:15:24.967100+00:00"
+      },
+      {
+        "name": "Like a Rolling Stone",
+        "artistName": "Bob Dylan",
+        "genre": "rock",
+        "decade": "1960s",
+        "spotify_track_id": "3AhXZa8sUQht0UEdBJgpGc",
+        "duration_ms": 369600,
+        "popularity": 78,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27341720ef0ae31e10d39e43ca2",
+        "year_released": 1965,
+        "is_explicit": false,
+        "created_at": "2025-05-21T03:15:24.967100+00:00"
       },
       {
         "name": "My Generation",
@@ -89,7 +102,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27334658b1827b64a1d4d5a5ca9",
         "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-04-30T17:08:19.214591"
+        "created_at": "2025-05-21T03:15:24.967100+00:00"
       },
       {
         "name": "Purple Haze",
@@ -102,20 +115,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273c9adfbd773852e286faed040",
         "year_released": 1967,
         "is_explicit": false,
-        "created_at": "2025-04-30T17:08:19.214591"
-      },
-      {
-        "name": "Light My Fire",
-        "artistName": "The Doors",
-        "genre": "rock",
-        "decade": "1960s",
-        "spotify_track_id": "5uvosCdMlFdTXhoazkTI5R",
-        "duration_ms": 429760,
-        "popularity": 73,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2735b96a8c5d61be8878452f8f1",
-        "year_released": 1967,
-        "is_explicit": false,
-        "created_at": "2025-04-30T17:08:19.214591"
+        "created_at": "2025-05-21T03:15:24.967100+00:00"
       }
     ],
     "tracklist": [
@@ -125,7 +125,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 1960s - rock",
-        "created_at": "2025-04-30T17:08:19.214591"
+        "created_at": "2025-05-21T03:15:24.967100+00:00"
       }
     ]
   },
@@ -138,10 +138,10 @@
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
         "rank": 1,
-        "intro": "Kicking off at number 1 in the 1960s rock category, 'Satisfaction' by The Rolling Stones is a timeless classic that you can't help but love!",
-        "detail": "This track, released in 1965, became an anthem for the youth of the era, encapsulating the spirit of rebellion and dissatisfaction with societal norms. It was the band's first number one hit in the U.S., and its iconic riff, crafted by Keith Richards in his sleep, has been hailed as one of the greatest in rock history. The song's influence extended far beyond music, becoming a symbol of the counterculture movement and inspiring countless artists across genres. Its enduring popularity is a testament to its raw energy and universal appeal.",
+        "intro": "Kicking off our list at number 1 in the 1960s rock category, 'Satisfaction' by The Rolling Stones is a must-hear!",
+        "detail": "This iconic track, released in 1965, was not just a song but a cultural phenomenon. It captured the restless spirit of a generation yearning for change. The riff, crafted by Keith Richards in his sleep, became one of the most recognizable in rock history. The song's message resonated deeply, reflecting the dissatisfaction many felt with societal norms. It topped charts worldwide and remains a staple in live performances, embodying the raw energy and rebellious attitude of the era.",
         "description_language": "English",
-        "ranking_date": "2025-04-30"
+        "ranking_date": "2025-05-21"
       },
       {
         "trackName": "Hey Jude",
@@ -150,10 +150,22 @@
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
         "rank": 2,
-        "intro": "Coming in at number 2, the 1960s rock scene wouldn't be complete without 'Hey Jude' by The Beatles, a song that's touched hearts worldwide!",
-        "detail": "Released in 1968, this track holds the record for the longest-running number one hit in the UK at the time. It was written by Paul McCartney to comfort John Lennon's son, Julian, during his parents' divorce. The song's uplifting message and sing-along chorus have made it a staple at weddings and gatherings, symbolizing hope and unity. Its seven-minute runtime was groundbreaking for radio, yet it became a beloved classic, showcasing the band's ability to innovate and connect with listeners on a profound level.",
+        "intro": "Coming in at number 2, the 1960s rock classic 'Hey Jude' by The Beatles will tug at your heartstrings!",
+        "detail": "Released in 1968, this song was originally written to comfort a young Julian Lennon during his parents' divorce. Its evolution from a simple ballad to a seven-minute epic showcases the band's innovative spirit. 'Hey Jude' became the longest song to top the charts at the time, and its sing-along chorus has united audiences in stadiums and living rooms alike. The track's success helped cement The Beatles' legacy as not just musicians, but cultural icons who could touch the hearts of millions.",
         "description_language": "English",
-        "ranking_date": "2025-04-30"
+        "ranking_date": "2025-05-21"
+      },
+      {
+        "trackName": "Like a Rolling Stone",
+        "artistName": "Bob Dylan",
+        "genre": "rock",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, dive into the poetic world of 1960s rock with 'Like a Rolling Stone' by Bob Dylan!",
+        "detail": "This groundbreaking song, released in 1965, marked a pivotal moment in music history. Its six-minute length was unheard of for a single at the time, yet it soared to the top of the charts. The lyrics, a scathing critique of societal values, resonated with a generation questioning the status quo. Dylan's shift to electric guitar during performances of this song famously caused uproar among fans, symbolizing the turbulent times. 'Like a Rolling Stone' remains a testament to the power of music to challenge and inspire.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
       },
       {
         "trackName": "My Generation",
@@ -161,11 +173,11 @@
         "genre": "rock",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "rank": 3,
-        "intro": "At number 3, dive into the rebellious spirit of the 1960s with 'My Generation' by The Who, a rock anthem that still resonates today!",
-        "detail": "This 1965 release captured the essence of youthful defiance, with its stuttering chorus becoming an iconic expression of frustration. The song's raw energy and Pete Townshend's aggressive guitar work set a new standard for rock music. It became a rallying cry for the mod subculture and influenced punk rock, with its message of standing against societal expectations. The track's impact on music and culture is undeniable, cementing its place as a timeless expression of generational angst.",
+        "rank": 4,
+        "intro": "Number 4 brings the explosive energy of 1960s rock with 'My Generation' by The Who!",
+        "detail": "Released in 1965, this anthem became the voice of youthful rebellion. The stuttering delivery of the line 'I hope I die before I get old' captured the angst and urgency of the era. The song's raw power was showcased during The Who's legendary live performances, where instruments were often destroyed in a frenzy of energy. 'My Generation' not only defined the band's career but also became a rallying cry for a generation eager to break free from the constraints of the past.",
         "description_language": "English",
-        "ranking_date": "2025-04-30"
+        "ranking_date": "2025-05-21"
       },
       {
         "trackName": "Purple Haze",
@@ -173,23 +185,11 @@
         "genre": "rock",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "rank": 4,
-        "intro": "Number 4 brings us 'Purple Haze' by Jimi Hendrix, a psychedelic rock masterpiece from the 1960s that's as vibrant as it is groundbreaking!",
-        "detail": "Released in 1967, this track introduced the world to Hendrix's innovative guitar techniques and his ability to blend rock with psychedelic elements. The song's ambiguous lyrics have been interpreted as a love song, a drug reference, or a spiritual journey, adding to its mystique. 'Purple Haze' not only showcased Hendrix's virtuosity but also pushed the boundaries of what rock music could be, influencing countless musicians and becoming a cornerstone of the psychedelic rock genre.",
-        "description_language": "English",
-        "ranking_date": "2025-04-30"
-      },
-      {
-        "trackName": "Light My Fire",
-        "artistName": "The Doors",
-        "genre": "rock",
-        "decade": "1960s",
-        "tracklist": "TopSpot Autogen",
         "rank": 5,
-        "intro": "Rounding out our top 5, feel the heat with 'Light My Fire' by The Doors, a 1960s rock classic that ignites the soul!",
-        "detail": "This 1967 hit, with its mesmerizing organ intro by Ray Manzarek, became a defining moment for the band and the era. The song's extended version, featuring a lengthy instrumental section, challenged radio conventions and showcased the band's improvisational skills. 'Light My Fire' became an anthem for the Summer of Love, embodying the era's spirit of freedom and exploration. Its impact on rock music and culture is profound, with its fiery energy and poetic lyrics continuing to inspire new generations.",
+        "intro": "Rounding out our top 5, experience the psychedelic vibes of 1960s rock with 'Purple Haze' by Jimi Hendrix!",
+        "detail": "Released in 1967, this track introduced the world to Hendrix's unparalleled guitar wizardry. The song's opening riff, with its distorted sound, was revolutionary and set the stage for the psychedelic rock movement. 'Purple Haze' was inspired by a dream, reflecting the surreal and often disorienting experiences of the time. Its impact extended beyond music, influencing fashion, art, and the counterculture. Hendrix's brief but brilliant career left an indelible mark on rock music, and 'Purple Haze' remains a testament to his genius.",
         "description_language": "English",
-        "ranking_date": "2025-04-30"
+        "ranking_date": "2025-05-21"
       }
     ]
   }
