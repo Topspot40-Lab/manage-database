@@ -7,7 +7,12 @@ from typing import Literal
 from sqlmodel import Session, select
 
 from backend.services.spotify_service import get_spotify_data
-from backend.services.xai_service import get_top_tracks_from_xai, get_track_descriptions_from_xai
+from backend.services.xai_service import (
+    get_top_tracks_from_xai,
+    get_track_descriptions_from_xai,
+    get_artist_description  # ⬅️ Add this
+)
+
 from backend.database import get_db
 from models.dbmodels import Genre, Decade, Artist, Track, TrackRanking, DecadeGenre, Tracklist
 from shared.filepaths import get_json_path
@@ -50,16 +55,26 @@ def generate_track_json(request: TrackRequest):
     artists = []
     tracks = []
     rankings = []
+    description_cache = {}
 
     for base in enriched["tracks"]:
         spotify_data = get_spotify_data(base['trackName'], base['artistName'])
+        artist_name = base["artistName"]
+
+        # Cache description
+        if artist_name not in description_cache:
+            desc = get_artist_description(artist_name, language=request.language)
+            if not desc:
+                desc = "No biography available at this time."
+            description_cache[artist_name] = desc
 
         artist_entry = {
-            "name": base["artistName"],
+            "name": artist_name,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
             "artist_artwork": None,
-            "artist_description": ""
+            "artist_description": description_cache[artist_name]
         }
+
         if artist_entry not in artists:
             artists.append(artist_entry)
 

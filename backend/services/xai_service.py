@@ -60,6 +60,15 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
     try:
         logging.info("🎵 Requesting top track names from XAI...")
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
+
+        # 🔍 Print debug info on failure
+        if response.status_code != 200:
+            logging.error(f"❌ XAI rejected the request with status {response.status_code}")
+            logging.error(f"🧾 Response body: {response.text}")
+            logging.error(f"📤 Payload sent: {json.dumps(payload, indent=2)}")
+            response.raise_for_status()
+
+
         response.raise_for_status()
         result = response.json()
 
@@ -157,3 +166,61 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
         "genre": genre,
         "tracks": tracks
     }
+
+def get_artist_description(artist_name: str, language: str = "English") -> str:
+    """
+    Query XAI for a brief artist biography including nationality, career highlights,
+    and personal details of interest. Returns a plain string.
+    """
+    prompt = (
+        f"Write a short artist biography in {language} for the musician named '{artist_name}'. "
+        "Include their nationality, genre, early life or origin story, notable achievements, and any personal or cultural trivia of interest. "
+        "Keep it concise (2–3 sentences), engaging, and informative. Do not include any JSON formatting or tags—just return plain text."
+    )
+
+    headers = {
+        "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
+
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are an AI that returns short, plain-text artist biographies with no formatting or markup."
+            },
+            {"role": "user", "content": prompt}
+        ],
+        "model": "grok-2-latest",
+        "stream": False,
+        "temperature": 0.5
+    }
+
+    try:
+        logging.info(f"📚 Requesting artist bio for: {artist_name}")
+        response = requests.post(XAI_API_URL, json=payload, headers=headers)
+
+        if response.status_code != 200:
+            logging.error(f"❌ XAI rejected the request with status {response.status_code}")
+            logging.error(f"🧾 Response body:\n{response.text}")
+            logging.error(f"📤 Payload sent:\n{json.dumps(payload, indent=2)}")
+            raise requests.exceptions.HTTPError(response.text)
+
+        result = response.json()
+        logging.info(f"📦 XAI Response JSON:\n{json.dumps(result, indent=2)}")
+
+        content = result["choices"][0]["message"]["content"]
+        return content.strip() if content else f"(No description found for {artist_name})"
+    except requests.exceptions.HTTPError as e:
+        # Try to get the response text if it's available
+        try:
+            logging.error(f"❌ HTTPError: {e}")
+            logging.error(f"🧾 Response body:\n{e.response.text}")
+        except Exception as log_err:
+            logging.error(f"⚠️ Could not log response body: {log_err}")
+        return f"(HTTP error fetching description for {artist_name})"
+
+    except Exception as e:
+        logging.error(f"❌ Unexpected error: {e}")
+        return f"(Unexpected error fetching description for {artist_name})"

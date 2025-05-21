@@ -6,7 +6,6 @@ from sqlmodel import SQLModel, Field
 
 class Artist(SQLModel, table=True):
     __table_args__ = {"schema": "core_tables"}
-
     id: int = Field(default=None, primary_key=True)
     name: str = Field(nullable=False)
     spotify_artist_id: str = Field(nullable=False)

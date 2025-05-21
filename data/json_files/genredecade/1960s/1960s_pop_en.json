@@ -1,0 +1,184 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "name": "pop"
+      }
+    ],
+    "decade": [
+      {
+        "name": "1960s"
+      }
+    ],
+    "artist": [
+      {
+        "name": "The Beatles",
+        "spotify_artist_id": "3WrFJ7ztbogyGnTHbHJFl2",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "Petula Clark",
+        "spotify_artist_id": "6nKqt1nbSBEq3iUXD1Xgz8",
+        "artist_artwork": null,
+        "artist_description": ""
+      },
+      {
+        "name": "The Righteous Brothers",
+        "spotify_artist_id": "4b0WsB47XCa9F83BmwQ7WX",
+        "artist_artwork": null,
+        "artist_description": ""
+      }
+    ],
+    "language": [
+      {
+        "code": "en",
+        "name": "English"
+      }
+    ],
+    "specialty": []
+  },
+  "track_tables": {
+    "track": [
+      {
+        "name": "She Loves You",
+        "artistName": "The Beatles",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "0qsS2A3hwicJCLtcaR6JRQ",
+        "duration_ms": 142653,
+        "popularity": 64,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2735ef4660298ae29ee18799fc2",
+        "year_released": 1963,
+        "is_explicit": false,
+        "created_at": "2025-05-21T02:40:55.875144+00:00"
+      },
+      {
+        "name": "I Want to Hold Your Hand",
+        "artistName": "The Beatles",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "5Qe7NHxeLAn8KoLTNLSdwe",
+        "duration_ms": 146720,
+        "popularity": 72,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2735ef4660298ae29ee18799fc2",
+        "year_released": 1963,
+        "is_explicit": false,
+        "created_at": "2025-05-21T02:40:55.875144+00:00"
+      },
+      {
+        "name": "Can't Buy Me Love",
+        "artistName": "The Beatles",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "3SdingSsFcZDZAyvcJbgAw",
+        "duration_ms": 131866,
+        "popularity": 68,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273e230f303815e82a86713eedd",
+        "year_released": 1964,
+        "is_explicit": false,
+        "created_at": "2025-05-21T02:40:55.875144+00:00"
+      },
+      {
+        "name": "Downtown",
+        "artistName": "Petula Clark",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "6S55C80YzjhSrCRRd1p80b",
+        "duration_ms": 187760,
+        "popularity": 66,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27351c5bc666e98ec2ec7dd303c",
+        "year_released": 1964,
+        "is_explicit": false,
+        "created_at": "2025-05-21T02:40:55.875144+00:00"
+      },
+      {
+        "name": "You've Lost That Lovin' Feelin'",
+        "artistName": "The Righteous Brothers",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "6AeyHqzNHJthYJbn0tvJ4b",
+        "duration_ms": 226453,
+        "popularity": 66,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273f62ec50234d5578631792ea8",
+        "year_released": 1964,
+        "is_explicit": false,
+        "created_at": "2025-05-21T02:40:55.875144+00:00"
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 1960s - pop",
+        "created_at": "2025-05-21T02:40:55.875144+00:00"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "trackranking": [
+      {
+        "trackName": "She Loves You",
+        "artistName": "The Beatles",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off at number 1 in the 1960s pop category, 'She Loves You' by The Beatles is a timeless classic that captured hearts worldwide!",
+        "detail": "This track, released in 1963, was a pivotal moment in music history. It was the band's second single to hit number one in the UK and their first to do so in the US. The song's infectious 'yeah, yeah, yeah' chorus became a cultural phenomenon, echoing through the streets and inspiring countless covers. Its success helped launch the British Invasion, bringing a fresh sound to American audiences and setting the stage for the band's meteoric rise. The energy and joy of this song continue to resonate, reminding us of a time when music could change the world.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      },
+      {
+        "trackName": "I Want to Hold Your Hand",
+        "artistName": "The Beatles",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1960s pop hit 'I Want to Hold Your Hand' by The Beatles is a love song that gripped the world!",
+        "detail": "Released in 1963, this track quickly became a global sensation, topping charts in both the UK and the US. It was the band's first number one hit in America, marking the beginning of Beatlemania. The song's simple yet powerful message of love and connection struck a chord with listeners, leading to an unprecedented level of fan devotion. Its impact was so profound that it inspired a new wave of music and fashion, forever changing the cultural landscape. This song remains a testament to the enduring power of love and music.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      },
+      {
+        "trackName": "Can't Buy Me Love",
+        "artistName": "The Beatles",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3 in the 1960s pop charts, 'Can't Buy Me Love' by The Beatles proves that love is priceless!",
+        "detail": "This track, released in 1964, was recorded in Paris during a brief break from their hectic tour schedule. It became the band's fourth consecutive number one hit in the US, showcasing their incredible songwriting and performance skills. The song's message that money can't buy happiness resonated deeply with audiences, reflecting the changing values of the time. Its catchy melody and upbeat tempo made it a favorite at parties and on the radio, cementing its place in pop culture. This song continues to inspire listeners to seek true happiness beyond material wealth.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      },
+      {
+        "trackName": "Downtown",
+        "artistName": "Petula Clark",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 4,
+        "intro": "Landing at number 4, the 1960s pop gem 'Downtown' by Petula Clark invites you to escape the daily grind!",
+        "detail": "Released in 1964, this song became an instant classic, topping charts around the world. It was written by Tony Hatch, who drew inspiration from his own experiences in New York City. The song's uplifting message of finding solace and excitement in the city's vibrant atmosphere struck a chord with listeners, offering a much-needed escape from the stresses of everyday life. Its success helped pave the way for other female artists in the pop genre, breaking down barriers and inspiring a new generation of musicians. This song remains a timeless anthem for anyone seeking a little adventure and joy.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      },
+      {
+        "trackName": "You've Lost That Lovin' Feelin'",
+        "artistName": "The Righteous Brothers",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 5,
+        "intro": "Rounding out the top 5 in the 1960s pop category, 'You've Lost That Lovin' Feelin'' by The Righteous Brothers is a soulful ballad that tugs at the heartstrings!",
+        "detail": "Released in 1964, this track became one of the most played songs in radio history, thanks to its emotional depth and powerful vocals. It was written by the legendary songwriting team of Phil Spector, Barry Mann, and Cynthia Weil, who crafted a masterpiece that captured the pain of lost love. The song's dramatic arrangement and heartfelt lyrics resonated with audiences, making it a staple at weddings and romantic events. Its influence can be heard in countless covers and tributes, cementing its place as a timeless classic. This song continues to move listeners, reminding us of the power of love and the pain of its loss.",
+        "description_language": "English",
+        "ranking_date": "2025-05-21"
+      }
+    ]
+  }
+}
