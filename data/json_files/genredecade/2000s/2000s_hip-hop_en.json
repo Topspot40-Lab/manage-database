@@ -1,0 +1,189 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "name": "hip-hop"
+      }
+    ],
+    "decade": [
+      {
+        "name": "2000s"
+      }
+    ],
+    "artist": [
+      {
+        "name": "50 Cent",
+        "spotify_artist_id": "3q7HBObVc0L8jNeTe5Gofh",
+        "artist_artwork": null,
+        "artist_description": "50 Cent, born Curtis Jackson in Queens, New York, is an American rapper known for his gritty lyrics and influential role in hip-hop. Rising from a challenging background, he survived a shooting in 2000 before releasing his debut album \"Get Rich or Die Tryin'\" in 2003, which became a massive success. Beyond music, 50 Cent has made a mark in acting and business, notably with his Vitamin Water investment, and remains a cultural icon for his rags-to-riches story."
+      },
+      {
+        "name": "Eminem",
+        "spotify_artist_id": "7dGJo4pcD2V6oG8kP0tJRR",
+        "artist_artwork": null,
+        "artist_description": "Eminem, born Marshall Mathers in 1972, is an American rapper known for his intense lyrical style and storytelling. Rising from a challenging childhood in Detroit, he gained fame with albums like \"The Slim Shady LP\" and \"The Marshall Mathers LP,\" the latter becoming one of the best-selling rap albums of all time. Eminem has won numerous awards, including 15 Grammys, and is celebrated for his impact on hip-hop culture and his candid exploration of personal struggles."
+      },
+      {
+        "name": "Kanye West ft. Jamie Foxx",
+        "spotify_artist_id": null,
+        "artist_artwork": null,
+        "artist_description": "Kanye West, an American rapper and producer, and Jamie Foxx, an American actor and singer, collaborated on the hit song \"Gold Digger.\" Kanye, born in Atlanta and raised in Chicago, rose to fame with his debut album \"The College Dropout,\" while Jamie, from Terrell, Texas, gained fame in music and film, winning an Academy Award for \"Ray.\" Their collaboration showcases a blend of hip-hop and soul, earning multiple Grammy nominations and highlighting their significant impact on music and culture."
+      },
+      {
+        "name": "Nelly",
+        "spotify_artist_id": "2gBjLmx6zQnFGQJCAQpRgw",
+        "artist_artwork": null,
+        "artist_description": "Nelly, born Cornell Iral Haynes Jr., is an American rapper and singer known for his contributions to hip hop and R&B. Hailing from St. Louis, Missouri, he rose to fame with his debut album \"Country Grammar\" in 2000, which included hits like \"Ride wit Me\" and \"Hot in Herre.\" Nelly has won multiple Grammy Awards and is also recognized for his philanthropy, particularly through his non-profit organization, 4Sho4Kids Foundation, which supports children's health and education."
+      },
+      {
+        "name": "50 Cent ft. Olivia",
+        "spotify_artist_id": null,
+        "artist_artwork": null,
+        "artist_description": "50 Cent, an American rapper from Queens, New York, rose to fame with his debut album \"Get Rich or Die Tryin'\" in 2003, which featured the hit single \"Candy Shop\" with singer Olivia. Known for his gritty lyrics and entrepreneurial spirit, 50 Cent has also ventured into acting and business, founding the successful liquor brand Effen Vodka. Olivia, also American, gained recognition through her collaboration with 50 Cent, showcasing her smooth R&B vocals on their joint tracks."
+      }
+    ]
+  },
+  "track_tables": {
+    "track": [
+      {
+        "track_name": "In Da Club",
+        "artist_name": "50 Cent",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "spotify_track_id": "4RY96Asd9IefaL3X4LOLZ8",
+        "duration_ms": 193466,
+        "popularity": 76,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273f7f74100d5cc850e01172cbf",
+        "year_released": 2003,
+        "is_explicit": false,
+        "created_at": "2025-05-22T20:10:20.004783",
+        "detail": "This track burst onto the scene with an infectious beat that had everyone from clubs to car stereos bobbing their heads. Released in 2003, it was the lead single from the debut album 'Get Rich or Die Tryin',' which catapulted the artist into superstardom. The song's success was not just in its catchy hook but also in its portrayal of resilience and celebration. It became a cultural phenomenon, often played at celebrations and sporting events, symbolizing triumph over adversity. The artist's journey from the streets to the top of the charts added a layer of authenticity that resonated deeply with fans around the world."
+      },
+      {
+        "track_name": "Lose Yourself",
+        "artist_name": "Eminem",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "spotify_track_id": "5Z01UMMf7V1o0MzF86s6WJ",
+        "duration_ms": 326466,
+        "popularity": 80,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273eab40fc794b88b9d1e012578",
+        "year_released": 2002,
+        "is_explicit": false,
+        "created_at": "2025-05-22T20:10:20.004783",
+        "detail": "This iconic track, released in 2002, was not just a song but a cinematic experience, featured in the film '8 Mile.' It captured the raw emotion of chasing dreams against all odds. The song's intense lyrics and powerful delivery earned it an Academy Award for Best Original Song, a rare feat for a hip-hop track. Its impact extended beyond music, inspiring countless individuals to seize their moments. The track's success also highlighted the artist's ability to blend personal storytelling with universal themes, making it a timeless piece of art."
+      },
+      {
+        "track_name": "Gold Digger",
+        "artist_name": "Kanye West ft. Jamie Foxx",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "spotify_track_id": null,
+        "duration_ms": null,
+        "popularity": null,
+        "album_artwork": null,
+        "year_released": 2005,
+        "is_explicit": false,
+        "created_at": "2025-05-22T20:10:20.004783",
+        "detail": "Released in 2005, this track combined hip-hop with soul, featuring a sample from Ray Charles' 'I Got a Woman.' The collaboration with Jamie Foxx, fresh off his Oscar win for portraying Ray Charles, added a layer of authenticity and star power. The song's catchy chorus and clever lyrics about relationships and materialism struck a chord with listeners. It became a cultural touchstone, often referenced in media and popular culture. The artist's innovative approach to blending genres and his fearless commentary on societal issues helped cement his status as a visionary in the music world."
+      },
+      {
+        "track_name": "Hot in Herre",
+        "artist_name": "Nelly",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "spotify_track_id": "04KTF78FFg8sOHC1BADqbY",
+        "duration_ms": 228240,
+        "popularity": 80,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273a8b9f97b9ea065b9a857e93f",
+        "year_released": 2002,
+        "is_explicit": false,
+        "created_at": "2025-05-22T20:10:20.004783",
+        "detail": "This track, released in 2002, became an instant summer anthem with its infectious beat and playful lyrics. It was part of the artist's second album, 'Nellyville,' which showcased his versatility and ability to create hits across different styles. The song's success was amplified by its memorable music video, featuring a party atmosphere that perfectly captured the song's vibe. It influenced fashion and dance trends, with the 'Hot in Herre' dance becoming a staple at parties. The track's impact on pop culture was significant, solidifying the artist's place in the music industry."
+      },
+      {
+        "track_name": "Candy Shop",
+        "artist_name": "50 Cent ft. Olivia",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "spotify_track_id": null,
+        "duration_ms": null,
+        "popularity": null,
+        "album_artwork": null,
+        "year_released": 2005,
+        "is_explicit": false,
+        "created_at": "2025-05-22T20:10:20.004783",
+        "detail": "Released in 2005, this track followed up the success of 'In Da Club,' showcasing the artist's ability to create diverse hits. The song's seductive lyrics and catchy melody made it a favorite on radio and in clubs. The collaboration with Olivia added a smooth vocal contrast to the artist's gritty style. The track's music video, with its lavish setting and playful theme, further enhanced its appeal. 'Candy Shop' became a symbol of the era's hedonistic party culture, often played at events where people wanted to let loose and have fun. The song's enduring popularity is a testament to the artist's knack for crafting memorable tunes."
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 2000s - hip-hop",
+        "created_at": "2025-05-22T20:10:20.004783"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "trackranking": [
+      {
+        "track_name": "In Da Club",
+        "artist_name": "50 Cent",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off at number 1 in the 2000s hip-hop category, 'In Da Club' by 50 Cent is the ultimate party anthem!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-22"
+      },
+      {
+        "track_name": "Lose Yourself",
+        "artist_name": "Eminem",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 2000s hip-hop scene was rocked by 'Lose Yourself' from Eminem!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-22"
+      },
+      {
+        "track_name": "Gold Digger",
+        "artist_name": "Kanye West ft. Jamie Foxx",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, 'Gold Digger' by Kanye West ft. Jamie Foxx brought soulful vibes to the 2000s hip-hop charts!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-22"
+      },
+      {
+        "track_name": "Hot in Herre",
+        "artist_name": "Nelly",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 4,
+        "intro": "Number 4 on our list, 'Hot in Herre' by Nelly turned up the heat in the 2000s hip-hop category!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-22"
+      },
+      {
+        "track_name": "Candy Shop",
+        "artist_name": "50 Cent ft. Olivia",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 5,
+        "intro": "Rounding out the top 5, 'Candy Shop' by 50 Cent ft. Olivia sweetened the 2000s hip-hop scene!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-22"
+      }
+    ]
+  }
+}
