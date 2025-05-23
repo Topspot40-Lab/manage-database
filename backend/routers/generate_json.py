@@ -101,9 +101,10 @@ def generate_track_json(request: TrackRequest):
             description_cache[artist_name] = desc
 
         artist_entry = {
-            "name": artist_name,
+            "artist_name": artist_name,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
-            "artist_artwork": None,
+            "artist_artwork": spotify_data.get("artistImage"),
+
             "artist_description": description_cache[artist_name]
         }
 
@@ -122,7 +123,8 @@ def generate_track_json(request: TrackRequest):
             "year_released": int(base["yearReleased"]),
             "is_explicit": False,
             "created_at": now,
-            "detail": base.get("detail")
+            "detail": base.get("detail"),
+            "detail_mp3_url": base.get("detail_mp3_url")
         }
 
         tracks.append(track_entry)

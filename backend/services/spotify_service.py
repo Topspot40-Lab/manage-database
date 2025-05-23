@@ -24,14 +24,22 @@ def get_spotify_data(track_name: str, artist_name: str):
         sp = get_spotify_client()
         query = f"track:{track_name} artist:{artist_name}"
         results = sp.search(q=query, type="track", limit=1)
+
         if results["tracks"]["items"]:
             track = results["tracks"]["items"][0]
+            artist_id = track["artists"][0]["id"]
+
+            # 🔍 Fetch artist artwork using artist ID
+            artist_data = sp.artist(artist_id)
+            artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
+
             return {
                 "id": track["id"],
-                "artistId": track["artists"][0]["id"],
+                "artistId": artist_id,
                 "durationMs": track["duration_ms"],
                 "popularity": track["popularity"],
-                "trackImage": track["album"]["images"][0]["url"] if track["album"]["images"] else None
+                "trackImage": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
+                "artistImage": artist_image  # ✅ New field added
             }
         else:
             return {}

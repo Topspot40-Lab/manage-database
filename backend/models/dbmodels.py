@@ -131,7 +131,7 @@ class Track(SQLModel, table=True):
     __table_args__ = {"schema": "track_tables", "extend_existing": True}
 
     id: int = Field(default=None, primary_key=True)
-    name: str = Field(nullable=False)
+    track_name: str = Field(nullable=False)
     spotify_track_id: str = Field(nullable=False)
     duration_ms: Optional[int] = Field(default=None)
     popularity: Optional[int] = Field(default=None)
@@ -141,3 +141,4 @@ class Track(SQLModel, table=True):
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default=None)
     detail: Optional[str] = Field(default=None)
+    detail_mp3_url: Optional[str] = Field(default=None)
