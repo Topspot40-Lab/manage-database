@@ -146,8 +146,8 @@ def generate_track_json(request: TrackRequest):
 
     final_json = {
         "core_tables": {
-            "genre": [{"name": request.genre}],
-            "decade": [{"name": request.category}],
+            "genre": [{"genre_name": request.genre}],
+            "decade": [{"decade_name": request.category}],
             "artist": artists
         },
         "track_tables": {

@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, UniqueConstraint
+
 
 # === core_tables schema ===
 class Artist(SQLModel, table=True):
@@ -100,17 +101,19 @@ class Top40GenreRanking(SQLModel, table=True):
     intro_mp3_url: Optional[str] = Field(default=None)
 
 class TrackRanking(SQLModel, table=True):
-    __tablename__ = "trackranking"
-    __table_args__ = {"schema": "ranking_tables", "extend_existing": True}
+    __table_args__ = (
+        UniqueConstraint("track_id", "decade_genre_id", "tracklist_id", name="track_ranking_track_id_decade_genre_id_tracklist_id_key"),
+        UniqueConstraint("ranking", "decade_genre_id", name="uix_rank_per_decade_genre"),  # 👈 Add this line
+    )
 
-    id: int = Field(default=None, primary_key=True)
-    track_id: int = Field(foreign_key="track_tables.track.id")
-    decade_genre_id: int = Field(foreign_key="join_tables.decadegenre.id")
-    tracklist_id: int = Field(default=1, foreign_key="track_tables.tracklist.id")
-    ranking: int = Field(nullable=False)
-    intro: Optional[str] = Field(default=None)
-    intro_mp3_url: Optional[str] = Field(default=None)
-    ranking_date: Optional[datetime] = Field(default=None)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    track_id: int = Field(foreign_key="track.id")
+    decade_genre_id: int = Field(foreign_key="decadegenre.id")
+    tracklist_id: int
+    ranking: int
+    intro: Optional[str] = None
+    intro_mp3_url: Optional[str] = None
+    ranking_date: Optional[str] = None
 
 # === track_tables schema ===
 
