@@ -1,0 +1,127 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "genre_name": "country"
+      }
+    ],
+    "decade": [
+      {
+        "decade_name": "1990s"
+      }
+    ],
+    "artist": [
+      {
+        "artist_name": "Garth Brooks",
+        "spotify_artist_id": "7C9ZVDO4Ubwssa6bB7475f",
+        "artist_artwork": "https://i.scdn.co/image/ab67616d0000b27366c7a59888685d11c5b8887f",
+        "artist_description": "Garth Brooks, an American country music singer and songwriter, was born in Tulsa, Oklahoma, and raised in Yukon, Oklahoma. He gained fame in the 1990s with hits like \"Friends in Low Places\" and became one of the best-selling music artists of all time, with over 170 million records sold. Interestingly, Brooks briefly retired from music to focus on raising his three daughters, before making a successful comeback in 2009."
+      },
+      {
+        "artist_name": "Billy Ray Cyrus",
+        "spotify_artist_id": "60rpJ9SgigSd16DOAG7GSa",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebcedd1ae91e199fd50213222e",
+        "artist_description": "Billy Ray Cyrus, an American country singer, was born in Flatwoods, Kentucky, and rose to fame with his breakout hit \"Achy Breaky Heart\" in 1992. He has since released numerous albums and achieved success in both music and acting, notably starring in the Disney Channel series \"Hannah Montana\" alongside his daughter, Miley Cyrus. His contributions to country music and his family's entertainment legacy have made him a cultural icon."
+      }
+    ]
+  },
+  "track_tables": {
+    "track": [
+      {
+        "track_name": "Friends in Low Places",
+        "artist_name": "Garth Brooks",
+        "track_display_name": "Friends in Low Places",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": "5Ynx2XR1wGAZ3eUD7ED9J4",
+        "duration_ms": 235840,
+        "popularity": 12,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27366c7a59888685d11c5b8887f",
+        "year_released": 1990,
+        "is_explicit": false,
+        "created_at": "2025-05-24T16:39:00.674869",
+        "detail": "This song became an instant classic, resonating with listeners across the nation for its relatable lyrics about standing by friends no matter their social standing. Released in 1990, it quickly climbed the charts, becoming a staple at parties and gatherings. The track's success helped cement the artist's status as a country music icon, and its infectious chorus has been sung by fans at countless concerts. Its cultural impact extended beyond music, influencing fashion and even spawning a line dance craze that swept the country.",
+        "detail_mp3_url": null
+      },
+      {
+        "track_name": "The Dance",
+        "artist_name": "Garth Brooks",
+        "track_display_name": "The Dance",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": "08MhzVza8Qc4M172KZ37JT",
+        "duration_ms": 227994,
+        "popularity": 6,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27366c7a59888685d11c5b8887f",
+        "year_released": 1990,
+        "is_explicit": false,
+        "created_at": "2025-05-24T16:39:00.674869",
+        "detail": "Released in 1990, this poignant ballad captured the essence of life's fleeting moments and the beauty found within them. The song's powerful message and emotional delivery struck a chord with audiences, leading to widespread acclaim and numerous awards. It became a symbol of resilience and hope, often played at significant life events like weddings and memorials. The track's success further solidified the artist's reputation as a master storyteller, capable of weaving narratives that resonate deeply with listeners.",
+        "detail_mp3_url": null
+      },
+      {
+        "track_name": "Achy Breaky Heart",
+        "artist_name": "Billy Ray Cyrus",
+        "track_display_name": "Achy Breaky Heart",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": "2EoIt9vdgFRNW03u5IvFsQ",
+        "duration_ms": 203373,
+        "popularity": 70,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273bf80fa37dadf36f79441104f",
+        "year_released": 1992,
+        "is_explicit": false,
+        "created_at": "2025-05-24T16:39:00.674869",
+        "detail": "This track, released in 1992, became a cultural phenomenon, sparking a dance craze that took the world by storm. Its catchy melody and simple lyrics made it an instant hit, appealing to a broad audience beyond traditional country fans. The song's success propelled the artist into the spotlight, leading to a successful acting career and a lasting legacy in pop culture. Its impact was felt in various forms of media, from television shows to movies, and it remains a nostalgic favorite for many.",
+        "detail_mp3_url": null
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 1990s - country",
+        "created_at": "2025-05-24T16:39:00.674869"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "trackranking": [
+      {
+        "track_name": "Friends in Low Places",
+        "artist_name": "Garth Brooks",
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off at number 1 in the 1990s country genre, 'Friends in Low Places' by Garth Brooks is a must-hear anthem!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-24"
+      },
+      {
+        "track_name": "The Dance",
+        "artist_name": "Garth Brooks",
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1990s country hit 'The Dance' by Garth Brooks will tug at your heartstrings!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-24"
+      },
+      {
+        "track_name": "Achy Breaky Heart",
+        "artist_name": "Billy Ray Cyrus",
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, dive into the 1990s country sensation 'Achy Breaky Heart' by Billy Ray Cyrus!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-24"
+      }
+    ]
+  }
+}

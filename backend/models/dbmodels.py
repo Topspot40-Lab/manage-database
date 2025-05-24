@@ -3,16 +3,21 @@ from datetime import datetime
 from sqlmodel import SQLModel, Field, UniqueConstraint
 
 
+
 # === core_tables schema ===
 class Artist(SQLModel, table=True):
     __tablename__ = "artist"
-    __table_args__ = {"schema": "core_tables", "extend_existing": True}
+    __table_args__ = (
+        UniqueConstraint("spotify_artist_id", name="uq_spotify_artist_id"),
+        {"schema": "core_tables", "extend_existing": True},
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    artist_name: str
+    artist_name: str  # cleaned name already
     spotify_artist_id: Optional[str] = None
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
+
 
 
 class Decade(SQLModel, table=True):
@@ -143,6 +148,7 @@ class Track(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     track_name: str = Field(nullable=False)
+    track_display_name: str = Field(nullable=False)
     spotify_track_id: str = Field(nullable=False)
     duration_ms: Optional[int] = Field(default=None)
     popularity: Optional[int] = Field(default=None)

@@ -15,7 +15,13 @@
         "artist_name": "50 Cent",
         "spotify_artist_id": "3q7HBObVc0L8jNeTe5Gofh",
         "artist_artwork": "https://i.scdn.co/image/dd031b9c5d1b6eba4a691cd89c954255aae787f2",
-        "artist_description": "50 Cent, born Curtis Jackson in Queens, New York, is an American rapper known for his gritty lyrics and influential role in the hip-hop genre. Rising to fame with his debut album \"Get Rich or Die Tryin'\" in 2003, he became a global icon with hits like \"In Da Club.\" Beyond music, 50 Cent has ventured into acting and business, notably surviving a shooting in 2000 that shaped his career and public persona."
+        "artist_description": "50 Cent, born Curtis Jackson in Queens, New York, is an American rapper known for his distinctive voice and gritty lyrics in the hip-hop genre. Rising from a challenging early life marked by poverty and crime, he gained fame with his debut album \"Get Rich or Die Tryin'\" in 2003, which included the hit single \"In Da Club.\" Beyond music, 50 Cent has made a mark in acting and business, notably with his Vitamin Water investment, and he's also known for surviving a shooting in 2000 that influenced his music and public persona."
+      },
+      {
+        "artist_name": "Eminem",
+        "spotify_artist_id": "7dGJo4pcD2V6oG8kP0tJRR",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eba00b11c129b27a88fc72f36b",
+        "artist_description": "Eminem, born Marshall Mathers in 1972, is an American rapper known for his intense lyrics and rapid-fire delivery in the genre of hip-hop. Rising from a challenging upbringing in Detroit, he gained fame with his album \"The Slim Shady LP\" and won multiple Grammy Awards, including Best Rap Album for \"The Marshall Mathers LP.\" Eminem's alter ego, Slim Shady, allowed him to explore darker themes, and his semi-autobiographical film \"8 Mile\" further cemented his cultural impact."
       }
     ]
   },
@@ -24,6 +30,7 @@
       {
         "track_name": "In Da Club",
         "artist_name": "50 Cent",
+        "track_display_name": "In Da Club",
         "genre": "hip-hop",
         "decade": "2000s",
         "spotify_track_id": "4RY96Asd9IefaL3X4LOLZ8",
@@ -32,8 +39,24 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273f7f74100d5cc850e01172cbf",
         "year_released": 2003,
         "is_explicit": false,
-        "created_at": "2025-05-24T14:04:44.567837",
-        "detail": "This song burst onto the scene with an infectious beat that you couldn't help but nod your head to. It was released in 2003, a time when the world was still reeling from the turn of the millennium, and it provided the perfect anthem for celebration and resilience. The artist behind it had a compelling backstory, having survived a shooting that left him with nine bullet wounds, which only added to the song's mystique and his street credibility. The track's success was monumental, reaching the top of the charts and becoming a staple at parties and clubs around the globe. Its cultural impact was undeniable, influencing fashion, dance, and even the way people approached hip-hop music. The song's chorus, simple yet catchy, became a rallying cry for living in the moment and enjoying life's highs.",
+        "created_at": "2025-05-24T16:36:56.299314",
+        "detail": "This track burst onto the scene with an infectious beat that had everyone from clubs to car radios grooving. Released in 2003, it was the lead single from an album that would catapult its creator to superstardom. The song's iconic chorus became a cultural phenomenon, often heard at celebrations and sporting events. It was also a testament to resilience, as the artist behind it had survived a harrowing personal ordeal just years before. The track's success helped redefine the genre, blending elements of rap and R&B, and its influence can still be felt in music today.",
+        "detail_mp3_url": null
+      },
+      {
+        "track_name": "Lose Yourself",
+        "artist_name": "Eminem",
+        "track_display_name": "Lose Yourself",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "spotify_track_id": "5Z01UMMf7V1o0MzF86s6WJ",
+        "duration_ms": 326466,
+        "popularity": 80,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273eab40fc794b88b9d1e012578",
+        "year_released": 2002,
+        "is_explicit": false,
+        "created_at": "2025-05-24T16:36:56.299314",
+        "detail": "This song, released in 2002, was not just a hit; it was a cinematic masterpiece, serving as the theme for a film that would go on to win an Academy Award. The intense lyrics and driving beat resonated with listeners, inspiring them to seize their moments. It became an anthem for anyone facing challenges, embodying the spirit of perseverance. The track's success crossed genres, appealing to a broad audience and even earning a Grammy for Best Rap Song. Its impact on pop culture is undeniable, with lines from the song becoming part of everyday vernacular.",
         "detail_mp3_url": null
       }
     ],
@@ -44,7 +67,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 2000s - hip-hop",
-        "created_at": "2025-05-24T14:04:44.567837"
+        "created_at": "2025-05-24T16:36:56.299314"
       }
     ]
   },
@@ -57,7 +80,18 @@
         "decade": "2000s",
         "tracklist": "TopSpot Autogen",
         "rank": 1,
-        "intro": "Kicking off at number 1 in our 2000s hip-hop category, 'In Da Club' by 50 Cent is a track that got everyone moving!",
+        "intro": "Kicking off at number 1 in the 2000s hip-hop category, 'In Da Club' by 50 Cent is the ultimate party anthem!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-24"
+      },
+      {
+        "track_name": "Lose Yourself",
+        "artist_name": "Eminem",
+        "genre": "hip-hop",
+        "decade": "2000s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 2000s hip-hop scene was rocked by 'Lose Yourself' from Eminem, a track that captures the essence of determination!",
         "intro_mp3_url": null,
         "ranking_date": "2025-05-24"
       }

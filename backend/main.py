@@ -16,7 +16,7 @@ from backend.database import init_db
 from backend.routers import router as json_router          # <-- NEW PACKAGE
 from backend.router_saved_files import router as save_router
 logging.basicConfig(
-    level=logging.WARNING  ,  # or WARNING in production
+    level=logging.INFO  ,  # or WARNING in production
     format='%(asctime)s [%(levelname)s] [%(module)s.%(funcName)s:%(lineno)d]: %(message)s',
     force=True # ✅ Makes sure it's always respected
 )

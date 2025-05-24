@@ -8,6 +8,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Literal
+from utils.json_helpers import parse_featured_artists
 
 
 from backend.services.spotify_service import get_spotify_data
@@ -78,16 +79,14 @@ def generate_track_json(request: TrackRequest):
 
     for base in enriched["tracks"]:
         artist_name_raw = base["artistName"]
-        artist_name_clean = strip_featured_artists(artist_name_raw)
+        artist_name_clean, featured_artist = parse_featured_artists(artist_name_raw)
 
         print(f"🎯 Searching Spotify with: '{base['trackName']}' by '{artist_name_clean}'")
 
         spotify_data = get_spotify_data(base["trackName"], artist_name_clean)
 
-        artist_name = artist_name_raw  # For JSON and display purposes
-
+        artist_name = artist_name_raw  # keep raw for description + artist table
         normalized_name = normalize_name(artist_name)
-
         print(f"🎤 Original: {artist_name}, Normalized: {normalized_name}")
         print(f"👀 Checking artist: {artist_name}")
 
@@ -101,21 +100,31 @@ def generate_track_json(request: TrackRequest):
             description_cache[artist_name] = desc
 
         artist_entry = {
-            "artist_name": artist_name,
+            "artist_name": artist_name_clean,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
             "artist_artwork": spotify_data.get("artistImage"),
-
             "artist_description": description_cache[artist_name]
         }
 
+        artist_already_added = any(
+            (a.get("spotify_artist_id") == artist_entry["spotify_artist_id"]) if artist_entry["spotify_artist_id"]
+            else (a.get("artist_name") == artist_entry["artist_name"])
+            for a in artists
+        )
 
-        # ✅ Add artist if not already in the list
-        if not any(a.get("artist_name") == artist_name for a in artists):
+        if not artist_already_added:
             artists.append(artist_entry)
+
+        # ✅ Compose track_display_name if a featured artist is present
+        track_display_name = (
+            f"{base['trackName']} (ft. {featured_artist})"
+            if featured_artist else base["trackName"]
+        )
 
         track_entry = {
             "track_name": base["trackName"],
-            "artist_name": base["artistName"],
+            "artist_name": artist_name_clean,  # just main artist
+            "track_display_name": track_display_name,
             "genre": request.genre,
             "decade": request.category,
             "spotify_track_id": spotify_data.get("id") if spotify_data else None,
@@ -133,7 +142,7 @@ def generate_track_json(request: TrackRequest):
 
         rankings.append({
             "track_name": base["trackName"],
-            "artist_name": base["artistName"],
+            "artist_name": artist_name,
             "genre": request.genre,
             "decade": request.category,
             "tracklist": "TopSpot Autogen",
