@@ -2,50 +2,20 @@
   "core_tables": {
     "genre": [
       {
-        "name": "hip-hop"
+        "genre_name": "hip-hop"
       }
     ],
     "decade": [
       {
-        "name": "2000s"
+        "decade_name": "2000s"
       }
     ],
     "artist": [
       {
-        "name": "50 Cent",
+        "artist_name": "50 Cent",
         "spotify_artist_id": "3q7HBObVc0L8jNeTe5Gofh",
         "artist_artwork": "https://i.scdn.co/image/dd031b9c5d1b6eba4a691cd89c954255aae787f2",
-        "artist_description": "50 Cent, born Curtis Jackson in Queens, New York, is an American rapper known for his gritty lyrics and influential role in hip-hop. Rising to fame with his debut album \"Get Rich or Die Tryin'\" in 2003, he achieved massive success with hits like \"In Da Club.\" Beyond music, 50 Cent has made a mark in acting and business, notably surviving a shooting in 2000 that shaped his career and public image."
-      },
-      {
-        "name": "Kanye West ft. Jamie Foxx",
-        "spotify_artist_id": "5K4W6rqBFWDnAN6FQUkS6x",
-        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb6e835a500e791bf9c27a422a",
-        "artist_description": "Kanye West, an American rapper and producer, and Jamie Foxx, an American singer and actor, collaborated on the hit song \"Gold Digger.\" Kanye, born in Atlanta and raised in Chicago, gained fame with his debut album \"The College Dropout,\" while Jamie, from Texas, is known for his versatile career in music and film, including an Academy Award for \"Ray.\" Their collaboration showcases a blend of hip-hop and R&B, highlighting Kanye's innovative production and Jamie's soulful vocals."
-      },
-      {
-        "name": "Eminem",
-        "spotify_artist_id": "7dGJo4pcD2V6oG8kP0tJRR",
-        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eba00b11c129b27a88fc72f36b",
-        "artist_description": "Eminem, born Marshall Mathers in 1972, is an American rapper known for his intense lyrics and alter ego, Slim Shady. Rising from a troubled childhood in Detroit, he gained fame with his album \"The Slim Shady LP\" and won multiple Grammy Awards, including Best Rap Album for \"The Marshall Mathers LP.\" Eminem's battle with addiction and his comeback with \"Recovery\" in 2010 have made him a cultural icon and one of the best-selling artists in music history."
-      },
-      {
-        "name": "Beyonc\u00e9 ft. Jay-Z",
-        "spotify_artist_id": "6vWDO969PvNqNYHIOW5v0m",
-        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb7eaa373538359164b843f7c0",
-        "artist_description": "Beyonc\u00e9 ft. Jay-Z represents a powerhouse collaboration between two American music icons. Beyonc\u00e9, born in Houston, Texas, rose to fame as part of Destiny's Child before launching a successful solo career, while Jay-Z, from Brooklyn, New York, became a leading figure in hip-hop. Together, they've produced hits like \"Crazy in Love\" and \"Drunk in Love,\" blending R&B and hip-hop, and their personal lives, including their marriage and family, often intertwine with their music, captivating fans worldwide."
-      },
-      {
-        "name": "Usher ft. Lil Jon, Ludacris",
-        "spotify_artist_id": "23zg3TcAtWQy7J6upgbUnj",
-        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb716114797a4a644c67c5fa72",
-        "artist_description": "Usher, an American R&B singer from Dallas, Texas, rose to fame in the late 1990s with his breakout album \"My Way.\" He collaborated with Atlanta-based producers Lil Jon and Ludacris on the hit single \"Yeah!\" in 2004, which topped charts worldwide and won a Grammy Award. Usher's dynamic performances and influence in pop culture have solidified his status as a leading figure in contemporary music."
-      },
-      {
-        "name": "Nelly",
-        "spotify_artist_id": "2gBjLmx6zQnFGQJCAQpRgw",
-        "artist_artwork": "https://i.scdn.co/image/3677690af58abb70a5c5fd58d69db4d1ad705d4f",
-        "artist_description": "Nelly, born Cornell Iral Haynes Jr., is an American rapper and singer known for his contributions to hip hop and R&B. Hailing from St. Louis, Missouri, he gained fame with his debut album \"Country Grammar\" in 2000, which included hits like \"Ride wit Me.\" Nelly has won multiple Grammy Awards and is celebrated for his unique blend of rap and country music influences, as well as his philanthropy through the 4Sho4Kids Foundation."
+        "artist_description": "50 Cent, born Curtis Jackson in Queens, New York, is an American rapper known for his gritty lyrics and influential role in the hip-hop genre. Rising to fame with his debut album \"Get Rich or Die Tryin'\" in 2003, he became a global icon with hits like \"In Da Club.\" Beyond music, 50 Cent has ventured into acting and business, notably surviving a shooting in 2000 that shaped his career and public persona."
       }
     ]
   },
@@ -62,78 +32,9 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273f7f74100d5cc850e01172cbf",
         "year_released": 2003,
         "is_explicit": false,
-        "created_at": "2025-05-23T04:57:43.624309",
-        "detail": "This track burst onto the scene in 2003, becoming an instant classic that dominated clubs and radio stations alike. It was the lead single from the debut album 'Get Rich or Die Tryin',' which catapulted the artist to global stardom. The song's infectious beat and catchy lyrics made it a staple at celebrations, symbolizing the era's vibrant energy. Interestingly, the track was produced by Dr. Dre and Mike Elizondo, adding to its legendary status. Its impact on pop culture was immense, frequently featured in movies, TV shows, and even video games, ensuring its place in the annals of music history."
-      },
-      {
-        "track_name": "Gold Digger",
-        "artist_name": "Kanye West ft. Jamie Foxx",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "spotify_track_id": "1PS1QMdUqOal0ai3Gt7sDQ",
-        "duration_ms": 207626,
-        "popularity": 82,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273428d2255141c2119409a31b2",
-        "year_released": 2005,
-        "is_explicit": false,
-        "created_at": "2025-05-23T04:57:43.624309",
-        "detail": "Released in 2005, this track became an anthem for the savvy and the street-smart. It cleverly samples Ray Charles' 'I Got a Woman,' blending old-school charm with modern flair. The song's narrative about a man's relationship with a woman who loves his money struck a chord with listeners, earning it widespread acclaim. It was a standout track from the album 'Late Registration,' which showcased the artist's versatility and production skills. The collaboration with Jamie Foxx added a unique vocal texture, making it a standout in the artist's discography and a cultural touchstone of the mid-2000s."
-      },
-      {
-        "track_name": "Lose Yourself",
-        "artist_name": "Eminem",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "spotify_track_id": "5Z01UMMf7V1o0MzF86s6WJ",
-        "duration_ms": 326466,
-        "popularity": 80,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273eab40fc794b88b9d1e012578",
-        "year_released": 2002,
-        "is_explicit": false,
-        "created_at": "2025-05-23T04:57:43.624309",
-        "detail": "This iconic track, released in 2002, was born from the artist's role in the film '8 Mile.' It captures the essence of seizing the moment, resonating deeply with audiences worldwide. The song's intense lyrics and pulsating beat made it an instant hit, winning an Academy Award for Best Original Song. It became a motivational anthem, played at sporting events and used in countless personal montages. The track's success solidified the artist's place as a lyrical genius and a cultural icon, influencing a generation of musicians and fans alike."
-      },
-      {
-        "track_name": "Crazy in Love",
-        "artist_name": "Beyonc\u00e9 ft. Jay-Z",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "spotify_track_id": "5IVuqXILoxVWvWEPm82Jxr",
-        "duration_ms": 236133,
-        "popularity": 82,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27345680a4a57c97894490a01c1",
-        "year_released": 2003,
-        "is_explicit": false,
-        "created_at": "2025-05-23T04:57:43.624309",
-        "detail": "This track, released in 2003, marked a significant moment in the artist's solo career, showcasing her powerhouse vocals and dynamic stage presence. The song's infectious beat and iconic horn riff, sampled from The Chi-Lites' 'Are You My Woman? (Tell Me So),' became instantly recognizable. It was the lead single from the debut solo album 'Dangerously in Love,' which received critical acclaim and commercial success. The collaboration with her then-boyfriend added a personal touch, making it a cultural phenomenon. 'Crazy in Love' not only dominated the charts but also influenced fashion, dance, and the music industry's approach to collaborations."
-      },
-      {
-        "track_name": "Yeah!",
-        "artist_name": "Usher ft. Lil Jon, Ludacris",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "spotify_track_id": "5rb9QrpfcKFHM1EUbSIurX",
-        "duration_ms": 250373,
-        "popularity": 88,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273365b3fb800c19f7ff72602da",
-        "year_released": 2004,
-        "is_explicit": false,
-        "created_at": "2025-05-23T04:57:43.624309",
-        "detail": "Released in 2004, this track became synonymous with the crunk movement, blending R&B with hip-hop in a way that electrified dance floors everywhere. It was the lead single from the album 'Confessions,' which became one of the best-selling albums of the decade. The song's energetic beat and catchy chorus made it a staple at parties and events, influencing a generation of music lovers. The collaboration between these artists showcased their unique styles, creating a synergy that resonated with fans. 'Yeah!' not only topped the charts but also left a lasting impact on the music industry, cementing its place in pop culture history."
-      },
-      {
-        "track_name": "Hot in Herre",
-        "artist_name": "Nelly",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "spotify_track_id": "04KTF78FFg8sOHC1BADqbY",
-        "duration_ms": 228240,
-        "popularity": 80,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273a8b9f97b9ea065b9a857e93f",
-        "year_released": 2002,
-        "is_explicit": false,
-        "created_at": "2025-05-23T04:57:43.624309",
-        "detail": "This track, released in 2002, became an instant hit, capturing the essence of summer with its infectious beat and playful lyrics. It was the lead single from the album 'Nellyville,' which showcased the artist's versatility and appeal. The song's catchy chorus and memorable hook made it a favorite at parties and on the radio. It also sparked a dance craze, with people everywhere mimicking the artist's signature moves. 'Hot in Herre' not only dominated the charts but also influenced fashion and pop culture, becoming a symbol of the early 2000s' carefree spirit."
+        "created_at": "2025-05-24T14:04:44.567837",
+        "detail": "This song burst onto the scene with an infectious beat that you couldn't help but nod your head to. It was released in 2003, a time when the world was still reeling from the turn of the millennium, and it provided the perfect anthem for celebration and resilience. The artist behind it had a compelling backstory, having survived a shooting that left him with nine bullet wounds, which only added to the song's mystique and his street credibility. The track's success was monumental, reaching the top of the charts and becoming a staple at parties and clubs around the globe. Its cultural impact was undeniable, influencing fashion, dance, and even the way people approached hip-hop music. The song's chorus, simple yet catchy, became a rallying cry for living in the moment and enjoying life's highs.",
+        "detail_mp3_url": null
       }
     ],
     "tracklist": [
@@ -143,7 +44,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 2000s - hip-hop",
-        "created_at": "2025-05-23T04:57:43.624309"
+        "created_at": "2025-05-24T14:04:44.567837"
       }
     ]
   },
@@ -156,64 +57,9 @@
         "decade": "2000s",
         "tracklist": "TopSpot Autogen",
         "rank": 1,
-        "intro": "Kicking off at number 1 in the 2000s hip-hop category, 'In Da Club' by 50 Cent is the ultimate party anthem!",
+        "intro": "Kicking off at number 1 in our 2000s hip-hop category, 'In Da Club' by 50 Cent is a track that got everyone moving!",
         "intro_mp3_url": null,
-        "ranking_date": "2025-05-23"
-      },
-      {
-        "track_name": "Gold Digger",
-        "artist_name": "Kanye West ft. Jamie Foxx",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "tracklist": "TopSpot Autogen",
-        "rank": 2,
-        "intro": "Coming in at number 2, the 2000s hip-hop hit 'Gold Digger' by Kanye West ft. Jamie Foxx is a soulful masterpiece!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-05-23"
-      },
-      {
-        "track_name": "Lose Yourself",
-        "artist_name": "Eminem",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "tracklist": "TopSpot Autogen",
-        "rank": 3,
-        "intro": "At number 3, the 2000s hip-hop classic 'Lose Yourself' by Eminem is an electrifying journey of self-discovery!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-05-23"
-      },
-      {
-        "track_name": "Crazy in Love",
-        "artist_name": "Beyonc\u00e9 ft. Jay-Z",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "tracklist": "TopSpot Autogen",
-        "rank": 4,
-        "intro": "Landing at number 4, the 2000s hip-hop sensation 'Crazy in Love' by Beyonc\u00e9 ft. Jay-Z is a timeless love anthem!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-05-23"
-      },
-      {
-        "track_name": "Yeah!",
-        "artist_name": "Usher ft. Lil Jon, Ludacris",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "tracklist": "TopSpot Autogen",
-        "rank": 5,
-        "intro": "At number 5, the 2000s hip-hop banger 'Yeah!' by Usher ft. Lil Jon, Ludacris is the ultimate club anthem!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-05-23"
-      },
-      {
-        "track_name": "Hot in Herre",
-        "artist_name": "Nelly",
-        "genre": "hip-hop",
-        "decade": "2000s",
-        "tracklist": "TopSpot Autogen",
-        "rank": 6,
-        "intro": "Rounding out at number 6, the 2000s hip-hop track 'Hot in Herre' by Nelly is the ultimate summer jam!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-05-23"
+        "ranking_date": "2025-05-24"
       }
     ]
   }

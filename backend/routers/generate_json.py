@@ -108,7 +108,9 @@ def generate_track_json(request: TrackRequest):
             "artist_description": description_cache[artist_name]
         }
 
-        if not any(a["name"] == artist_name for a in artists):
+
+        # ✅ Add artist if not already in the list
+        if not any(a.get("artist_name") == artist_name for a in artists):
             artists.append(artist_entry)
 
         track_entry = {
@@ -141,8 +143,8 @@ def generate_track_json(request: TrackRequest):
             "ranking_date": now[:10]
         })
 
-    print("👀 Artists list before writing JSON:")
-    print(json.dumps(artists, indent=2))
+    logging.debug("👀 Artists list before writing JSON:")
+    logging.debug(json.dumps(artists, indent=2))
 
     final_json = {
         "core_tables": {
