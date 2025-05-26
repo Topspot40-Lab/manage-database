@@ -15,7 +15,8 @@
         "artist_name": "Garth Brooks",
         "spotify_artist_id": null,
         "artist_artwork": null,
-        "artist_description": "Garth Brooks, an American country music singer and songwriter, was born in Tulsa, Oklahoma, and raised in Yukon, Oklahoma. He skyrocketed to fame in the 1990s with hits like \"Friends in Low Places\" and became one of the best-selling music artists of all time, with over 170 million records sold. Interestingly, Brooks retired from music in 2001 to focus on raising his three daughters, but made a triumphant return in 2009, continuing to captivate audiences with his energetic performances."
+        "artist_description": "...",
+        "not_on_spotify": true
       },
       {
         "artist_name": "Billy Ray Cyrus",

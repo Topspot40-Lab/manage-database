@@ -17,6 +17,7 @@ class Artist(SQLModel, table=True):
     spotify_artist_id: Optional[str] = Field(default=None, nullable=True)
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
+    not_on_spotify: bool = Field(default=False)  # ✅ Add this line
 
 
 

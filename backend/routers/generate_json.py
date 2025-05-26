@@ -1,6 +1,5 @@
 # backend/routers/generate_json.py
 
-import re
 import json
 import logging
 from datetime import datetime
@@ -51,8 +50,8 @@ def generate_track_json(request: TrackRequest):
         genre=request.genre
     )
 
-    logging.info(f"🔍 Enriched keys: {list(enriched.keys())}")
-    logging.info(f"🔢 Track count in enriched['tracks']: {len(enriched.get('tracks', []))}")
+    logging.debug(f"🔍 Enriched keys: {list(enriched.keys())}")
+    logging.debug(f"🔢 Track count in enriched['tracks']: {len(enriched.get('tracks', []))}")
 
     if not enriched or "tracks" not in enriched or len(enriched["tracks"]) != len(track_list):
         raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
@@ -98,6 +97,12 @@ def generate_track_json(request: TrackRequest):
             "artist_artwork": spotify_data.get("artistImage"),
             "artist_description": description_cache[artist_name_display]
         }
+
+        if not artist_entry["spotify_artist_id"]:
+            artist_entry["not_on_spotify"] = True
+            logging.warning(f"⚠️ No Spotify match found for artist: {artist_name_display}")
+        else:
+            logging.info(f"🎵 Found Spotify match for artist: {artist_name_display}")
 
         artist_already_added = any(
             (a.get("spotify_artist_id") == artist_entry["spotify_artist_id"]) if artist_entry["spotify_artist_id"]

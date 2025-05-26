@@ -86,7 +86,7 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         }
 
         if validate_tracks(wrapped):
-            logging.info(f"✅ Wrapped and returned {len(tracks)} tracks in new JSON format.")
+            logging.debug(f"✅ Wrapped and returned {len(tracks)} tracks in new JSON format.")
             return wrapped
         else:
             raise ValueError("XAI returned invalid track format.")
@@ -103,7 +103,7 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
 
     batch_size = 10
     total = len(tracks)
-    logging.info(f"📝 Processing {total} tracks in batches of {batch_size}...")
+    logging.debug(f"📝 Processing {total} tracks in batches of {batch_size}...")
 
     for batch_index in range(0, total, batch_size):
         batch = tracks[batch_index:batch_index + batch_size]
@@ -212,7 +212,7 @@ def get_artist_description(artist_name: str, language: str = "English") -> str:
             raise requests.exceptions.HTTPError(response.text)
 
         result = response.json()
-        logging.info(f"📦 XAI Response JSON:\n{json.dumps(result, indent=2)}")
+        logging.debug(f"📦 XAI Response JSON:\n{json.dumps(result, indent=2)}")
 
         content = result["choices"][0]["message"]["content"]
         if not content.strip():
