@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import logging
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
@@ -23,26 +24,43 @@ def get_spotify_data(track_name: str, artist_name: str):
     try:
         sp = get_spotify_client()
         query = f"track:{track_name} artist:{artist_name}"
-        results = sp.search(q=query, type="track", limit=1)
+        results = sp.search(q=query, type="track", limit=3)
 
-        if results["tracks"]["items"]:
-            track = results["tracks"]["items"][0]
-            artist_id = track["artists"][0]["id"]
-
-            # 🔍 Fetch artist artwork using artist ID
-            artist_data = sp.artist(artist_id)
-            artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
-
-            return {
-                "id": track["id"],
-                "artistId": artist_id,
-                "durationMs": track["duration_ms"],
-                "popularity": track["popularity"],
-                "trackImage": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
-                "artistImage": artist_image  # ✅ New field added
-            }
-        else:
+        if not results["tracks"]["items"]:
+            print(f"❌ No Spotify results for: {track_name} by {artist_name}")
             return {}
+
+        for track in results["tracks"]["items"]:
+            result_artist = track["artists"][0]["name"].lower().strip()
+            expected_artist = artist_name.lower().strip()
+
+            if result_artist == expected_artist:
+                artist_id = track["artists"][0]["id"]
+
+                # 🔍 Fetch artist artwork
+                artist_data = sp.artist(artist_id)
+                artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
+
+                return {
+                    "id": track["id"],
+                    "artistId": artist_id,
+                    "durationMs": track["duration_ms"],
+                    "popularity": track["popularity"],
+                    "trackImage": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
+                    "artistImage": artist_image
+                }
+
+                # 🔍 Add this right here:
+            else:
+                if result_artist.lower() != expected_artist.lower():
+                    logging.warning(f"🪤 Rejected: {result_artist} is not {expected_artist}")
+                    # Possibly log a candidate name for human review
+                print(f"🪤 Rejected: {result_artist} is not {expected_artist}")
+
+        # 🚫 No valid matches
+        print(f"🚫 No matching Spotify artist for: {track_name} by {artist_name}")
+        return {}
+
     except Exception as e:
         print(f"Spotify query error for {track_name} - {artist_name}: {e}")
         return {}

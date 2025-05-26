@@ -7,16 +7,17 @@ from sqlmodel import SQLModel, Field, UniqueConstraint
 # === core_tables schema ===
 class Artist(SQLModel, table=True):
     __tablename__ = "artist"
-    __table_args__ = (
-        UniqueConstraint("spotify_artist_id", name="uq_spotify_artist_id"),
-        {"schema": "core_tables", "extend_existing": True},
-    )
+    __table_args__ = {
+        "schema": "core_tables",
+        "extend_existing": True,
+    }
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    artist_name: str  # cleaned name already
-    spotify_artist_id: Optional[str] = None
+    artist_name: str
+    spotify_artist_id: Optional[str] = Field(default=None, nullable=True)
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
+
 
 
 
@@ -159,3 +160,4 @@ class Track(SQLModel, table=True):
     created_at: Optional[datetime] = Field(default=None)
     detail: Optional[str] = Field(default=None)
     detail_mp3_url: Optional[str] = Field(default=None)
+    not_on_spotify: Optional[bool] = Field(default=False)  # 🆕 added

@@ -3,13 +3,11 @@
 import re
 import json
 import logging
-import unicodedata
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Literal
-from utils.json_helpers import parse_featured_artists
-
+from utils.json_helpers import parse_featured_artists, normalize_name
 
 from backend.services.spotify_service import get_spotify_data
 from backend.services.xai_service import (
@@ -17,7 +15,6 @@ from backend.services.xai_service import (
     get_track_descriptions_from_xai,
     get_artist_description
 )
-
 
 from shared.filepaths import get_json_path
 
@@ -30,16 +27,6 @@ class TrackRequest(BaseModel):
     genre: str = Field(..., description="Genre, e.g. 'rock'")
     language: Literal["English", "Spanish"] = Field(..., description="Language used for TTS and descriptions")
     num_tracks: int = Field(..., ge=1, le=50, description="Number of tracks to generate (1–50)")
-
-
-def normalize_name(name: str) -> str:
-    """Remove accents and return ASCII-only version for comparison."""
-    return unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("utf-8")
-
-
-def strip_featured_artists(name: str) -> str:
-    # Handles ft., feat., featuring (case insensitive), commas optional
-    return re.split(r'\s+(?:ft\.|feat\.|featuring)\s+', name, flags=re.IGNORECASE)[0].strip()
 
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 def generate_track_json(request: TrackRequest):
@@ -79,31 +66,37 @@ def generate_track_json(request: TrackRequest):
 
     for base in enriched["tracks"]:
         artist_name_raw = base["artistName"]
+        track_name_raw = base["trackName"]
+
         artist_name_clean, featured_artist = parse_featured_artists(artist_name_raw)
+        artist_name_clean = normalize_name(artist_name_clean)
+        track_name_clean = normalize_name(track_name_raw)
 
-        print(f"🎯 Searching Spotify with: '{base['trackName']}' by '{artist_name_clean}'")
+        print(f"🎯 Searching Spotify with: '{track_name_clean}' by '{artist_name_clean}'")
 
-        spotify_data = get_spotify_data(base["trackName"], artist_name_clean)
+        spotify_data = get_spotify_data(track_name_clean, artist_name_clean)
+        is_not_on_spotify = not spotify_data or not spotify_data.get("id")
 
-        artist_name = artist_name_raw  # keep raw for description + artist table
-        normalized_name = normalize_name(artist_name)
-        print(f"🎤 Original: {artist_name}, Normalized: {normalized_name}")
-        print(f"👀 Checking artist: {artist_name}")
+        detail_mp3_url = (
+            base.get("detail_mp3_url")
+            if not is_not_on_spotify
+            else "tts/detail_unavailable.mp3"
+        )
 
-        # ✅ Populate the description cache if missing
-        if artist_name not in description_cache:
-            logging.info(f"🔍 Fetching description for: {artist_name}")
-            desc = get_artist_description(artist_name, language=request.language)
+        artist_name_display = artist_name_clean
+
+        if artist_name_display not in description_cache:
+            logging.info(f"🔍 Fetching description for: {artist_name_display}")
+            desc = get_artist_description(artist_name_display, language=request.language)
             if not desc:
                 desc = "No biography available at this time."
-            logging.info(f"✅ Got description: {desc}")
-            description_cache[artist_name] = desc
+            description_cache[artist_name_display] = desc
 
         artist_entry = {
             "artist_name": artist_name_clean,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
             "artist_artwork": spotify_data.get("artistImage"),
-            "artist_description": description_cache[artist_name]
+            "artist_description": description_cache[artist_name_display]
         }
 
         artist_already_added = any(
@@ -115,15 +108,14 @@ def generate_track_json(request: TrackRequest):
         if not artist_already_added:
             artists.append(artist_entry)
 
-        # ✅ Compose track_display_name if a featured artist is present
         track_display_name = (
-            f"{base['trackName']} (ft. {featured_artist})"
-            if featured_artist else base["trackName"]
+            f"{track_name_clean} (ft. {featured_artist})"
+            if featured_artist else track_name_clean
         )
 
         track_entry = {
-            "track_name": base["trackName"],
-            "artist_name": artist_name_clean,  # just main artist
+            "track_name": track_name_clean,
+            "artist_name": artist_name_clean,
             "track_display_name": track_display_name,
             "genre": request.genre,
             "decade": request.category,
@@ -135,14 +127,16 @@ def generate_track_json(request: TrackRequest):
             "is_explicit": False,
             "created_at": now,
             "detail": base.get("detail"),
-            "detail_mp3_url": base.get("detail_mp3_url")
+            "detail_mp3_url": detail_mp3_url,
+            "not_on_spotify": is_not_on_spotify
         }
 
         tracks.append(track_entry)
 
         rankings.append({
-            "track_name": base["trackName"],
-            "artist_name": artist_name,
+            "track_name": track_name_clean,
+            "artist_name": artist_name_clean,
+            "spotify_track_id": spotify_data.get("id") if spotify_data else None,
             "genre": request.genre,
             "decade": request.category,
             "tracklist": "TopSpot Autogen",
@@ -151,9 +145,6 @@ def generate_track_json(request: TrackRequest):
             "intro_mp3_url": base.get("intro_mp3_url"),
             "ranking_date": now[:10]
         })
-
-    logging.debug("👀 Artists list before writing JSON:")
-    logging.debug(json.dumps(artists, indent=2))
 
     final_json = {
         "core_tables": {
@@ -192,5 +183,3 @@ def generate_track_json(request: TrackRequest):
         "version": "v3-official",
         "track_count": len(track_list)
     }
-
-
