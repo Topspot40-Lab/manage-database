@@ -139,9 +139,18 @@ def insert_json_to_db(
             if not spotify_tid and not t.get("not_on_spotify", False):
                 raise HTTPException(400, f"Missing spotify_track_id for track: {t['track_name']}")
 
-            existing_track = db.exec(
-                select(Track).where(Track.spotify_track_id == spotify_tid)
-            ).first() if spotify_tid else None
+            # Try to find existing track by spotify_track_id or fallback to name + artist_id
+            if spotify_tid:
+                existing_track = db.exec(
+                    select(Track).where(Track.spotify_track_id == spotify_tid)
+                ).first()
+            else:
+                existing_track = db.exec(
+                    select(Track).where(
+                        Track.track_name == t["track_name"],
+                        Track.artist_id == artist_id
+                    )
+                ).first()
 
             if existing_track:
                 logging.info(f"🔁 Updating track: {t['track_name']}")
@@ -178,7 +187,7 @@ def insert_json_to_db(
         db.commit()
 
         # === 4. Insert Track Rankings ===
-        for r in data["ranking_tables"]["trackranking"]:
+        for r in data["ranking_tables"]["track_ranking"]:
             track = None
             spotify_tid = r.get("spotify_track_id")
             artist_key = r.get("spotify_artist_id") or r["artist_name"]

@@ -174,7 +174,7 @@ def generate_track_json(request: TrackRequest):
             ]
         },
         "ranking_tables": {
-            "trackranking": rankings
+            "track_ranking": rankings
         }
     }
 

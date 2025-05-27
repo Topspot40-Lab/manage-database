@@ -114,6 +114,7 @@ class Top40GenreRanking(SQLModel, table=True):
 
 
 class TrackRanking(SQLModel, table=True):
+    __tablename__ = "track_ranking"  # ✅ explicitly define the table name
     __table_args__ = (
         UniqueConstraint("track_id", "decade_genre_id", "tracklist_id", name="track_ranking_track_id_decade_genre_id_tracklist_id_key"),
         UniqueConstraint("ranking", "decade_genre_id", name="uix_rank_per_decade_genre"),

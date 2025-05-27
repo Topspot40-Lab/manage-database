@@ -15,8 +15,29 @@
         "artist_name": "Garth Brooks",
         "spotify_artist_id": null,
         "artist_artwork": null,
-        "artist_description": "Garth Brooks, an American country music singer and songwriter, was born in Tulsa, Oklahoma, and raised in Yukon, Oklahoma. He gained fame in the 1990s with hits like \"Friends in Low Places\" and became one of the best-selling solo albums artists of all time, with over 170 million records sold. Interestingly, Brooks once performed as a stadium rock artist under the alter ego Chris Gaines.",
+        "artist_description": "Garth Brooks, an American country music singer and songwriter, was born in Tulsa, Oklahoma, and raised in Yukon, Oklahoma. He gained fame in the 1990s with hits like \"Friends in Low Places\" and has sold over 170 million records, making him one of the best-selling solo artists in the U.S. Interestingly, Brooks once performed as a solo rock artist under the alter ego Chris Gaines, showcasing his versatility beyond country music.",
         "not_on_spotify": true
+      },
+      {
+        "artist_name": "Billy Ray Cyrus",
+        "spotify_artist_id": "60rpJ9SgigSd16DOAG7GSa",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebcedd1ae91e199fd50213222e",
+        "artist_description": "Billy Ray Cyrus, an American country musician, was born on August 25, 1961, in Flatwoods, Kentucky. He skyrocketed to fame with his breakout hit \"Achy Breaky Heart\" in 1992, which became a crossover success and popularized the line dance. Beyond music, Cyrus is known for his role in the Disney Channel series \"Hannah Montana,\" where he played the father of Miley Cyrus, his real-life daughter.",
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Alan Jackson",
+        "spotify_artist_id": "4mxWe1mtYIYfP040G38yvS",
+        "artist_artwork": "https://i.scdn.co/image/ab6772690000c46c1dce50b93ca0b1e2f459d9e6",
+        "artist_description": "Alan Jackson is an American country music singer and songwriter, born in Newnan, Georgia, on October 15, 1958. He rose to fame in the early 1990s with hits like \"Here in the Real World\" and \"Chattahoochee,\" the latter earning him a Grammy Award. Known for his traditional country sound and heartfelt lyrics, Jackson has sold over 75 million records worldwide and was inducted into the Country Music Hall of Fame in 2017.",
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "John Michael Montgomery",
+        "spotify_artist_id": "7mPcfx7PhnBh6n4HMCd61A",
+        "artist_artwork": "https://i.scdn.co/image/7c95c04b391ea7eae48c29f095335803136203c1",
+        "artist_description": "John Michael Montgomery is an American country music artist from Danville, Kentucky, who rose to fame in the early 1990s. Known for hits like \"I Swear\" and \"Sold (The Grundy County Auction Incident),\" he has won multiple awards, including the CMA Horizon Award and several ACM Awards. Interestingly, his brother, Eddie Montgomery, is also a well-known musician as part of the duo Montgomery Gentry.",
+        "not_on_spotify": false
       }
     ]
   },
@@ -29,15 +50,88 @@
         "genre": "country",
         "decade": "1990s",
         "spotify_track_id": null,
+        "spotify_artist_id": null,
         "duration_ms": null,
         "popularity": null,
         "album_artwork": null,
         "year_released": 1990,
         "is_explicit": false,
-        "created_at": "2025-05-27T13:50:07.774557",
-        "detail": "This iconic anthem was released in 1990 and quickly became a staple at parties and gatherings. It's a song that celebrates the joy of being with friends, no matter their social standing. The track was penned by Dewayne Blackwell and Earl Bud Lee, inspired by a real-life moment at a songwriters' event. It not only topped the charts but also became a cultural phenomenon, often cited as a symbol of camaraderie and loyalty. The song's success helped solidify its artist's status as a country music legend, influencing countless artists and fans alike. Its enduring popularity is evident in its frequent play at events and its inclusion in various 'best of' lists, showcasing its timeless appeal.",
+        "created_at": "2025-05-27T14:02:13.265353",
+        "detail": "This anthem of friendship was released in 1990 and quickly became a staple at gatherings and celebrations. It's a song that captures the essence of sticking by your friends no matter what. The track's success helped solidify the artist's place in music history, selling millions of copies and earning multiple awards. Its impact extended beyond music, influencing pop culture with references in movies and TV shows, and even inspiring themed bars where fans could sing along to their favorite line about drinking champagne.",
         "detail_mp3_url": "tts/detail_unavailable.mp3",
         "not_on_spotify": true
+      },
+      {
+        "track_name": "The Thunder Rolls",
+        "artist_name": "Garth Brooks",
+        "track_display_name": "The Thunder Rolls",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": null,
+        "spotify_artist_id": null,
+        "duration_ms": null,
+        "popularity": null,
+        "album_artwork": null,
+        "year_released": 1991,
+        "is_explicit": false,
+        "created_at": "2025-05-27T14:02:13.265353",
+        "detail": "Released in 1991, this song tells a gripping story of infidelity and the storm that follows. It's known for its dramatic build-up and the haunting sound of thunder that punctuates the track. The song's video, which was controversial at the time for its depiction of domestic violence, sparked important conversations and won several awards. The artist's ability to weave storytelling with music made this track a landmark in the genre, influencing other artists to explore deeper themes in their work.",
+        "detail_mp3_url": "tts/detail_unavailable.mp3",
+        "not_on_spotify": true
+      },
+      {
+        "track_name": "Achy Breaky Heart",
+        "artist_name": "Billy Ray Cyrus",
+        "track_display_name": "Achy Breaky Heart",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": "2EoIt9vdgFRNW03u5IvFsQ",
+        "spotify_artist_id": "60rpJ9SgigSd16DOAG7GSa",
+        "duration_ms": 203373,
+        "popularity": 71,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273bf80fa37dadf36f79441104f",
+        "year_released": 1992,
+        "is_explicit": false,
+        "created_at": "2025-05-27T14:02:13.265353",
+        "detail": "This song, released in 1992, not only topped the charts but also sparked a dance craze that swept the nation. Its catchy beat and simple lyrics made it an instant hit, appealing to a wide audience beyond traditional country fans. The track's success led to numerous covers and parodies, cementing its place in pop culture. It also played a pivotal role in launching the artist's career, leading to a successful television show featuring his family years later.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "Chattahoochee",
+        "artist_name": "Alan Jackson",
+        "track_display_name": "Chattahoochee",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": "59kHPbwyyCApYA8RQQEuXm",
+        "spotify_artist_id": "4mxWe1mtYIYfP040G38yvS",
+        "duration_ms": 148160,
+        "popularity": 77,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273933cf67cacfab71afa20c6c4",
+        "year_released": 1993,
+        "is_explicit": false,
+        "created_at": "2025-05-27T14:02:13.265353",
+        "detail": "Released in 1993, this song celebrates the joys of youth and the simple pleasures of life along the Chattahoochee River. Its upbeat tempo and relatable lyrics made it a favorite at summer gatherings and road trips. The track's success helped the artist win multiple awards, including a Grammy, and its influence can be seen in the resurgence of interest in river-themed songs and activities. It remains a beloved classic, often cited as a perfect example of storytelling in country music.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "I Swear",
+        "artist_name": "John Michael Montgomery",
+        "track_display_name": "I Swear",
+        "genre": "country",
+        "decade": "1990s",
+        "spotify_track_id": "7wIaLkbQzG6HMnE28etnif",
+        "spotify_artist_id": "7mPcfx7PhnBh6n4HMCd61A",
+        "duration_ms": 262520,
+        "popularity": 65,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273a4835a373628cd12b67ea9b2",
+        "year_released": 1994,
+        "is_explicit": false,
+        "created_at": "2025-05-27T14:02:13.265353",
+        "detail": "This romantic ballad, released in 1993, became an instant classic with its sincere vows of devotion. It struck a chord with listeners, becoming a popular choice for weddings and dedications. The song's success led to multiple cover versions, including a notable R&B rendition that also topped the charts, showcasing its universal appeal. The track's enduring popularity is a testament to its emotional depth and the artist's ability to connect with audiences on a personal level.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
       }
     ],
     "tracklist": [
@@ -47,12 +141,12 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 1990s - country",
-        "created_at": "2025-05-27T13:50:07.774557"
+        "created_at": "2025-05-27T14:02:13.265353"
       }
     ]
   },
   "ranking_tables": {
-    "trackranking": [
+    "track_ranking": [
       {
         "track_name": "Friends in Low Places",
         "artist_name": "Garth Brooks",
@@ -61,7 +155,55 @@
         "decade": "1990s",
         "tracklist": "TopSpot Autogen",
         "rank": 1,
-        "intro": "Kicking off our list at number 1 in the 1990s country category, 'Friends in Low Places' by Garth Brooks is a must-hear!",
+        "intro": "Kicking off our list at number 1 in the 1990s country genre, 'Friends in Low Places' by Garth Brooks is a song that truly resonates with the spirit of camaraderie!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-27"
+      },
+      {
+        "track_name": "The Thunder Rolls",
+        "artist_name": "Garth Brooks",
+        "spotify_track_id": null,
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1990s country hit 'The Thunder Rolls' by Garth Brooks brings a powerful narrative to life!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-27"
+      },
+      {
+        "track_name": "Achy Breaky Heart",
+        "artist_name": "Billy Ray Cyrus",
+        "spotify_track_id": "2EoIt9vdgFRNW03u5IvFsQ",
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, dive into the 1990s country scene with 'Achy Breaky Heart' by Billy Ray Cyrus, a track that became a cultural phenomenon!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-27"
+      },
+      {
+        "track_name": "Chattahoochee",
+        "artist_name": "Alan Jackson",
+        "spotify_track_id": "59kHPbwyyCApYA8RQQEuXm",
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 4,
+        "intro": "Number 4 on our list, 'Chattahoochee' by Alan Jackson, takes us on a nostalgic journey through the 1990s country landscape!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-05-27"
+      },
+      {
+        "track_name": "I Swear",
+        "artist_name": "John Michael Montgomery",
+        "spotify_track_id": "7wIaLkbQzG6HMnE28etnif",
+        "genre": "country",
+        "decade": "1990s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 5,
+        "intro": "Rounding out our top 5 at number 5, 'I Swear' by John Michael Montgomery is a heartfelt ballad from the 1990s country genre that promises eternal love!",
         "intro_mp3_url": null,
         "ranking_date": "2025-05-27"
       }
