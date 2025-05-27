@@ -66,43 +66,60 @@ def insert_json_to_db(
             logging.info("🔗 Linked DecadeGenre")
 
         # === 2. Insert Artists and ArtistGenre ===
-        artist_map = {}  # Maps spotify_artist_id or name → artist.id
+        artist_names_in_json = [a["artist_name"] for a in data["core_tables"]["artist"]]
+        spotify_ids_in_json = [a["spotify_artist_id"] for a in data["core_tables"]["artist"] if
+                               a.get("spotify_artist_id")]
 
+        # Pull any matching artists already in the DB
+        existing_artists = db.exec(
+            select(Artist).where(
+                (Artist.artist_name.in_(artist_names_in_json)) |
+                (Artist.spotify_artist_id.in_(spotify_ids_in_json))
+            )
+        ).all()
+
+        # Build artist_map from existing
+        artist_map = {}
+        for artist in existing_artists:
+            key = artist.spotify_artist_id if artist.spotify_artist_id else artist.artist_name
+            artist_map[key] = artist.id
+
+        # Add any new artists not in DB yet
         for a in data["core_tables"]["artist"]:
             sid = a.get("spotify_artist_id")
             artist_name = a["artist_name"]
+            key = sid if sid else artist_name
+
+            if key in artist_map:
+                continue
 
             if not sid and not a.get("not_on_spotify", False):
                 logging.warning(f"⚠️ Missing spotify_artist_id for artist: {artist_name}")
                 raise HTTPException(400, f"Missing spotify_artist_id for artist: {artist_name}")
 
-            artist = db.exec(select(Artist).where(Artist.spotify_artist_id == sid)).first() if sid else \
-                     db.exec(select(Artist).where(Artist.artist_name == artist_name)).first()
-
-            if not artist:
-                artist = Artist(
-                    artist_name=artist_name,
-                    spotify_artist_id=sid,
-                    artist_artwork=a.get("artist_artwork"),
-                    artist_description=a.get("artist_description")
-                )
-                db.add(artist)
-                db.commit()
-                db.refresh(artist)
-                logging.info(f"🎤 Added artist: {artist_name}")
-
-            key = sid if sid else artist_name
+            artist = Artist(
+                artist_name=artist_name,
+                spotify_artist_id=sid,
+                artist_artwork=a.get("artist_artwork"),
+                artist_description=a.get("artist_description"),
+                not_on_spotify=a.get("not_on_spotify", False)
+            )
+            db.add(artist)
+            db.commit()
+            db.refresh(artist)
+            logging.info(f"🎤 Added artist: {artist_name}")
             artist_map[key] = artist.id
 
-            # Insert ArtistGenre
+        # Link all artists to this genre
+        for key, artist_id in artist_map.items():
             artist_genre = db.exec(
                 select(ArtistGenre).where(
-                    ArtistGenre.artist_id == artist.id,
+                    ArtistGenre.artist_id == artist_id,
                     ArtistGenre.genre_id == genre.id
                 )
             ).first()
             if not artist_genre:
-                db.add(ArtistGenre(artist_id=artist.id, genre_id=genre.id))
+                db.add(ArtistGenre(artist_id=artist_id, genre_id=genre.id))
 
         db.commit()
 
@@ -110,6 +127,9 @@ def insert_json_to_db(
         for t in data["track_tables"]["track"]:
             sid = t.get("spotify_artist_id")
             artist_key = sid or t["artist_name"]
+            logging.info(f"🔍 Artist key: {artist_key}")
+            logging.info(f"🧭 All artist_map keys: {list(artist_map.keys())}")
+
             artist_id = artist_map.get(artist_key)
 
             if not artist_id:

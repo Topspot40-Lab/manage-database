@@ -199,7 +199,7 @@ def get_artist_description(artist_name: str, language: str = "English") -> str:
         "temperature": 0.5
     }
 
-    logging.info(f"📨 Prompt sent to XAI:\n{json.dumps(payload, indent=2)}")
+    logging.debug(f"📨 Prompt sent to XAI:\n{json.dumps(payload, indent=2)}")
 
     try:
         logging.info(f"📚 Requesting artist bio for: {artist_name}")

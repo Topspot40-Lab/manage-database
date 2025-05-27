@@ -95,7 +95,8 @@ def generate_track_json(request: TrackRequest):
             "artist_name": artist_name_clean,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
             "artist_artwork": spotify_data.get("artistImage"),
-            "artist_description": description_cache[artist_name_display]
+            "artist_description": description_cache[artist_name_display],
+            "not_on_spotify": spotify_data is None
         }
 
         if not artist_entry["spotify_artist_id"]:
@@ -117,6 +118,7 @@ def generate_track_json(request: TrackRequest):
             f"{track_name_clean} (ft. {featured_artist})"
             if featured_artist else track_name_clean
         )
+        print(f"🎧 spotify_data = {json.dumps(spotify_data, indent=2)}")
 
         track_entry = {
             "track_name": track_name_clean,
@@ -125,6 +127,7 @@ def generate_track_json(request: TrackRequest):
             "genre": request.genre,
             "decade": request.category,
             "spotify_track_id": spotify_data.get("id") if spotify_data else None,
+            "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
             "duration_ms": spotify_data.get("durationMs") if spotify_data else None,
             "popularity": spotify_data.get("popularity") if spotify_data else None,
             "album_artwork": spotify_data.get("trackImage") if spotify_data else None,
