@@ -40,6 +40,6 @@ def read_root():
     return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator🐴"}
 
 
-init_db()                      # create tables / run migrations if needed
+# init_db()                      # create tables / run migrations if needed
 app.include_router(json_router)  # /generate-json, /validate-json, /insert-json…
 app.include_router(save_router)  # whatever endpoints you already had here

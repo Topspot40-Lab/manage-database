@@ -14,6 +14,10 @@ def insert_json_to_db(
     genre: str = Path(...),
     db: Session = Depends(get_db)
 ):
+
+    import sqlalchemy
+    print(f"🎯 Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
+
     try:
         filename = f"{decade}_{genre}_en.json"
         data = load_json(decade, filename)
