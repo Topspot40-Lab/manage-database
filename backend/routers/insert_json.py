@@ -70,7 +70,6 @@ def insert_json_to_db(
         spotify_ids_in_json = [a["spotify_artist_id"] for a in data["core_tables"]["artist"] if
                                a.get("spotify_artist_id")]
 
-        # Pull any matching artists already in the DB
         existing_artists = db.exec(
             select(Artist).where(
                 (Artist.artist_name.in_(artist_names_in_json)) |
@@ -78,13 +77,11 @@ def insert_json_to_db(
             )
         ).all()
 
-        # Build artist_map from existing
         artist_map = {}
         for artist in existing_artists:
             key = artist.spotify_artist_id if artist.spotify_artist_id else artist.artist_name
             artist_map[key] = artist.id
 
-        # Add any new artists not in DB yet
         for a in data["core_tables"]["artist"]:
             sid = a.get("spotify_artist_id")
             artist_name = a["artist_name"]
@@ -110,7 +107,6 @@ def insert_json_to_db(
             logging.info(f"🎤 Added artist: {artist_name}")
             artist_map[key] = artist.id
 
-        # Link all artists to this genre
         for key, artist_id in artist_map.items():
             artist_genre = db.exec(
                 select(ArtistGenre).where(
@@ -128,7 +124,7 @@ def insert_json_to_db(
             sid = t.get("spotify_artist_id")
             artist_key = sid or t["artist_name"]
             logging.info(f"🔍 Artist key: {artist_key}")
-            logging.info(f"🧭 All artist_map keys: {list(artist_map.keys())}")
+            logging.info(f"🗱 All artist_map keys: {list(artist_map.keys())}")
 
             artist_id = artist_map.get(artist_key)
 
@@ -139,7 +135,6 @@ def insert_json_to_db(
             if not spotify_tid and not t.get("not_on_spotify", False):
                 raise HTTPException(400, f"Missing spotify_track_id for track: {t['track_name']}")
 
-            # Try to find existing track by spotify_track_id or fallback to name + artist_id
             if spotify_tid:
                 existing_track = db.exec(
                     select(Track).where(Track.spotify_track_id == spotify_tid)
@@ -209,15 +204,47 @@ def insert_json_to_db(
                 logging.error(f"🚫 Track not found for ranking: {r['track_name']}")
                 raise HTTPException(500, f"Track not found for ranking: {r['track_name']}")
 
-            db.merge(TrackRanking(
-                track_id=track.id,
-                decade_genre_id=decade_genre.id,
-                tracklist_id=1,
-                ranking=r["rank"],
-                intro=r.get("intro"),
-                intro_mp3_url=r.get("intro_mp3_url"),
-                ranking_date=r["ranking_date"]
-            ))
+            existing_ranking = db.exec(
+                select(TrackRanking).where(
+                    TrackRanking.track_id == track.id,
+                    TrackRanking.decade_genre_id == decade_genre.id,
+                    TrackRanking.tracklist_id == 1
+                )
+            ).first()
+
+            logging.info(
+                f"🔍 Checking for existing ranking: track_id={track.id}, decade_genre_id={decade_genre.id}, tracklist_id=1")
+
+            if existing_ranking:
+                logging.info(f"✅ Found existing ranking: ID={existing_ranking.id}")
+                logging.info(f"🔁 Updating ranking for: {r['track_name']}")
+                existing_ranking.ranking = r["rank"]
+                existing_ranking.intro = r.get("intro")
+                existing_ranking.intro_mp3_url = r.get("intro_mp3_url")
+                existing_ranking.ranking_date = r["ranking_date"]
+            else:
+                duplicate_rank = db.exec(
+                    select(TrackRanking).where(
+                        TrackRanking.decade_genre_id == decade_genre.id,
+                        TrackRanking.tracklist_id == 1,
+                        TrackRanking.ranking == r["rank"]
+                    )
+                ).first()
+
+                if duplicate_rank:
+                    logging.warning(f"⚠️ Rank #{r['rank']} already used in decade_genre_id={decade_genre.id}, skipping '{r['track_name']}'")
+                    continue
+
+                logging.warning(f"🆕 No existing ranking found — will attempt to insert.")
+                db.add(TrackRanking(
+                    track_id=track.id,
+                    decade_genre_id=decade_genre.id,
+                    tracklist_id=1,
+                    ranking=r["rank"],
+                    intro=r.get("intro"),
+                    intro_mp3_url=r.get("intro_mp3_url"),
+                    ranking_date=r["ranking_date"]
+                ))
 
             logging.info(f"🏆 Ranked track: {r['track_name']} → #{r['rank']}")
 
