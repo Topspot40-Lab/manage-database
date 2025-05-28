@@ -109,6 +109,7 @@ def generate_track_json(request: TrackRequest):
                 "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
                 "artist_artwork": spotify_data.get("artistImage"),
                 "artist_description": description_cache[artist_name_display],
+                "artist_mp3_url": detail_mp3_url,
                 "not_on_spotify": spotify_data is None
             }
 

@@ -2,8 +2,7 @@ from typing import Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field, UniqueConstraint
 
-
-
+# comment line
 # === core_tables schema ===
 class Artist(SQLModel, table=True):
     __tablename__ = "artist"
@@ -17,6 +16,7 @@ class Artist(SQLModel, table=True):
     spotify_artist_id: Optional[str] = Field(default=None, nullable=True)
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
+    artist_mp3_url: Optional[str] = Field(default=None)
     not_on_spotify: bool = Field(default=False)  # ✅ Add this line
 
 
