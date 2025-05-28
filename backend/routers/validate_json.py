@@ -1,7 +1,18 @@
 from fastapi import APIRouter, HTTPException, Path
-from utils.json_helpers import load_json, REQUIRED_FIELDS
+from utils.json_helpers import load_json
 
 router = APIRouter(prefix="", tags=["json-validate"])
+
+REQUIRED_FIELDS_TRACK_RANKING = [
+    "track_name",
+    "artist_name",
+    "spotify_track_id",
+    "genre",
+    "decade",
+    "rank",
+    "intro",
+    "ranking_date"
+]
 
 @router.get("/validate-json/{decade}/{genre}")
 def validate_json(
@@ -20,7 +31,7 @@ def validate_json(
     tracks = data.get("ranking_tables", {}).get("track_ranking", [])
     missing_required = []
     for i, t in enumerate(tracks):
-        missing = [f for f in REQUIRED_FIELDS if f not in t or t[f] in (None, "")]
+        missing = [f for f in REQUIRED_FIELDS_TRACK_RANKING if f not in t or t[f] in (None, "")]
         if missing:
             missing_required.append({
                 "rank": t.get("rank", i + 1),

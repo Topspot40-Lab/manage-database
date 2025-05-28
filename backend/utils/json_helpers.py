@@ -6,9 +6,16 @@ from typing import Dict
 JSON_BASE = "data/json_files/genredecade"
 
 REQUIRED_FIELDS = [
-    "rank", "trackName", "artistName", "durationMs", "trackId",
-    "artistId", "albumArtwork", "intro", "detail", "yearReleased",
+    "track_name",
+    "artist_name",
+    "duration_ms",
+    "track_id",
+    "artist_id",
+    "album_artwork",
+    "detail",
+    "year_released"
 ]
+
 
 # Add alias mappings for renamed artists or known edge cases
 ARTIST_NAME_ALIASES = {
