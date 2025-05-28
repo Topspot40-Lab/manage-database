@@ -16,8 +16,9 @@ def insert_json_to_db(
 ):
 
     import sqlalchemy
-    print(f"🎯 Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
+    print(f"✯ Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
 
+    # === 1. Load JSON File ===
     try:
         filename = f"{decade}_{genre}_en.json"
         data = load_json(decade, filename)
@@ -30,7 +31,7 @@ def insert_json_to_db(
         raise HTTPException(500, f"Read error: {e}")
 
     try:
-        # === 1. Handle Genre and Decade ===
+        # === 2. Handle Genre and Decade ===
         genre_name = data["core_tables"]["genre"][0]["genre_name"]
         decade_name = data["core_tables"]["decade"][0]["decade_name"]
         logging.info(f"🎼 Genre: {genre_name}, 📅 Decade: {decade_name}")
@@ -51,7 +52,6 @@ def insert_json_to_db(
             db.refresh(decade)
             logging.info(f"✅ Added new decade: {decade_name}")
 
-        # === 1b. DecadeGenre Join Table ===
         decade_genre = db.exec(
             select(DecadeGenre).where(
                 DecadeGenre.decade_id == decade.id,
@@ -65,10 +65,21 @@ def insert_json_to_db(
             db.refresh(decade_genre)
             logging.info("🔗 Linked DecadeGenre")
 
-        # === 2. Insert Artists and ArtistGenre ===
+        # === 3. Deduplicate Artists in Memory ===
+        unique_artists = []
+        seen_keys = set()
+        for a in data["core_tables"]["artist"]:
+            sid = a.get("spotify_artist_id")
+            name = a["artist_name"]
+            key = sid if sid else name
+            if key not in seen_keys:
+                unique_artists.append(a)
+                seen_keys.add(key)
+        data["core_tables"]["artist"] = unique_artists
+
+        # === 4. Insert Artists and ArtistGenre ===
         artist_names_in_json = [a["artist_name"] for a in data["core_tables"]["artist"]]
-        spotify_ids_in_json = [a["spotify_artist_id"] for a in data["core_tables"]["artist"] if
-                               a.get("spotify_artist_id")]
+        spotify_ids_in_json = [a["spotify_artist_id"] for a in data["core_tables"]["artist"] if a.get("spotify_artist_id")]
 
         existing_artists = db.exec(
             select(Artist).where(
@@ -83,11 +94,13 @@ def insert_json_to_db(
             artist_map[key] = artist.id
 
         for a in data["core_tables"]["artist"]:
+            artist_name = a["artist_name"].strip()
             sid = a.get("spotify_artist_id")
-            artist_name = a["artist_name"]
-            key = sid if sid else artist_name
+            key_id = sid if sid else None
+            key_name = artist_name
 
-            if key in artist_map:
+            # Check if this artist already exists by ID or name
+            if (key_id and key_id in artist_map) or (key_name in artist_map):
                 continue
 
             if not sid and not a.get("not_on_spotify", False):
@@ -105,6 +118,16 @@ def insert_json_to_db(
             db.commit()
             db.refresh(artist)
             logging.info(f"🎤 Added artist: {artist_name}")
+
+            # ✅ Insert all relevant keys for lookups
+            key = sid if sid else artist_name
+            artist_map[artist_name] = artist.id  # always map name
+            if sid:
+                artist_map[sid] = artist.id  # map ID if available
+            artist_map[key] = artist.id  # map whichever key will be used later
+
+            # ✅ Also map whatever key was used to deduplicate
+            key = sid if sid else artist_name
             artist_map[key] = artist.id
 
         for key, artist_id in artist_map.items():
@@ -119,15 +142,14 @@ def insert_json_to_db(
 
         db.commit()
 
-        # === 3. Insert Tracks ===
+        # === 5. Insert Tracks ===
         for t in data["track_tables"]["track"]:
             sid = t.get("spotify_artist_id")
             artist_key = sid or t["artist_name"]
             logging.info(f"🔍 Artist key: {artist_key}")
-            logging.info(f"🗱 All artist_map keys: {list(artist_map.keys())}")
+            logging.info(f"🗜 All artist_map keys: {list(artist_map.keys())}")
 
             artist_id = artist_map.get(artist_key)
-
             if not artist_id:
                 raise HTTPException(500, f"Artist ID not found for track: {t['track_name']}")
 
@@ -181,7 +203,7 @@ def insert_json_to_db(
 
         db.commit()
 
-        # === 4. Insert Track Rankings ===
+        # === 6. Insert Track Rankings ===
         for r in data["ranking_tables"]["track_ranking"]:
             track = None
             spotify_tid = r.get("spotify_track_id")
@@ -223,18 +245,6 @@ def insert_json_to_db(
                 existing_ranking.intro_mp3_url = r.get("intro_mp3_url")
                 existing_ranking.ranking_date = r["ranking_date"]
             else:
-                duplicate_rank = db.exec(
-                    select(TrackRanking).where(
-                        TrackRanking.decade_genre_id == decade_genre.id,
-                        TrackRanking.tracklist_id == 1,
-                        TrackRanking.ranking == r["rank"]
-                    )
-                ).first()
-
-                if duplicate_rank:
-                    logging.warning(f"⚠️ Rank #{r['rank']} already used in decade_genre_id={decade_genre.id}, skipping '{r['track_name']}'")
-                    continue
-
                 logging.warning(f"🆕 No existing ranking found — will attempt to insert.")
                 db.add(TrackRanking(
                     track_id=track.id,
