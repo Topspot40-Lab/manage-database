@@ -17,7 +17,7 @@ from backend.services.xai_service import (
 
 from shared.filepaths import get_json_path
 
-print("🧩 generate_json.py is now the OFFICIAL one ✅")
+print("\U0001F9E9 generate_json.py is now the OFFICIAL one ✅")
 
 router = APIRouter()
 
@@ -57,6 +57,7 @@ def generate_track_json(request: TrackRequest):
         raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
     now = datetime.now().isoformat()
+    seen_artists = {}  # key: artist_name -> {spotify_data, artist_entry}
     artists = []
     tracks = []
     rankings = []
@@ -91,28 +92,44 @@ def generate_track_json(request: TrackRequest):
                 desc = "No biography available at this time."
             description_cache[artist_name_display] = desc
 
-        artist_entry = {
-            "artist_name": artist_name_clean,
-            "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
-            "artist_artwork": spotify_data.get("artistImage"),
-            "artist_description": description_cache[artist_name_display],
-            "not_on_spotify": spotify_data is None
-        }
+        existing = seen_artists.get(artist_name_clean)
+        overwrite = False
 
-        if not artist_entry["spotify_artist_id"]:
-            artist_entry["not_on_spotify"] = True
-            logging.warning(f"⚠️ No Spotify match found for artist: {artist_name_display}")
+        if existing:
+            existing_id = existing["artist_entry"].get("spotify_artist_id")
+            current_id = spotify_data.get("artistId") if spotify_data else None
+            if not existing_id and current_id:
+                overwrite = True
         else:
-            logging.info(f"🎵 Found Spotify match for artist: {artist_name_display}")
+            overwrite = True
 
-        artist_already_added = any(
-            (a.get("spotify_artist_id") == artist_entry["spotify_artist_id"]) if artist_entry["spotify_artist_id"]
-            else (a.get("artist_name") == artist_entry["artist_name"])
-            for a in artists
-        )
+        if overwrite:
+            artist_entry = {
+                "artist_name": artist_name_clean,
+                "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
+                "artist_artwork": spotify_data.get("artistImage"),
+                "artist_description": description_cache[artist_name_display],
+                "not_on_spotify": spotify_data is None
+            }
 
-        if not artist_already_added:
-            artists.append(artist_entry)
+            if not artist_entry["spotify_artist_id"]:
+                artist_entry["not_on_spotify"] = True
+                logging.warning(f"⚠️ No Spotify match found for artist: {artist_name_display}")
+            else:
+                logging.info(f"🎵 Found Spotify match for artist: {artist_name_display}")
+
+            seen_artists[artist_name_clean] = {
+                "spotify_data": spotify_data,
+                "artist_entry": artist_entry
+            }
+
+            if not existing:
+                artists.append(artist_entry)
+            else:
+                for i, a in enumerate(artists):
+                    if a["artist_name"] == artist_name_clean:
+                        artists[i] = artist_entry
+                        break
 
         track_display_name = (
             f"{track_name_clean} (ft. {featured_artist})"
