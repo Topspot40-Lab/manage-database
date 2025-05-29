@@ -136,7 +136,7 @@ def generate_track_json(request: TrackRequest):
             f"{track_name_clean} (ft. {featured_artist})"
             if featured_artist else track_name_clean
         )
-        print(f"🎧 spotify_data = {json.dumps(spotify_data, indent=2)}")
+        # print(f"🎧 spotify_data = {json.dumps(spotify_data, indent=2)}")
 
         track_entry = {
             "track_name": track_name_clean,

@@ -75,7 +75,13 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         result = response.json()
 
         content = result["choices"][0]["message"]["content"]
+
+        logging.info(f"🧾 Raw content from XAI:\n{content}")
+
         tracks = json.loads(content)
+
+        for track in tracks:
+            logging.info(f"🎧 {track.get('trackName')} — {track.get('artistName')}")
 
         # ✅ Wrap result before validating
         wrapped = {

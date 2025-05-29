@@ -1,6 +1,24 @@
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlmodel import SQLModel, Field, UniqueConstraint
+from enum import IntEnum
+
+class ModeFlag(IntEnum):
+    SOLO = 0
+    DUET = 1
+    FEATURED = 2
+
+
+class DecadeGenreTrivia(SQLModel, table=True):
+    __tablename__ = "decade_genre_trivia"
+    __table_args__ = {"schema": "track_tables", "extend_existing": True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    decade_genre_id: int = Field(foreign_key="join_tables.decade_genre.id")
+    trivia: str
+    trivia_mp3_url: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
+
 
 # comment line
 # === core_tables schema ===
@@ -71,6 +89,8 @@ class DecadeGenre(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     decade_id: Optional[int] = Field(default=None, foreign_key="core_tables.decade.id")
     genre_id: Optional[int] = Field(default=None, foreign_key="core_tables.genre.id")
+    decade_genre_intro: Optional[str] = None
+    intro_mp3_url: Optional[str] = None
 
 
 class TrackGenre(SQLModel, table=True):
@@ -159,7 +179,9 @@ class Track(SQLModel, table=True):
     year_released: Optional[int] = Field(default=None)
     artist_id: int = Field(foreign_key="core_tables.artist.id")
     is_explicit: Optional[bool] = Field(default=False)
-    created_at: Optional[datetime] = Field(default=None)
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
     detail_mp3_url: Optional[str] = Field(default=None)
-    not_on_spotify: Optional[bool] = Field(default=False)  # 🆕 added
+    not_on_spotify: Optional[bool] = Field(default=False)
+    featured_artist_id: Optional[str] = Field(default=None)
+    mode_flag: ModeFlag = Field(default=ModeFlag.SOLO)
