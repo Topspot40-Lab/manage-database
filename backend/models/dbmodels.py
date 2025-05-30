@@ -1,12 +1,8 @@
 from typing import Optional
 from datetime import datetime, UTC
 from sqlmodel import SQLModel, Field, UniqueConstraint
-from enum import IntEnum
+from backend.models.enums import ModeFlag
 
-class ModeFlag(IntEnum):
-    SOLO = 0
-    DUET = 1
-    FEATURED = 2
 
 
 class DecadeGenreTrivia(SQLModel, table=True):
@@ -173,15 +169,15 @@ class Track(SQLModel, table=True):
     track_name: str = Field(nullable=False)
     track_display_name: str = Field(nullable=False)
     spotify_track_id: str = Field(nullable=False)
+    mode_flag: ModeFlag = Field(default=ModeFlag.SOLO)
     duration_ms: Optional[int] = Field(default=None)
     popularity: Optional[int] = Field(default=None)
     album_artwork: Optional[str] = Field(default=None)
     year_released: Optional[int] = Field(default=None)
     artist_id: int = Field(foreign_key="core_tables.artist.id")
+    featured_artist_id: Optional[int] = Field(default=None, foreign_key="core_tables.artist.id")
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
     detail_mp3_url: Optional[str] = Field(default=None)
     not_on_spotify: Optional[bool] = Field(default=False)
-    featured_artist_id: Optional[str] = Field(default=None)
-    mode_flag: ModeFlag = Field(default=ModeFlag.SOLO)

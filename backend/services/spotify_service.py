@@ -1,10 +1,16 @@
 import os
-from dotenv import load_dotenv
 import logging
+from typing import List, Tuple, Optional
+from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from backend.models.enums import ModeFlag
+
+# from backend.models.enums import ModeFlag  # Or wherever ModeFlag is defined
+
 
 load_dotenv()
+
 
 def get_spotify_client():
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
@@ -20,6 +26,44 @@ def get_spotify_client():
         )
     )
 
+
+def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[ModeFlag, Optional[str]]:
+    """
+    Determine mode_flag and featured_artist_id based on artist name formatting from XAI and Spotify's artist list.
+    - SOLO (0): Solo or established group
+    - DUET (1): "and" in name
+    - FEATURED (2): "feat." or "ft." in name
+    """
+    name_lower = artist_name.lower()
+    is_duet = " and " in name_lower
+    is_feature = " ft. " in name_lower or "feat." in name_lower
+    is_group = "&" in artist_name
+
+    mode_flag = ModeFlag.SOLO
+    featured_artist_id = None
+
+    if len(artist_list) > 1:
+        second_artist = artist_list[1]
+        featured_artist_id = second_artist["id"]
+
+        if is_feature:
+            mode_flag = ModeFlag.FEATURED
+        elif is_duet:
+            mode_flag = ModeFlag.DUET
+        elif is_group:
+            mode_flag = ModeFlag.SOLO
+    else:
+        if is_duet or is_feature:
+            logging.warning(
+                f"❗ '{artist_name}' suggests duet or feature, but only one Spotify artist found: {[a['name'] for a in artist_list]}"
+            )
+        mode_flag = ModeFlag.SOLO
+        featured_artist_id = None
+
+    logging.info(f"🎙️ Detected mode_flag: {mode_flag.name} ({mode_flag.value})")
+    return mode_flag, featured_artist_id
+
+
 def get_spotify_data(track_name: str, artist_name: str):
     try:
         sp = get_spotify_client()
@@ -31,33 +75,37 @@ def get_spotify_data(track_name: str, artist_name: str):
             return {}
 
         for track in results["tracks"]["items"]:
-            result_artist = track["artists"][0]["name"].lower().strip()
+            artist_list = track["artists"]
+            result_artist = artist_list[0]["name"].lower().strip()
             expected_artist = artist_name.lower().strip()
 
             if result_artist == expected_artist:
-                artist_id = track["artists"][0]["id"]
+                artist_id = artist_list[0]["id"]
 
-                # 🔍 Fetch artist artwork
+                # ✅ Determine mode_flag and featured_artist_id
+                mode_flag_enum, featured_artist_id = determine_mode_flag(artist_name, artist_list)
+
+                # ✅ Logging the detection
+                logging.info(f"🎙️ mode_flag detected: {mode_flag_enum.name} ({mode_flag_enum.value})")
+
+                # ✅ Fetch artist image
                 artist_data = sp.artist(artist_id)
                 artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
 
                 return {
-                    "id": track["id"],
-                    "artistId": artist_id,
-                    "durationMs": track["duration_ms"],
+                    "spotify_track_id": track["id"],
+                    "artist_id": artist_id,
+                    "featured_artist_id": featured_artist_id,
+                    "mode_flag": mode_flag_enum.value,  # Send int to DB
+                    "duration_ms": track["duration_ms"],
                     "popularity": track["popularity"],
-                    "trackImage": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
-                    "artistImage": artist_image
+                    "album_artwork": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
+                    "artist_artwork": artist_image
                 }
 
-                # 🔍 Add this right here:
             else:
-                if result_artist.lower() != expected_artist.lower():
-                    logging.warning(f"🪤 Rejected: {result_artist} is not {expected_artist}")
-                    # Possibly log a candidate name for human review
-                print(f"🪤 Rejected: {result_artist} is not {expected_artist}")
+                logging.warning(f"🪤 Rejected: {result_artist} is not {expected_artist}")
 
-        # 🚫 No valid matches
         print(f"🚫 No matching Spotify artist for: {track_name} by {artist_name}")
         return {}
 

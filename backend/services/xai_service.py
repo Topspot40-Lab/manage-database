@@ -42,7 +42,11 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         f"Generate a JSON array with exactly {num_tracks} top tracks from the {genre} genre "
         f"of the {category} decade for a {language} audience. "
         "Each entry must include: rank (integer), trackName (string), artistName (string), and yearReleased (integer). "
-        "Do NOT include descriptions, intros, or any extra text—just return a valid JSON array."
+        "Format artistName based on the artist type:\n"
+        "- Use '&' to indicate an established group (e.g., 'Simon & Garfunkel', 'Brooks & Dunn').\n"
+        "- Use ' and ' to indicate a duet (e.g., 'Conway Twitty and Loretta Lynn').\n"
+        "- Use ' ft. ' to indicate a featured artist (e.g., 'Eminem ft. Lea').\n"
+        "Do NOT include descriptions or extra text — only return a valid JSON array."
     )
 
     headers = {

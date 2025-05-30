@@ -5,10 +5,10 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, Optional
 from utils.json_helpers import parse_featured_artists, normalize_name
 
-from backend.services.spotify_service import get_spotify_data
+from backend.services.spotify_service import get_spotify_data, determine_mode_flag, format_track_display_name
 from backend.services.xai_service import (
     get_top_tracks_from_xai,
     get_track_descriptions_from_xai,
@@ -17,7 +17,7 @@ from backend.services.xai_service import (
 
 from shared.filepaths import get_json_path
 
-print("\U0001F9E9 generate_json.py is now the OFFICIAL one ✅")
+print("🫩 generate_json.py is now the OFFICIAL one ✅")
 
 router = APIRouter()
 
@@ -57,7 +57,7 @@ def generate_track_json(request: TrackRequest):
         raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
     now = datetime.now().isoformat()
-    seen_artists = {}  # key: artist_name -> {spotify_data, artist_entry}
+    seen_artists = {}
     artists = []
     tracks = []
     rankings = []
@@ -68,7 +68,7 @@ def generate_track_json(request: TrackRequest):
         artist_name_raw = base["artistName"]
         track_name_raw = base["trackName"]
 
-        artist_name_clean, featured_artist = parse_featured_artists(artist_name_raw)
+        artist_name_clean, _ = parse_featured_artists(artist_name_raw)
         artist_name_clean = normalize_name(artist_name_clean)
         track_name_clean = normalize_name(track_name_raw)
 
@@ -132,11 +132,8 @@ def generate_track_json(request: TrackRequest):
                         artists[i] = artist_entry
                         break
 
-        track_display_name = (
-            f"{track_name_clean} (ft. {featured_artist})"
-            if featured_artist else track_name_clean
-        )
-        # print(f"🎧 spotify_data = {json.dumps(spotify_data, indent=2)}")
+        mode_flag, featured_artist_id = determine_mode_flag(artist_name_raw, spotify_data.get("artistNameCandidates", []))
+        track_display_name = format_track_display_name(artist_name_clean, featured_artist_id, mode_flag)
 
         track_entry = {
             "track_name": track_name_clean,
@@ -146,6 +143,8 @@ def generate_track_json(request: TrackRequest):
             "decade": request.category,
             "spotify_track_id": spotify_data.get("id") if spotify_data else None,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
+            "featured_artist_id": featured_artist_id  ,# ✅ Duet or featured artist ID
+            "mode_flag": mode_flag, # "solo", "duet", or "featured"
             "duration_ms": spotify_data.get("durationMs") if spotify_data else None,
             "popularity": spotify_data.get("popularity") if spotify_data else None,
             "album_artwork": spotify_data.get("trackImage") if spotify_data else None,
@@ -155,6 +154,8 @@ def generate_track_json(request: TrackRequest):
             "detail": base.get("detail"),
             "detail_mp3_url": detail_mp3_url,
             "not_on_spotify": is_not_on_spotify
+
+
         }
 
         tracks.append(track_entry)
