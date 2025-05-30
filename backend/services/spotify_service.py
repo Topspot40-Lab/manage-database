@@ -12,6 +12,26 @@ from backend.models.enums import ModeFlag
 load_dotenv()
 
 
+def format_track_display_name(
+    track_name: str,
+    primary_artist: str,
+    featured_artist: str = "",
+    mode_flag: int = 0
+) -> str:
+    """
+    Returns a display name for the track based on mode_flag:
+    - SOLO: "Song Title - Artist"
+    - DUET: "Song Title - Artist & Featured"
+    - FEATURED: "Song Title - Artist feat. Featured"
+    """
+    if mode_flag == 1:  # DUET
+        return f"{track_name} - {primary_artist} & {featured_artist}"
+    elif mode_flag == 2:  # FEATURED
+        return f"{track_name} - {primary_artist} feat. {featured_artist}"
+    else:  # SOLO or default
+        return f"{track_name} - {primary_artist}"
+
+
 def get_spotify_client():
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
@@ -112,3 +132,5 @@ def get_spotify_data(track_name: str, artist_name: str):
     except Exception as e:
         print(f"Spotify query error for {track_name} - {artist_name}: {e}")
         return {}
+
+

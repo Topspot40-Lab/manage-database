@@ -12,7 +12,7 @@ project_root = Path(__file__).resolve().parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from backend.database import init_db
+# from backend.database import init_db
 from backend.routers import router as json_router          # <-- NEW PACKAGE
 from backend.router_saved_files import router as save_router
 logging.basicConfig(

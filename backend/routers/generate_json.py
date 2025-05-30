@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Literal
 from utils.json_helpers import parse_featured_artists, normalize_name
 
 from backend.services.spotify_service import get_spotify_data, determine_mode_flag, format_track_display_name
@@ -133,7 +133,11 @@ def generate_track_json(request: TrackRequest):
                         break
 
         mode_flag, featured_artist_id = determine_mode_flag(artist_name_raw, spotify_data.get("artistNameCandidates", []))
-        track_display_name = format_track_display_name(artist_name_clean, featured_artist_id, mode_flag)
+        track_display_name = format_track_display_name(
+            artist_name_clean,
+            featured_artist_id,
+            mode_flag.name  # or .value, depending on what your formatter expects
+        )
 
         track_entry = {
             "track_name": track_name_clean,
@@ -143,8 +147,7 @@ def generate_track_json(request: TrackRequest):
             "decade": request.category,
             "spotify_track_id": spotify_data.get("id") if spotify_data else None,
             "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
-            "featured_artist_id": featured_artist_id  ,# ✅ Duet or featured artist ID
-            "mode_flag": mode_flag, # "solo", "duet", or "featured"
+            "mode_flag": mode_flag.value,  # ✅ Convert enum to int (0, 1, or 2)
             "duration_ms": spotify_data.get("durationMs") if spotify_data else None,
             "popularity": spotify_data.get("popularity") if spotify_data else None,
             "album_artwork": spotify_data.get("trackImage") if spotify_data else None,
