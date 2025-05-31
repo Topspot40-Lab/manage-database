@@ -6,11 +6,11 @@ import os
 from sqlmodel import SQLModel, create_engine, Session
 from typing import Generator
 
-# 1) Explicitly point at the .env in this same folder
-env_path = Path(__file__).parent / ".env"
+# Go up two levels from backend/database.py to reach the root
+env_path = Path(__file__).resolve().parent.parent / ".env"
 if not env_path.exists():
     raise RuntimeError(f"No .env file found at {env_path}")
-load_dotenv(env_path)
+load_dotenv(dotenv_path=env_path)
 
 # 2) Now read the URL
 DATABASE_URL = os.getenv("POSTGRES_URL")

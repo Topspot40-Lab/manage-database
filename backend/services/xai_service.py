@@ -5,6 +5,8 @@ import requests
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv
 
+print(f"📂 Current working directory: {os.getcwd()}")
+
 # Load environment variables
 load_dotenv()
 
@@ -17,6 +19,16 @@ logger = logging.getLogger(__name__)
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../schemas/track_schema.json")
+
+import inspect
+print(f"👀 CONFIRMATION: XAI_API_URL in use = {XAI_API_URL}")
+print("📁 Running from file:", inspect.getfile(inspect.currentframe()))
+if XAI_API_KEY:
+    print(f"🔑 Using XAI key ending in: {XAI_API_KEY[-4:]}")
+else:
+    print("🚫 XAI_API_KEY not found! Check your .env file or dotenv loading.")
+
+
 
 # Load schema once at startup
 with open(SCHEMA_PATH, "r") as f:
@@ -65,6 +77,11 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
 
     try:
         logging.info("🎵 Requesting top track names from XAI...")
+
+        # 🔍 DEBUG: Print the payload for troubleshooting
+        print("📤 Payload being sent to XAI:")
+        print(json.dumps(payload, indent=2))
+
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
 
         # 🔍 Print debug info on failure

@@ -13,11 +13,9 @@ from backend.services.xai_service import (
 )
 
 from shared.filepaths import get_json_path
-from utils.json_helpers import parse_featured_artists, normalize_name
-
 from backend.services.track_generator import build_final_json  # ✅ fixed import
 
-print("🫩 generate_json.py is now the OFFICIAL one ✅")
+logging.info("🫩 generate_json.py is now the OFFICIAL one ✅")
 
 router = APIRouter()
 
@@ -30,10 +28,12 @@ class TrackRequest(BaseModel):
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 def generate_track_json(request: TrackRequest):
     try:
-        print("✅ A. Start generate_track_json")
+        logging.info("✅ A. Start generate_track_json")
+
         now = datetime.now().isoformat()
 
         # Step 1: Get raw track list from XAI
+        logging.info("🔍 B. Calling get_top_tracks_from_xai")
         wrapped = get_top_tracks_from_xai(
             category=request.category,
             genre=request.genre,
@@ -45,8 +45,10 @@ def generate_track_json(request: TrackRequest):
             raise HTTPException(status_code=500, detail="Failed to retrieve track list from XAI")
 
         track_list = wrapped["tracks"]
+        logging.info(f"📦 C. Retrieved {len(track_list)} tracks from XAI")
 
         # Step 2: Enrich descriptions
+        logging.info("🧠 D. Enriching with get_track_descriptions_from_xai")
         enriched = get_track_descriptions_from_xai(
             track_data=wrapped,
             language=request.language,
@@ -58,6 +60,7 @@ def generate_track_json(request: TrackRequest):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
         # Step 3: Build final JSON structure
+        logging.info("🧱 E. Building final JSON with build_final_json")
         final_json = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
@@ -66,8 +69,11 @@ def generate_track_json(request: TrackRequest):
 
         # Step 4: Save to file
         filepath = get_json_path(request.category, request.genre, request.language[:2])
+        logging.info(f"💾 F. Saving file to: {filepath}")
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2)
+
+        logging.info("✅ G. JSON creation complete!")
 
         return {
             "message": "🎉 JSON created successfully",
