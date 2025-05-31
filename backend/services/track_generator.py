@@ -102,3 +102,54 @@ def build_ranking_entry(base, request, spotify_data, now):
         "intro_mp3_url": base.get("intro_mp3_url"),
         "ranking_date": now[:10]
     }
+
+def build_final_json(enriched_tracks, request, now):
+    seen_artists = {}
+    description_cache = {}
+    artists = []
+    tracks = []
+    rankings = []
+
+    for base in enriched_tracks:
+        spotify_data = fetch_and_validate_tracks(base)
+
+        artist_entry = process_artist(
+            base=base,
+            spotify_data=spotify_data,
+            seen_artists=seen_artists,
+            description_cache=description_cache,
+            language=request.language
+        )
+
+        if artist_entry:
+            artists.append(artist_entry)
+
+        track_entry = build_track_entry(base, request, spotify_data, now)
+        ranking_entry = build_ranking_entry(base, request, spotify_data, now)
+
+        tracks.append(track_entry)
+        rankings.append(ranking_entry)
+
+    return {
+        "core_tables": {
+            "genre": [{"genre_name": request.genre}],
+            "decade": [{"decade_name": request.category}],
+            "artist": artists
+        },
+        "track_tables": {
+            "track": tracks,
+            "tracklist": [
+                {
+                    "name": "TopSpot Autogen",
+                    "curator": "Mr. Ed",
+                    "is_official": True,
+                    "language": request.language[:2].lower(),
+                    "notes": f"Generated for {request.category} - {request.genre}",
+                    "created_at": now
+                }
+            ]
+        },
+        "ranking_tables": {
+            "track_ranking": rankings
+        }
+    }
