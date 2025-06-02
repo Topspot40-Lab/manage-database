@@ -1,0 +1,229 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "genre_name": "pop"
+      }
+    ],
+    "decade": [
+      {
+        "decade_name": "1960s"
+      }
+    ],
+    "artist": [
+      {
+        "artist_name": "The Beatles",
+        "spotify_artist_id": "3WrFJ7ztbogyGnTHbHJFl2",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebe9348cc01ff5d55971b22433",
+        "artist_description": "The Beatles, a legendary British band formed in Liverpool in 1960, revolutionized music with their innovative blend of rock, pop, and psychedelia. Comprising John Lennon, Paul McCartney, George Harrison, and Ringo Starr, they achieved unprecedented success with hits like \"Hey Jude\" and \"Let It Be,\" and their album \"Sgt. Pepper's Lonely Hearts Club Band\" is often hailed as a masterpiece. Cultural icons, they were awarded MBEs by Queen Elizabeth II in 1965, and their influence extends beyond music into fashion and social movements.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Zooey Deschanel",
+        "spotify_artist_id": null,
+        "artist_artwork": null,
+        "artist_description": "Zooey Deschanel, an American actress and musician, is known for her work in the indie pop duo She & Him alongside M. Ward. Born in Los Angeles, she developed an interest in music from a young age, influenced by her father, cinematographer Caleb Deschanel, and her mother, actress Mary Jo Deschanel. Deschanel's notable achievements include her role in the TV series \"New Girl\" and the success of She & Him's albums, with their unique blend of 60s pop and folk music.",
+        "artist_mp3_url": "tts/detail_unavailable.mp3",
+        "not_on_spotify": true
+      },
+      {
+        "artist_name": "Petula Clark",
+        "spotify_artist_id": "6nKqt1nbSBEq3iUXD1Xgz8",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb521d636b6f8743e31b4ee3d1",
+        "artist_description": "Petula Clark, a British singer, actress, and songwriter, rose to fame during World War II as a child entertainer, earning the nickname \"Britain's Shirley Temple.\" She achieved international success in the 1960s with hits like \"Downtown,\" which won her a Grammy Award, and became one of the first British female artists to have a major impact in the United States. Clark's multilingual abilities allowed her to record songs in several languages, contributing to her global appeal and earning her the Legion of Honour from France in 2012.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Cilla Black",
+        "spotify_artist_id": "3bCvHtuIXWXPbCMdSYudmZ",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb402feaabb951c5b60c200601",
+        "artist_description": "Cilla Black, born Priscilla White in Liverpool, England, was a beloved British singer and television personality known for her powerful voice and charismatic presence. Rising to fame in the 1960s with hits like \"Anyone Who Had a Heart\" and \"You're My World,\" she became a pop icon and later a successful TV host with shows like \"Blind Date\" and \"Surprise Surprise.\" Her close friendship with The Beatles, who helped launch her career, and her status as a working-class hero endeared her to millions across the UK.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Little Eva",
+        "spotify_artist_id": "4S76LQXJD6N2uPcLhKejG8",
+        "artist_artwork": "https://i.scdn.co/image/ab67616d0000b273d7236f14544b3db88ed3f22b",
+        "artist_description": "Little Eva, born Eva Narcissus Boyd in 1943, was an American singer known for her work in the pop and R&B genres. She rose to fame with her hit song \"The Loco-Motion\" in 1962, which she recorded while working as a babysitter for songwriters Carole King and Gerry Goffin. Despite her early success, Little Eva's career was short-lived, but she left a lasting impact on music and dance culture with her energetic performances and catchy tunes.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ]
+  },
+  "track_tables": {
+    "track": [
+      {
+        "track_name": "I Want to Hold Your Hand",
+        "artist_name": "The Beatles",
+        "track_display_name": "I Want to Hold Your Hand",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "5Qe7NHxeLAn8KoLTNLSdwe",
+        "spotify_artist_id": "3WrFJ7ztbogyGnTHbHJFl2",
+        "mode_flag": 0,
+        "duration_ms": 146720,
+        "popularity": 72,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2735ef4660298ae29ee18799fc2",
+        "year_released": 1963,
+        "is_explicit": false,
+        "created_at": "2025-06-02T15:44:15.667138",
+        "detail": "This song, released in 1963, was a pivotal moment in music history. It marked the beginning of Beatlemania, a cultural phenomenon that swept across the globe. The track's infectious melody and simple, yet profound lyrics about love and connection resonated with millions. It not only topped the charts in the UK and the US but also became a symbol of the era's youthful exuberance. The Beatles' innovative approach to songwriting and recording techniques set new standards in the industry, influencing countless artists to follow. The song's impact extended beyond music, contributing to a cultural shift that embraced youth culture and optimism.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "Sugar Town",
+        "artist_name": "Zooey Deschanel",
+        "track_display_name": "Sugar Town",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": null,
+        "spotify_artist_id": null,
+        "mode_flag": 0,
+        "duration_ms": null,
+        "popularity": null,
+        "album_artwork": null,
+        "year_released": 1966,
+        "is_explicit": false,
+        "created_at": "2025-06-02T15:44:15.667138",
+        "detail": "Originally released in 2008 as part of the soundtrack for the film 'Elf', this song harks back to the 1960s with its nostalgic sound. Zooey Deschanel, known for her role in 'New Girl', showcases her musical talents with her band She & Him. The track's light-hearted and whimsical nature reflects the innocence and simplicity of the 1960s pop genre. It has since become a beloved tune, often featured in commercials and TV shows, evoking a sense of nostalgia and joy. Deschanel's ability to blend modern sensibilities with retro sounds has earned her a unique place in contemporary music.",
+        "detail_mp3_url": null,
+        "not_on_spotify": true
+      },
+      {
+        "track_name": "Downtown",
+        "artist_name": "Petula Clark",
+        "track_display_name": "Downtown",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "6S55C80YzjhSrCRRd1p80b",
+        "spotify_artist_id": "6nKqt1nbSBEq3iUXD1Xgz8",
+        "mode_flag": 0,
+        "duration_ms": 187760,
+        "popularity": 66,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27351c5bc666e98ec2ec7dd303c",
+        "year_released": 1964,
+        "is_explicit": false,
+        "created_at": "2025-06-02T15:44:15.667138",
+        "detail": "Released in 1964, this song became an anthem for urban exploration and freedom. Its catchy melody and uplifting lyrics encouraged listeners to find solace and excitement in the city's vibrant life. The track's success was not limited to the charts; it also broke barriers by featuring a woman singing about independence and adventure. The song's writer, Tony Hatch, crafted a sound that perfectly captured the optimism of the era. 'Downtown' has since been covered by numerous artists and remains a staple in pop culture, symbolizing the spirit of the 1960s.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "You're My World",
+        "artist_name": "Cilla Black",
+        "track_display_name": "You're My World",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "2hWfpElGMOzQavDEgVbtLz",
+        "spotify_artist_id": "3bCvHtuIXWXPbCMdSYudmZ",
+        "mode_flag": 0,
+        "duration_ms": 179466,
+        "popularity": 45,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273b8adb62e42a607432f06048a",
+        "year_released": 1964,
+        "is_explicit": false,
+        "created_at": "2025-06-02T15:44:15.667138",
+        "detail": "This song, released in 1964, showcases Cilla Black's powerful vocals and emotional depth. It became her signature hit, reaching the top of the charts in the UK and several other countries. The track's lush orchestration and passionate delivery resonated with audiences, making it a favorite for romantic occasions. Cilla Black, who started as a cloakroom attendant at the Cavern Club in Liverpool, rose to fame with the help of Brian Epstein, the manager of The Beatles. Her journey from humble beginnings to international stardom is a testament to the era's belief in the power of dreams and talent.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "The Locomotion",
+        "artist_name": "Little Eva",
+        "track_display_name": "The Locomotion",
+        "genre": "pop",
+        "decade": "1960s",
+        "spotify_track_id": "5xzdDMhFYiuUONB0Mha9VS",
+        "spotify_artist_id": "4S76LQXJD6N2uPcLhKejG8",
+        "mode_flag": 0,
+        "duration_ms": 139120,
+        "popularity": 63,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273d7236f14544b3db88ed3f22b",
+        "year_released": 1962,
+        "is_explicit": false,
+        "created_at": "2025-06-02T15:44:15.667138",
+        "detail": "Released in 1962, this song became an instant hit, topping the charts and becoming a dance craze. Little Eva, who was a babysitter for songwriters Gerry Goffin and Carole King, recorded the track after they heard her singing it to their children. The song's simple choreography and catchy lyrics made it a favorite at parties and dance halls. 'The Locomotion' has been covered by numerous artists over the years, including Kylie Minogue, whose version also reached number one. The track's enduring popularity is a testament to its universal appeal and the joy it brings to listeners of all ages.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 1960s - pop",
+        "created_at": "2025-06-02T15:44:15.667138"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "track_ranking": [
+      {
+        "track_name": "I Want to Hold Your Hand",
+        "artist_name": "The Beatles",
+        "spotify_track_id": "5Qe7NHxeLAn8KoLTNLSdwe",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off at number 1 in the 1960s pop category, 'I Want to Hold Your Hand' by The Beatles is a timeless classic that changed the music scene forever.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-02"
+      },
+      {
+        "track_name": "Sugar Town",
+        "artist_name": "Zooey Deschanel",
+        "spotify_track_id": null,
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1960s pop hit 'Sugar Town' by Zooey Deschanel captures the sweet essence of the era with its charming melody.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-02"
+      },
+      {
+        "track_name": "Downtown",
+        "artist_name": "Petula Clark",
+        "spotify_track_id": "6S55C80YzjhSrCRRd1p80b",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, 'Downtown' by Petula Clark, a standout in the 1960s pop category, invites listeners to escape to the bustling city streets.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-02"
+      },
+      {
+        "track_name": "You're My World",
+        "artist_name": "Cilla Black",
+        "spotify_track_id": "2hWfpElGMOzQavDEgVbtLz",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 4,
+        "intro": "Securing the 4th spot, 'You're My World' by Cilla Black, a gem in the 1960s pop genre, is a heartfelt ode to love and devotion.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-02"
+      },
+      {
+        "track_name": "The Locomotion",
+        "artist_name": "Little Eva",
+        "spotify_track_id": "5xzdDMhFYiuUONB0Mha9VS",
+        "genre": "pop",
+        "decade": "1960s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 5,
+        "intro": "Rounding out the top 5, 'The Locomotion' by Little Eva, a lively 1960s pop track, gets everyone moving with its infectious beat.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-02"
+      }
+    ]
+  }
+}

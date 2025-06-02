@@ -2,7 +2,6 @@ import logging
 from backend.services.spotify_service import get_spotify_data, determine_mode_flag, format_track_display_name
 from utils.json_helpers import parse_featured_artists, normalize_name
 
-
 def fetch_and_validate_tracks(base):
     artist_name_raw = base["artistName"]
     track_name_raw = base["trackName"]
@@ -13,8 +12,9 @@ def fetch_and_validate_tracks(base):
 
     logging.info(f"🎯 Searching Spotify with: '{track_name_clean}' by '{artist_name_clean}'")
 
-    return get_spotify_data(track_name_clean, artist_name_clean)
-
+    spotify_data = get_spotify_data(track_name_clean, artist_name_clean)
+    logging.debug(f"✅ Spotify data received: {spotify_data}")
+    return spotify_data
 
 def process_artist(base, spotify_data, seen_artists, description_cache, language):
     from backend.services.xai_service import get_artist_description
@@ -35,22 +35,22 @@ def process_artist(base, spotify_data, seen_artists, description_cache, language
 
     detail_mp3_url = (
         base.get("detail_mp3_url")
-        if spotify_data and spotify_data.get("id")
+        if spotify_data and spotify_data.get("artist_id")
         else "tts/detail_unavailable.mp3"
     )
 
     artist_entry = {
         "artist_name": artist_name_clean,
-        "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
-        "artist_artwork": spotify_data.get("artistImage") if spotify_data else None,
+        "spotify_artist_id": spotify_data.get("artist_id") if spotify_data else None,
+        "artist_artwork": spotify_data.get("artist_artwork") if spotify_data else None,
         "artist_description": description_cache[artist_name_clean],
         "artist_mp3_url": detail_mp3_url,
-        "not_on_spotify": not spotify_data or not spotify_data.get("id")
+        "not_on_spotify": not spotify_data or not spotify_data.get("artist_id")
     }
 
+    logging.debug(f"🎨 Artist entry built: {artist_entry}")
     seen_artists[artist_name_clean] = True
     return artist_entry
-
 
 def build_track_entry(base, request, spotify_data, now):
     artist_name_raw = base["artistName"]
@@ -62,38 +62,42 @@ def build_track_entry(base, request, spotify_data, now):
 
     mode_flag, featured_artist_id = determine_mode_flag(artist_name_raw, spotify_data.get("artistNameCandidates", []))
     track_display_name = format_track_display_name(
-        artist_name_clean, featured_artist_id, mode_flag.name
+        track_name_clean,
+        spotify_data.get("featured_artist_name"),
+        mode_flag.value
     )
 
-    return {
+    track_entry = {
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
         "track_display_name": track_display_name,
         "genre": request.genre,
         "decade": request.category,
-        "spotify_track_id": spotify_data.get("id") if spotify_data else None,
-        "spotify_artist_id": spotify_data.get("artistId") if spotify_data else None,
+        "spotify_track_id": spotify_data.get("spotify_track_id") if spotify_data else None,
+        "spotify_artist_id": spotify_data.get("artist_id") if spotify_data else None,
         "mode_flag": mode_flag.value,
-        "duration_ms": spotify_data.get("durationMs") if spotify_data else None,
+        "duration_ms": spotify_data.get("duration_ms") if spotify_data else None,
         "popularity": spotify_data.get("popularity") if spotify_data else None,
-        "album_artwork": spotify_data.get("trackImage") if spotify_data else None,
+        "album_artwork": spotify_data.get("album_artwork") if spotify_data else None,
         "year_released": int(base["yearReleased"]),
         "is_explicit": False,
         "created_at": now,
         "detail": base.get("detail"),
         "detail_mp3_url": base.get("detail_mp3_url"),
-        "not_on_spotify": not spotify_data or not spotify_data.get("id")
+        "not_on_spotify": not spotify_data or not spotify_data.get("spotify_track_id")
     }
 
+    logging.debug(f"🎵 Track entry built: {track_entry}")
+    return track_entry
 
 def build_ranking_entry(base, request, spotify_data, now):
     artist_name_clean = normalize_name(base["artistName"])
     track_name_clean = normalize_name(base["trackName"])
 
-    return {
+    ranking_entry = {
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
-        "spotify_track_id": spotify_data.get("id") if spotify_data else None,
+        "spotify_track_id": spotify_data.get("spotify_track_id") if spotify_data else None,
         "genre": request.genre,
         "decade": request.category,
         "tracklist": "TopSpot Autogen",
@@ -102,6 +106,9 @@ def build_ranking_entry(base, request, spotify_data, now):
         "intro_mp3_url": base.get("intro_mp3_url"),
         "ranking_date": now[:10]
     }
+
+    logging.info(f"📊 Ranking entry built: {ranking_entry}")
+    return ranking_entry
 
 def build_final_json(enriched_tracks, request, now):
     seen_artists = {}
@@ -130,7 +137,7 @@ def build_final_json(enriched_tracks, request, now):
         tracks.append(track_entry)
         rankings.append(ranking_entry)
 
-    return {
+    final_json = {
         "core_tables": {
             "genre": [{"genre_name": request.genre}],
             "decade": [{"decade_name": request.category}],
@@ -153,3 +160,6 @@ def build_final_json(enriched_tracks, request, now):
             "track_ranking": rankings
         }
     }
+
+    logging.info(f"📦 Final JSON built with {len(tracks)} tracks and {len(artists)} artists.")
+    return final_json

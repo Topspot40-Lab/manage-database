@@ -51,8 +51,14 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
     Return wrapped in new JSON format.
     """
     prompt = (
-        f"Generate a JSON array with exactly {num_tracks} top tracks from the {genre} genre "
-        f"of the {category} decade for a {language} audience. "
+        f"Generate a JSON array with exactly {num_tracks} top tracks strictly from the {genre} genre "
+        f"during the {category} decade, as originally classified at the time of release. "
+        f"Only include artists who were actively releasing music during the {category} decade, "
+        f"and whose songs were first released in that decade. "
+        f"Do not include artists from later decades who emulate retro styles. "
+        f"Also, only include artists and songs that are widely recognized as part of the {genre} genre. "
+        "Do not include artists primarily known for other genres. "
+        f"This is for a {language} audience. "
         "Each entry must include: rank (integer), trackName (string), artistName (string), and yearReleased (integer). "
         "Format artistName based on the artist type:\n"
         "- Use '&' to indicate an established group (e.g., 'Simon & Garfunkel', 'Brooks & Dunn').\n"
@@ -79,8 +85,8 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         logging.info("🎵 Requesting top track names from XAI...")
 
         # 🔍 DEBUG: Print the payload for troubleshooting
-        print("📤 Payload being sent to XAI:")
-        print(json.dumps(payload, indent=2))
+        # print("📤 Payload being sent to XAI:")
+        # print(json.dumps(payload, indent=2))
 
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
 
@@ -97,7 +103,7 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
 
         content = result["choices"][0]["message"]["content"]
 
-        logging.info(f"🧾 Raw content from XAI:\n{content}")
+        logging.debug(f"🧾 Raw content from XAI:\n{content}")
 
         tracks = json.loads(content)
 
