@@ -4,6 +4,7 @@ import logging
 import requests
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv
+from utils.track_filters import is_bad_track
 
 print(f"📂 Current working directory: {os.getcwd()}")
 
@@ -50,21 +51,27 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
     Get top track metadata from XAI (rank, name, artist, year).
     Return wrapped in new JSON format.
     """
+
+    # === Dynamic buffer logic ===
+    buffer_size = 4 if num_tracks >= 40 else 1
+    prompted_num = num_tracks + buffer_size
+
     prompt = (
-        f"Generate a JSON array with exactly {num_tracks} top tracks strictly from the {genre} genre "
-        f"during the {category} decade, as originally classified at the time of release. "
-        f"Only include artists who were actively releasing music during the {category} decade, "
-        f"and whose songs were first released in that decade. "
-        f"Do not include artists from later decades who emulate retro styles. "
-        f"Also, only include artists and songs that are widely recognized as part of the {genre} genre. "
-        "Do not include artists primarily known for other genres. "
+        f"Generate a JSON array with exactly {prompted_num} top tracks strictly from the {genre} genre "
+        f"during the {category} decade, as officially recognized during that time. "
+        f"Only include artists who were actively releasing original music during the actual {category} decade. "
+        f"EXCLUDE all songs and artists from later decades, no matter how retro or nostalgic they sound. "
+        f"Do NOT include songs that were released after the {category} decade even if they emulate that style. "
+        f"This includes modern actors or musicians doing 1960s-style songs — they must be excluded. "
+        f"Only include songs first released in the {category} decade by artists from that era. "
+        f"Genre must be clearly pop, as defined by contemporaneous classification (not modern re-labels). "
         f"This is for a {language} audience. "
         "Each entry must include: rank (integer), trackName (string), artistName (string), and yearReleased (integer). "
         "Format artistName based on the artist type:\n"
-        "- Use '&' to indicate an established group (e.g., 'Simon & Garfunkel', 'Brooks & Dunn').\n"
+        "- Use '&' to indicate an established group (e.g., 'Simon & Garfunkel').\n"
         "- Use ' and ' to indicate a duet (e.g., 'Conway Twitty and Loretta Lynn').\n"
         "- Use ' ft. ' to indicate a featured artist (e.g., 'Eminem ft. Lea').\n"
-        "Do NOT include descriptions or extra text — only return a valid JSON array."
+        "Do NOT include any modern or anachronistic examples. Return only a valid JSON array — no extra text."
     )
 
     headers = {
@@ -106,6 +113,24 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         logging.debug(f"🧾 Raw content from XAI:\n{content}")
 
         tracks = json.loads(content)
+
+        # === Apply track filtering
+        original_count = len(tracks)
+        tracks = [t for t in tracks if not is_bad_track(t)]
+        filtered_out = original_count - len(tracks)
+
+        if filtered_out:
+            logging.info(f"🧹 Filtered {filtered_out} hallucinated or invalid track(s) from XAI results.")
+
+        # === Trim to original num_tracks if buffer added more
+        if len(tracks) > num_tracks:
+            logging.info(f"✂️ Trimming {len(tracks)} → {num_tracks} tracks (after buffer and filtering)")
+            tracks = tracks[:num_tracks]
+        elif len(tracks) < num_tracks:
+            logging.warning(f"⚠️ Only {len(tracks)} of {num_tracks} requested tracks survived filtering.")
+
+            # 🔚 Final summary
+        logging.info(f"✅ Final JSON contains {len(tracks)} valid track(s) after filtering and trimming.")
 
         for track in tracks:
             logging.info(f"🎧 {track.get('trackName')} — {track.get('artistName')}")

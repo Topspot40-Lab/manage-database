@@ -23,7 +23,13 @@ def process_artist(base, spotify_data, seen_artists, description_cache, language
     artist_name_clean, _ = parse_featured_artists(artist_name_raw)
     artist_name_clean = normalize_name(artist_name_clean)
 
+    # ✅ Only skip if we already cached a valid Spotify match
     if artist_name_clean in seen_artists:
+        logging.info(f"🛑 Skipping already-processed artist: {artist_name_clean}")
+        return None
+
+    if not spotify_data or not spotify_data.get("artist_id"):
+        logging.warning(f"⚠️  Skipping '{artist_name_clean}' — no valid Spotify ID")
         return None
 
     if artist_name_clean not in description_cache:
@@ -35,22 +41,25 @@ def process_artist(base, spotify_data, seen_artists, description_cache, language
 
     detail_mp3_url = (
         base.get("detail_mp3_url")
-        if spotify_data and spotify_data.get("artist_id")
+        if spotify_data.get("artist_id")
         else "tts/detail_unavailable.mp3"
     )
 
     artist_entry = {
         "artist_name": artist_name_clean,
-        "spotify_artist_id": spotify_data.get("artist_id") if spotify_data else None,
-        "artist_artwork": spotify_data.get("artist_artwork") if spotify_data else None,
+        "spotify_artist_id": spotify_data["artist_id"],
+        "artist_artwork": spotify_data.get("artist_artwork"),
         "artist_description": description_cache[artist_name_clean],
         "artist_mp3_url": detail_mp3_url,
-        "not_on_spotify": not spotify_data or not spotify_data.get("artist_id")
+        "not_on_spotify": False,
     }
 
     logging.debug(f"🎨 Artist entry built: {artist_entry}")
+
+    # ✅ Now safe to mark as processed
     seen_artists[artist_name_clean] = True
     return artist_entry
+
 
 def build_track_entry(base, request, spotify_data, now):
     artist_name_raw = base["artistName"]
@@ -107,7 +116,7 @@ def build_ranking_entry(base, request, spotify_data, now):
         "ranking_date": now[:10]
     }
 
-    logging.info(f"📊 Ranking entry built: {ranking_entry}")
+    logging.debug(f"📊 Ranking entry built: {ranking_entry}")
     return ranking_entry
 
 def build_final_json(enriched_tracks, request, now):

@@ -91,10 +91,10 @@ def get_spotify_data(track_name: str, artist_name: str):
             result_artist = artist_list[0]["name"].lower().strip()
             expected_artist = artist_name.lower().strip()
 
-            logging.info("🎧 Checking Spotify match:")
-            logging.info(f"    🟢 result_artist:   '{result_artist}'")
-            logging.info(f"    🟡 expected_artist: '{expected_artist}'")
-            logging.info(f"    🎭 Full artist list: {[a['name'] for a in artist_list]}")
+            logging.debug("🎧 Checking Spotify match:")
+            logging.debug(f"    🟢 result_artist:   '{result_artist}'")
+            logging.debug(f"    🟡 expected_artist: '{expected_artist}'")
+            logging.debug(f"    🎭 Full artist list: {[a['name'] for a in artist_list]}")
 
             if expected_artist in result_artist or result_artist in expected_artist:
                 artist_id = artist_list[0]["id"]
