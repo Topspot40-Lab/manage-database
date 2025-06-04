@@ -4,7 +4,8 @@ import logging
 import requests
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv
-from utils.track_filters import is_bad_track
+from backend.utils.track_filters import is_bad_track
+
 
 print(f"📂 Current working directory: {os.getcwd()}")
 
@@ -45,23 +46,33 @@ def validate_tracks(data):
         logging.error(f"❌ Schema validation failed: {e.message}")
         return False
 
-
 def get_top_tracks_from_xai(category, genre, num_tracks, language):
     """
-    Get top track metadata from XAI (rank, name, artist, year).
-    Return wrapped in new JSON format.
+    Call the XAI API to generate a ranked list of top tracks for a given genre and decade.
+    The returned tracks are filtered and validated, then returned in a structured JSON format.
+
+    Args:
+        category (str): Decade category (e.g., "1960s").
+        genre (str): Genre (e.g., "pop").
+        num_tracks (int): Number of tracks requested.
+        language (str): Language context for descriptions and filtering.
+
+    Returns:
+        dict: A JSON-compatible dictionary containing metadata and cleaned track list.
     """
 
-    # === Dynamic buffer logic ===
-    buffer_size = 4 if num_tracks >= 40 else 1
-    prompted_num = num_tracks + buffer_size
+    # === Step 1: Add a buffer to compensate for potential bad/hallucinated tracks ===
+    buffer_size = 4 if num_tracks >= 40 else 1  # Larger buffer for big lists
+    prompted_num = num_tracks + buffer_size     # Ask XAI for more than needed
 
+    # === Step 2: Compose a detailed, precise prompt for the XAI model ===
+    # The prompt strictly instructs the model to include only valid songs from the given decade
+    # and genre, and to structure artist names according to group/duet/feature formatting.
     prompt = (
         f"Generate a JSON array with exactly {prompted_num} top tracks strictly from the {genre} genre "
         f"during the {category} decade, as officially recognized during that time. "
         f"Only include artists who were actively releasing original music during the actual {category} decade. "
         f"EXCLUDE all songs and artists from later decades, no matter how retro or nostalgic they sound. "
-        f"Do NOT include songs that were released after the {category} decade even if they emulate that style. "
         f"This includes modern actors or musicians doing 1960s-style songs — they must be excluded. "
         f"Only include songs first released in the {category} decade by artists from that era. "
         f"Genre must be clearly pop, as defined by contemporaneous classification (not modern re-labels). "
@@ -74,6 +85,7 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         "Do NOT include any modern or anachronistic examples. Return only a valid JSON array — no extra text."
     )
 
+    # === Step 3: Prepare headers and payload for the API call ===
     headers = {
         "Authorization": f"Bearer {XAI_API_KEY}",
         "Content-Type": "application/json"
@@ -85,57 +97,56 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         ],
         "model": "grok-2-latest",
         "stream": False,
-        "temperature": 0.3
+        "temperature": 0.3  # Low temperature for consistent output
     }
 
     try:
         logging.info("🎵 Requesting top track names from XAI...")
+        logging.info(
+            "🎵 Artist formatting guide: "
+            "'&' indicates an established group, "
+            "' and ' indicates a duet, and "
+            "' ft. ' indicates a featured artist."
+        )
 
-        # 🔍 DEBUG: Print the payload for troubleshooting
-        # print("📤 Payload being sent to XAI:")
-        # print(json.dumps(payload, indent=2))
-
+        # === Step 4: Send POST request to the XAI API ===
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
 
-        # 🔍 Print debug info on failure
+        # === Step 5: Handle bad HTTP responses ===
         if response.status_code != 200:
             logging.error(f"❌ XAI rejected the request with status {response.status_code}")
             logging.error(f"🧾 Response body: {response.text}")
             logging.error(f"📤 Payload sent: {json.dumps(payload, indent=2)}")
             response.raise_for_status()
 
-
-        response.raise_for_status()
+        # === Step 6: Parse returned JSON ===
         result = response.json()
-
         content = result["choices"][0]["message"]["content"]
-
         logging.debug(f"🧾 Raw content from XAI:\n{content}")
-
         tracks = json.loads(content)
 
-        # === Apply track filtering
+        # === Step 7: Filter hallucinated/bad tracks using local heuristics ===
         original_count = len(tracks)
+        # is_bad_track is a utility function that checks for empty fields, modern artists, or known bad mashups
         tracks = [t for t in tracks if not is_bad_track(t)]
         filtered_out = original_count - len(tracks)
 
         if filtered_out:
             logging.info(f"🧹 Filtered {filtered_out} hallucinated or invalid track(s) from XAI results.")
 
-        # === Trim to original num_tracks if buffer added more
+        # === Step 8: Trim to original requested count ===
         if len(tracks) > num_tracks:
             logging.info(f"✂️ Trimming {len(tracks)} → {num_tracks} tracks (after buffer and filtering)")
             tracks = tracks[:num_tracks]
         elif len(tracks) < num_tracks:
             logging.warning(f"⚠️ Only {len(tracks)} of {num_tracks} requested tracks survived filtering.")
 
-            # 🔚 Final summary
+        # === Step 9: Log final track list ===
         logging.info(f"✅ Final JSON contains {len(tracks)} valid track(s) after filtering and trimming.")
+        for idx, track in enumerate(tracks, start=1):
+            logging.info(f"{idx:2d}. 🎧 {track.get('trackName')} — {track.get('artistName')}")
 
-        for track in tracks:
-            logging.info(f"🎧 {track.get('trackName')} — {track.get('artistName')}")
-
-        # ✅ Wrap result before validating
+        # === Step 10: Wrap result with metadata and validate ===
         wrapped = {
             "language": language,
             "category": category,
@@ -148,6 +159,7 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
             return wrapped
         else:
             raise ValueError("XAI returned invalid track format.")
+
     except Exception as e:
         logging.error(f"❌ XAI call failed or unexpected response: {e}")
         raise

@@ -17,7 +17,7 @@ from backend.routers import router as json_router          # <-- NEW PACKAGE
 from backend.router_saved_files import router as save_router
 logging.basicConfig(
     level=logging.INFO  ,  # or WARNING in production
-    format='%(asctime)s [%(levelname)s] [%(module)s.%(funcName)s:%(lineno)d]: %(message)s',
+    format='[%(module)s.%(funcName)s:%(lineno)d]: %(message)s',
     force=True # ✅ Makes sure it's always respected
 )
 
