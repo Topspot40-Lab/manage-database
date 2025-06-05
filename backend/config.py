@@ -8,7 +8,8 @@ load_dotenv()
 
 # === Core Paths ===
 BASE_DIR = Path(__file__).resolve().parent.parent  # one level up from /backend
-TEST_JSON_DIR = BASE_DIR / "tests" / "json_tests" / "xai"
+TEST_JSON_DIR = BASE_DIR / "backend" / "tests" / "json_tests" / "xai"
+
 
 SCHEMA_PATH = BASE_DIR / "../schemas/track_schema.json"
 

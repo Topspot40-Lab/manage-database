@@ -10,7 +10,8 @@ from backend.services.xai_response_handler import parse_and_filter_tracks
 from backend.services.xai_api_client import fetch_xai_tracks
 from backend.config import TEST_FILE_NUMBER, TEST_JSON_DIR
 
-
+if TEST_FILE_NUMBER > 0:
+    test_file_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
 
 print(f"📂 Current working directory: {os.getcwd()}")
 
@@ -27,13 +28,13 @@ XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../schemas/track_schema.json")
 
-import inspect
-print(f"👀 CONFIRMATION: XAI_API_URL in use = {XAI_API_URL}")
-print("📁 Running from file:", inspect.getfile(inspect.currentframe()))
-if XAI_API_KEY:
-    print(f"🔑 Using XAI key ending in: {XAI_API_KEY[-4:]}")
-else:
-    print("🚫 XAI_API_KEY not found! Check your .env file or dotenv loading.")
+# import inspect
+# print(f"👀 CONFIRMATION: XAI_API_URL in use = {XAI_API_URL}")
+# print("📁 Running from file:", inspect.getfile(inspect.currentframe()))
+# if XAI_API_KEY:
+#     print(f"🔑 Using XAI key ending in: {XAI_API_KEY[-4:]}")
+# else:
+#     print("🚫 XAI_API_KEY not found! Check your .env file or dotenv loading.")
 
 
 
@@ -63,9 +64,16 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         test_file_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
         logging.info(f"🧪 Loading test data from {test_file_path}")
         try:
+            # inside the `if TEST_FILE_NUMBER > 0:` block
             with open(test_file_path, "r", encoding="utf-8") as test_file:
-                test_content = test_file.read()
-            tracks = parse_and_filter_tracks(test_content, num_tracks)
+                test_json = json.load(test_file)
+
+            raw_tracks = test_json.get("tracks", [])
+
+            # ✅ Encode it to a JSON string before parsing
+            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=True)
+
+
         except Exception as e:
             logging.error(f"❌ Failed to load test file: {e}")
     else:
@@ -75,7 +83,7 @@ def get_top_tracks_from_xai(category, genre, num_tracks, language):
         if isinstance(content, list):  # test mode returned list directly
             tracks = content
         else:
-            tracks = parse_and_filter_tracks(content, num_tracks)
+            tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
 
     return {
         "language": language,

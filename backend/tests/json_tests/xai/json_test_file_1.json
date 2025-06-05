@@ -1,27 +1,38 @@
-[
-  {
-    "rank": 1,
-    "trackName": "Sugar Town",
-    "artistName": "Four Tops"
+{
+  "expected": {
+    "numValidTracks": 1
   },
-  {
-    "rank": 2,
-    "trackName": "Bohemian Rhapsody",
-    "artistName": "The Beach Boys"
-  },
-  {
-    "rank": 3,
-    "trackName": "I Wanna Hold Your Hand",
-    "artistName": "The Beatles"
-  },
-  {
-    "rank": 4,
-    "trackName": "Hello",
-    "artistName": "The Supremes"
-  },
-  {
-    "rank": 5,
-    "trackName": "Don't Stop Believin'",
-    "artistName": "Zooey Deschanel"
-  }
-]
+  "expectedLogs": [
+    "🪤 Rejected mashup/fake combo: 'Sugar Town' by 'Four Tops'",
+    "🪤 Rejected mashup/fake combo: 'Bohemian Rhapsody' by 'The Beach Boys'",
+    "🪤 Rejected mashup/fake combo: 'Hello' by 'The Supremes'",
+    "🛑 Rejected modern artist: 'Zooey Deschanel'"
+  ],
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Sugar Town",
+      "artistName": "Four Tops"
+    },
+    {
+      "rank": 2,
+      "trackName": "Bohemian Rhapsody",
+      "artistName": "The Beach Boys"
+    },
+    {
+      "rank": 3,
+      "trackName": "I Wanna Hold Your Hand",
+      "artistName": "The Beatles"
+    },
+    {
+      "rank": 4,
+      "trackName": "Hello",
+      "artistName": "The Supremes"
+    },
+    {
+      "rank": 5,
+      "trackName": "Don't Stop Believin'",
+      "artistName": "Zooey Deschanel"
+    }
+  ]
+}

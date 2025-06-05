@@ -1,27 +1,39 @@
-[
-  {
-    "rank": 1,
-    "trackName": "Island Duet",
-    "artistName": "Paul Simon and Art Garfunkel"
+{
+  "expected": {
+    "numValidTracks": 5
   },
-  {
-    "rank": 2,
-    "trackName": "Country Harmony",
-    "artistName": "Tim McGraw & Faith Hill"
-  },
-  {
-    "rank": 3,
-    "trackName": "Love Ballad",
-    "artistName": "Sonny and Cher"
-  },
-  {
-    "rank": 4,
-    "trackName": "Soul Fire",
-    "artistName": "Sam & Dave"
-  },
-  {
-    "rank": 5,
-    "trackName": "Motown Magic",
-    "artistName": "Diana Ross and Lionel Richie"
-  }
-]
+  "expectedLogs": [
+    "👥 DUET detected: Paul Simon and Art Garfunkel",
+    "👥 DUET detected: Sonny and Cher",
+    "👥 DUET detected: Diana Ross and Lionel Richie",
+    "👥 GROUP detected: Sam & Dave",
+    "👥 GROUP detected: Tim McGraw & Faith Hill"
+  ],
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Island Duet",
+      "artistName": "Paul Simon and Art Garfunkel"
+    },
+    {
+      "rank": 2,
+      "trackName": "Country Harmony",
+      "artistName": "Tim McGraw & Faith Hill"
+    },
+    {
+      "rank": 3,
+      "trackName": "Love Ballad",
+      "artistName": "Sonny and Cher"
+    },
+    {
+      "rank": 4,
+      "trackName": "Soul Fire",
+      "artistName": "Sam & Dave"
+    },
+    {
+      "rank": 5,
+      "trackName": "Motown Magic",
+      "artistName": "Diana Ross and Lionel Richie"
+    }
+  ]
+}

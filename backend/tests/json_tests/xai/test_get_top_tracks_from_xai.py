@@ -4,6 +4,8 @@ import sys
 import logging
 import argparse
 from backend.services.xai_service import get_top_tracks_from_xai
+from backend.config import TEST_FILE_NUMBER, TEST_JSON_DIR
+from backend.tests.test_utils import capture_logs_while_running, load_expected_data
 
 # Setup logging
 logging.basicConfig(
@@ -12,10 +14,10 @@ logging.basicConfig(
     force=True
 )
 
-# Default CLI arguments
-args = argparse.Namespace(category="1960s", genre="rock", num_tracks=3)
+# Default CLI arguments (overridden when running from terminal)
+args = argparse.Namespace(category="1960s", genre="rock", num_tracks=5)
 
-# Allow CLI override if run directly (not during pytest)
+# CLI override if run directly
 if __name__ == "__main__" or "pytest" not in sys.modules:
     parser = argparse.ArgumentParser()
     parser.add_argument("--category", type=str, default="1960s", help="Decade/Category, e.g. '1960s'")
@@ -26,27 +28,37 @@ if __name__ == "__main__" or "pytest" not in sys.modules:
 def run_test():
     logging.info(f"🔍 TESTING: XAI for {args.num_tracks} tracks in {args.genre} during {args.category}")
 
-    data = get_top_tracks_from_xai(
+    # === Step 1: Run function and capture logs ===
+    result, logs = capture_logs_while_running(lambda: get_top_tracks_from_xai(
         category=args.category,
         genre=args.genre,
         language="English",
         num_tracks=args.num_tracks
-    )
+    ))
 
-    assert isinstance(data, dict)
-    assert "tracks" in data
-    assert len(data["tracks"]) == args.num_tracks
+    assert isinstance(result, dict), "Returned value is not a dictionary"
+    assert "tracks" in result, "'tracks' key missing in result"
+    actual_count = len(result["tracks"])
 
-    for track in data["tracks"]:
-        logging.info(
-            f"🎵 Rank {track.get('rank')}: {track.get('trackName')} by {track.get('artistName')} "
-            f"({track.get('yearReleased')})"
-        )
+    # === Step 2: Load expected values ===
+    test_file_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
+    expected_count, expected_logs = load_expected_data(test_file_path)
 
-# === Pytest-compatible test function ===
+    # === Step 3: Validate number of valid tracks ===
+    assert actual_count == expected_count, f"Expected {expected_count} valid tracks, got {actual_count}"
+
+    # === Step 4: Validate expected log entries ===
+    for expected_line in expected_logs:
+        assert expected_line in logs, f"Expected log not found:\n{expected_line}"
+
+    # === Optional: Print confirmed valid tracks ===
+    for track in result["tracks"]:
+        logging.info(f"🎵 Rank {track.get('rank')}: {track.get('trackName')} by {track.get('artistName')}")
+
+# === Pytest-compatible test ===
 def test_get_top_tracks_from_xai_pytest():
     run_test()
 
-# === Allow running directly from CLI ===
+# === CLI entrypoint ===
 if __name__ == "__main__":
     run_test()
