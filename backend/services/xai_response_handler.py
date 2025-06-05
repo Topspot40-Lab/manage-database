@@ -2,7 +2,7 @@
 
 import json
 import logging
-from utils.track_filters import is_bad_track
+from backend.utils.track_filters import is_bad_track
 
 def parse_and_filter_tracks(content, num_tracks):
     tracks = json.loads(content)

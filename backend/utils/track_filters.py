@@ -80,5 +80,23 @@ def is_bad_track(track: dict) -> bool:
     if is_fake_mashup(title, artist):
         return True
 
+    # Filter 4: Placeholder or generic names
+    placeholder_titles = {"unknown", "track name", "song title"}
+    title_lower = title.strip().lower()
+    if title_lower in placeholder_titles or "example" in title_lower or "placeholder" in title_lower:
+        logging.warning(f"⚠️ Rejected placeholder title: '{title}'")
+        return True
+
+
     # ✅ Passed all filters
     return False
+
+# ✅ Validates an entire track list (assumes each entry is a dict)
+def validate_tracks(tracks: list) -> list:
+    valid_tracks = []
+    for track in tracks:
+        if not is_bad_track(track):
+            valid_tracks.append(track)
+        else:
+            logging.warning(f"⛔ Invalid track skipped: {track}")
+    return valid_tracks
