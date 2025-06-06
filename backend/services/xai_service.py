@@ -21,8 +21,6 @@ load_dotenv()
 # Setup logging
 logger = logging.getLogger(__name__)
 
-
-
 # Constants
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
@@ -35,7 +33,6 @@ SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../schemas/track_schema.j
 #     print(f"🔑 Using XAI key ending in: {XAI_API_KEY[-4:]}")
 # else:
 #     print("🚫 XAI_API_KEY not found! Check your .env file or dotenv loading.")
-
 
 
 # Load schema once at startup
@@ -52,45 +49,74 @@ def validate_tracks(data):
         logging.error(f"❌ Schema validation failed: {e.message}")
         return False
 
+
 def get_top_tracks_from_xai(category, genre, num_tracks, language):
+    """
+    Generate a list of top tracks for the specified category (decade), genre, and language,
+    using XAI (e.g., Grok) to generate track data via prompt engineering.
+
+    If a test mode is active (TEST_FILE_NUMBER > 0), loads test data from a static JSON file
+    instead of making a live XAI API call.
+
+    Args:
+        category (str): e.g., "1960s"
+        genre (str): e.g., "Rock"
+        num_tracks (int): Number of top tracks to request
+        language (str): "English" or "Spanish" — affects XAI prompt language
+
+    Returns:
+        dict: A structured dictionary with keys: language, category, genre, and a list of tracks
+    """
+
+    # 🎯 Add a small buffer of extra tracks in the prompt in case some get filtered out
     buffer_size = 4 if num_tracks >= 40 else 1
+
+    # 🛠️ Build the XAI prompt string using helper
     prompt = build_track_prompt(category, genre, num_tracks, language, buffer_size)
 
     logging.info("🎵 Requesting top tracks from XAI...")
 
+    # 🪣 Initialize an empty list to hold parsed tracks
     tracks = []
 
+    # 🧪 If in test mode, load a static test file instead of calling the XAI API
     if TEST_FILE_NUMBER > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
         logging.info(f"🧪 Loading test data from {test_file_path}")
         try:
-            # inside the `if TEST_FILE_NUMBER > 0:` block
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
 
             raw_tracks = test_json.get("tracks", [])
 
-            # ✅ Encode it to a JSON string before parsing
+            # ✅ Convert to JSON string and parse using the same parser used for live results
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=True)
-
 
         except Exception as e:
             logging.error(f"❌ Failed to load test file: {e}")
+
+    # 🧠 Otherwise, make a real request to the XAI service
     else:
         logging.info("🎵 Requesting top tracks from XAI...")
+
+        # ⛳ Send the prompt to the XAI service and get a response
         content = fetch_xai_tracks(prompt)
 
-        if isinstance(content, list):  # test mode returned list directly
+        # 🧪 Normally XAI returns JSON to parse, but guard in case mocked list is returned
+        if isinstance(content, list):
             tracks = content
         else:
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
 
+    # 📦 Return all gathered info in a structured format
     return {
         "language": language,
         "category": category,
         "genre": genre,
         "tracks": tracks
     }
+
+
 def get_track_descriptions_from_xai(track_data, language, category, genre):
     """
     Adds 'intro' and 'detail' to each track. Returns updated full JSON structure.
@@ -135,7 +161,8 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
         }
         payload = {
             "messages": [
-                {"role": "system", "content": "You are an AI that strictly returns valid JSON arrays with no extra text."},
+                {"role": "system",
+                 "content": "You are an AI that strictly returns valid JSON arrays with no extra text."},
                 {"role": "user", "content": prompt}
             ],
             "model": "grok-2-latest",
@@ -164,6 +191,7 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
         "genre": genre,
         "tracks": tracks
     }
+
 
 def get_artist_description(artist_name: str, language: str = "English") -> str:
     """
