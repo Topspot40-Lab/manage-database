@@ -36,4 +36,5 @@ TEMPERATURE_BIO = 0.5      # Artist biography prompt temperature
 # -----------------------------------------------------------------------------
 # 🧪 (REMOVED) Test File Toggle – Now controlled via CLI
 # -----------------------------------------------------------------------------
-# TEST_FILE_NUMBER = int(os.getenv("TEST_FILE_NUMBER", 0))  # No longer needed
+TEST_FILE_NUMBER = 1
+
