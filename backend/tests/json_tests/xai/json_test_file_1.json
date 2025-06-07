@@ -1,38 +1,71 @@
 {
   "expected": {
-    "numValidTracks": 1
+    "numValidTracks": 10
   },
-  "expectedLogs": [
-    "🪤 Rejected mashup/fake combo: 'Sugar Town' by 'Four Tops'",
-    "🪤 Rejected mashup/fake combo: 'Bohemian Rhapsody' by 'The Beach Boys'",
-    "🪤 Rejected mashup/fake combo: 'Hello' by 'The Supremes'",
-    "🛑 Rejected modern artist: 'Zooey Deschanel'"
-  ],
+  "expectedLogs": [],
+  "language": "English",
+  "decade": "1960s",
+  "genre": "Folk",
   "tracks": [
     {
       "rank": 1,
-      "trackName": "Sugar Town",
-      "artistName": "Four Tops"
+      "trackName": "The Sound of Silence",
+      "artistName": "Simon & Garfunkel",
+      "yearReleased": 1965
     },
     {
       "rank": 2,
-      "trackName": "Bohemian Rhapsody",
-      "artistName": "The Beach Boys"
+      "trackName": "Blowin' in the Wind",
+      "artistName": "Bob Dylan",
+      "yearReleased": 1963
     },
     {
       "rank": 3,
-      "trackName": "I Wanna Hold Your Hand",
-      "artistName": "The Beatles"
+      "trackName": "If I Had a Hammer",
+      "artistName": "Peter, Paul and Mary",
+      "yearReleased": 1962
     },
     {
       "rank": 4,
-      "trackName": "Hello",
-      "artistName": "The Supremes"
+      "trackName": "Turn! Turn! Turn!",
+      "artistName": "The Byrds",
+      "yearReleased": 1965
     },
     {
       "rank": 5,
-      "trackName": "Don't Stop Believin'",
-      "artistName": "Zooey Deschanel"
+      "trackName": "Early Morning Rain",
+      "artistName": "Gordon Lightfoot",
+      "yearReleased": 1966
+    },
+    {
+      "rank": 6,
+      "trackName": "Where Have All the Flowers Gone?",
+      "artistName": "Joan Baez",
+      "yearReleased": 1963
+    },
+    {
+      "rank": 7,
+      "trackName": "Both Sides Now",
+      "artistName": "Judy Collins",
+      "yearReleased": 1967
+    },
+    {
+      "rank": 8,
+      "trackName": "Catch the Wind",
+      "artistName": "Donovan",
+      "yearReleased": 1965
+    },
+    {
+      "rank": 9,
+      "trackName": "Suzanne",
+      "artistName": "Leonard Cohen",
+      "yearReleased": 1968
+    },
+    {
+      "rank": 10,
+      "trackName": "There But for Fortune",
+      "artistName": "Phil Ochs",
+      "yearReleased": 1965
     }
   ]
 }

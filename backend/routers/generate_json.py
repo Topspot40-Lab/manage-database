@@ -15,12 +15,12 @@ from backend.services.xai_service import (
 from shared.filepaths import get_json_path
 from backend.services.track_generator import build_final_json  # ✅ fixed import
 
-logging.info("🫩 generate_json.py is now the OFFICIAL one ✅")
+logging.info("🪩 generate_json.py is now the OFFICIAL one ✅")
 
 router = APIRouter()
 
 class TrackRequest(BaseModel):
-    category: str = Field(..., description="Decade/category, e.g. '1960s'")
+    decade: str = Field(..., description="Decade, e.g. '1960s'")
     genre: str = Field(..., description="Genre, e.g. 'rock'")
     language: Literal["English", "Spanish"] = Field(..., description="Language used for TTS and descriptions")
     num_tracks: int = Field(..., ge=1, le=50, description="Number of tracks to generate (1–50)")
@@ -35,7 +35,7 @@ def generate_track_json(request: TrackRequest):
         # Step 1: Get raw track list from XAI
         logging.info("🔍 B. Calling get_top_tracks_from_xai")
         wrapped = get_top_tracks_from_xai(
-            category=request.category,
+            decade=request.decade,
             genre=request.genre,
             num_tracks=request.num_tracks,
             language=request.language
@@ -52,7 +52,7 @@ def generate_track_json(request: TrackRequest):
         enriched = get_track_descriptions_from_xai(
             track_data=wrapped,
             language=request.language,
-            category=request.category,
+            decade=request.decade,
             genre=request.genre
         )
 
@@ -60,7 +60,7 @@ def generate_track_json(request: TrackRequest):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
         # Step 3: Build final JSON structure
-        logging.info("🧱 E. Building final JSON with build_final_json")
+        logging.info("🗱 E. Building final JSON with build_final_json")
         final_json = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
@@ -68,8 +68,8 @@ def generate_track_json(request: TrackRequest):
         )
 
         # Step 4: Save to file
-        filepath = get_json_path(request.category, request.genre, request.language[:2])
-        logging.info(f"💾 F. Saving file to: {filepath}")
+        filepath = get_json_path(request.decade, request.genre, request.language[:2])
+        logging.info(f"📂 F. Saving file to: {filepath}")
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2)
 

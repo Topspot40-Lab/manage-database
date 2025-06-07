@@ -1,0 +1,73 @@
+{
+  "expected": {
+    "numValidTracks": 5
+  },
+  "expectedLogs": [
+    "🧹 Filtered 5 hallucinated or invalid track(s)."
+  ],
+  "language": "English",
+  "decade": "1960s",
+  "genre": "Folk",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "The Sound of Silence",
+      "artistName": "Simon & Garfunkel",
+      "yearReleased": 1965
+    },
+    {
+      "rank": 2,
+      "trackName": "Blowin' in the Wind",
+      "artistName": "Bob Dylan",
+      "yearReleased": 1963
+    },
+    {
+      "rank": 3,
+      "trackName": "Motion Sickness",
+      "artistName": "Phoebe Bridgers",
+      "yearReleased": 2020
+    },
+    {
+      "rank": 4,
+      "trackName": "Lost in My Mind",
+      "artistName": "The Head and the Heart",
+      "yearReleased": 2011
+    },
+    {
+      "rank": 5,
+      "trackName": "Meet Me in the Woods",
+      "artistName": "Lord Huron",
+      "yearReleased": 2015
+    },
+    {
+      "rank": 6,
+      "trackName": "Ophelia",
+      "artistName": "The Lumineers",
+      "yearReleased": 2016
+    },
+    {
+      "rank": 7,
+      "trackName": "Skinny Love",
+      "artistName": "Bon Iver",
+      "yearReleased": 2007
+    },
+    {
+      "rank": 8,
+      "trackName": "If I Had a Hammer",
+      "artistName": "Peter, Paul and Mary",
+      "yearReleased": 1962
+    },
+    {
+      "rank": 9,
+      "trackName": "Early Morning Rain",
+      "artistName": "Gordon Lightfoot",
+      "yearReleased": 1966
+    },
+    {
+      "rank": 10,
+      "trackName": "Suzanne",
+      "artistName": "Leonard Cohen",
+      "yearReleased": 1968
+    }
+  ]
+}

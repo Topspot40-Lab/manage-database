@@ -1,39 +1,77 @@
 {
   "expected": {
-    "numValidTracks": 5
+    "numValidTracks": 10
   },
   "expectedLogs": [
-    "👥 DUET detected: Paul Simon and Art Garfunkel",
-    "👥 DUET detected: Sonny and Cher",
-    "👥 DUET detected: Diana Ross and Lionel Richie",
-    "👥 GROUP detected: Sam & Dave",
-    "👥 GROUP detected: Tim McGraw & Faith Hill"
+    "👥 DUET detected: George Jones with Tammy Wynette",
+    "👥 DUET detected: Kenny Rogers with Dolly Parton",
+    "👥 DUET detected: Willie Nelson with Waylon Jennings",
+    "👥 DUET detected: Reba McEntire with Linda Davis",
+    "👥 DUET detected: James Taylor with Carly Simon"
   ],
+  "language": "English",
+  "decade": "1980s",
+  "genre": "Country",
   "tracks": [
     {
       "rank": 1,
-      "trackName": "Island Duet",
-      "artistName": "Simon and Art"
+      "trackName": "Islands in the Stream",
+      "artistName": "Kenny Rogers with Dolly Parton",
+      "yearReleased": 1983
     },
     {
       "rank": 2,
-      "trackName": "Country Harmony",
-      "artistName": "Tim McGraw & Faith Hill"
+      "trackName": "He Stopped Loving Her Today",
+      "artistName": "George Jones",
+      "yearReleased": 1980
     },
     {
       "rank": 3,
-      "trackName": "Love Ballad",
-      "artistName": "Sonny and Cher"
+      "trackName": "Luckenbach, Texas",
+      "artistName": "Willie Nelson with Waylon Jennings",
+      "yearReleased": 1982
     },
     {
       "rank": 4,
-      "trackName": "Soul Fire",
-      "artistName": "Sam & Dave"
+      "trackName": "Forever and Ever, Amen",
+      "artistName": "Randy Travis",
+      "yearReleased": 1987
     },
     {
       "rank": 5,
-      "trackName": "Motown Magic",
-      "artistName": "Diana Ross and Lionel Richie"
+      "trackName": "Does He Love You",
+      "artistName": "Reba McEntire with Linda Davis",
+      "yearReleased": 1984
+    },
+    {
+      "rank": 6,
+      "trackName": "Elvira",
+      "artistName": "The Oak Ridge Boys",
+      "yearReleased": 1981
+    },
+    {
+      "rank": 7,
+      "trackName": "Her Town Too",
+      "artistName": "James Taylor with Carly Simon",
+      "yearReleased": 1981
+    },
+    {
+      "rank": 8,
+      "trackName": "All My Rowdy Friends",
+      "artistName": "Hank Williams Jr.",
+      "yearReleased": 1984
+    },
+    {
+      "rank": 9,
+      "trackName": "Two Dozen Roses",
+      "artistName": "Shenandoah",
+      "yearReleased": 1988
+    },
+    {
+      "rank": 10,
+      "trackName": "Fishin' in the Dark",
+      "artistName": "Nitty Gritty Dirt Band",
+      "yearReleased": 1987
     }
   ]
 }

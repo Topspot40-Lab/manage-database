@@ -30,14 +30,14 @@ python backend/tests/json_tests/xai/test_get_top_tracks_from_xai.py \
 
 import sys
 import logging
-import argparse
+# import argparse
 from pathlib import Path
 
 # 🔍 Dynamically find the project root and inject it into sys.path
 full_path = Path(__file__).resolve()
 print("🧭 Full path to test file:", full_path)
-for i, parent in enumerate(full_path.parents[:6]):
-    print(f"parents[{i}] = {parent}")
+# for i, parent in enumerate(full_path.parents[:6]):
+#     print(f"parents[{i}] = {parent}")
 
 # 🔧 Correct project root (should contain the 'backend/' folder)
 project_root = full_path.parents[4]
@@ -57,18 +57,21 @@ from backend.config import TEST_JSON_DIR
 # ---------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [%(module)s.%(funcName)s]: %(message)s",
+    format="%(asctime)s [%(levelname)s]: %(message)s",
     force=True
 )
 
+logging.info(f"📁 Test started in: {__file__}")
 
 # ---------------------------------------------------------------------
 # 💡 Default test args (used if not running from CLI)
 # ---------------------------------------------------------------------
+import argparse
+
 args = argparse.Namespace(
-    category="1960s",
-    genre="rock",
-    num_tracks=5,
+    decade="1960s",
+    genre="folk",
+    num_tracks=10,
     test_file_number=1
 )
 
@@ -77,7 +80,7 @@ args = argparse.Namespace(
 # ---------------------------------------------------------------------
 if __name__ == "__main__" or "pytest" not in sys.modules:
     parser = argparse.ArgumentParser(description="Run XAI track test against a specific test JSON file")
-    parser.add_argument("--category", type=str, default="1960s", help="Decade or category (e.g., '1960s')")
+    parser.add_argument("--decade", type=str, default="1960s", help="Decade (e.g., '1960s')")
     parser.add_argument("--genre", type=str, default="rock", help="Music genre (e.g., 'rock')")
     parser.add_argument("--num_tracks", type=int, default=5, help="Number of top tracks to request")
     parser.add_argument("--test_file_number", type=int, default=1, help="Index of test file (e.g., 1 = json_test_file_1.json)")
@@ -88,11 +91,12 @@ if __name__ == "__main__" or "pytest" not in sys.modules:
 # 🔬 Core Test Function
 # ---------------------------------------------------------------------
 def run_test():
-    logging.info(f"🔍 TESTING: {args.num_tracks} tracks in {args.genre} ({args.category}) [Test File #{args.test_file_number}]")
+    logging.info(
+        f"🔍 TESTING: {args.num_tracks} tracks in {args.genre} ({args.decade}) [Test File #{args.test_file_number}]")
 
     # === Step 1: Call the function and capture logs
     result, logs = capture_logs_while_running(lambda: get_top_tracks_from_xai(
-        category=args.category,
+        decade=args.decade,  # ✅ This matches your argparse and the function signature
         genre=args.genre,
         language="English",
         num_tracks=args.num_tracks
@@ -116,9 +120,14 @@ def run_test():
     for expected_line in expected_logs:
         assert expected_line in logs, f"❌ Expected log line not found:\n{expected_line}"
 
-    # ✅ Step 6: Output summary
+    # ✅ Step 6: Output track summary
     for track in result["tracks"]:
         logging.info(f"🎵 Rank {track.get('rank')}: {track.get('trackName')} by {track.get('artistName')}")
+
+    # ✅ Step 7: Final summary with file info
+    test_file_name = f"json_test_file_{args.test_file_number}.json"
+    logging.info("✅ All validations passed for %s (%s - %s)", test_file_name, args.decade, args.genre)
+    print(f"\n✅ TEST PASSED: All validations completed successfully for file: {test_file_name}\n")
 
 
 # ---------------------------------------------------------------------

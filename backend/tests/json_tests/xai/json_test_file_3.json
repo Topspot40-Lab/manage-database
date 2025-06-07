@@ -1,27 +1,77 @@
-[
-  {
-    "rank": 1,
-    "trackName": "Golden Hour",
-    "artistName": "Elton John feat. Dua Lipa"
+{
+  "expected": {
+    "numValidTracks": 10
   },
-  {
-    "rank": 2,
-    "trackName": "Uptown Funk",
-    "artistName": "Bruno Mars ft. Mark Ronson"
-  },
-  {
-    "rank": 3,
-    "trackName": "Midnight Run",
-    "artistName": "Aretha Franklin ft. Otis Redding"
-  },
-  {
-    "rank": 4,
-    "trackName": "Classic Rock Revival",
-    "artistName": "The Who FEAT. The Rolling Stones"
-  },
-  {
-    "rank": 5,
-    "trackName": "Driver's License",
-    "artistName": "Carpenters"
-  }
-]
+  "expectedLogs": [
+    "👤 FEATURED detected: James Brown feat. Bobby Byrd",
+    "👤 FEATURED detected: Beyoncé feat. Jay-Z",
+    "👤 FEATURED detected: Brandy feat. Monica",
+    "👤 FEATURED detected: Usher feat. Lil Jon",
+    "👤 FEATURED detected: Mariah Carey feat. Boyz II Men"
+  ],
+  "language": "English",
+  "decade": "1990s",
+  "genre": "R&B",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "The Boy Is Mine",
+      "artistName": "Brandy feat. Monica",
+      "yearReleased": 1998
+    },
+    {
+      "rank": 2,
+      "trackName": "End of the Road",
+      "artistName": "Boyz II Men",
+      "yearReleased": 1992
+    },
+    {
+      "rank": 3,
+      "trackName": "Crazy in Love",
+      "artistName": "Beyoncé feat. Jay-Z",
+      "yearReleased": 1999
+    },
+    {
+      "rank": 4,
+      "trackName": "Always Be My Baby",
+      "artistName": "Mariah Carey feat. Boyz II Men",
+      "yearReleased": 1995
+    },
+    {
+      "rank": 5,
+      "trackName": "My Way",
+      "artistName": "Usher feat. Lil Jon",
+      "yearReleased": 1997
+    },
+    {
+      "rank": 6,
+      "trackName": "I Believe I Can Fly",
+      "artistName": "R. Kelly",
+      "yearReleased": 1996
+    },
+    {
+      "rank": 7,
+      "trackName": "On Bended Knee",
+      "artistName": "Boyz II Men",
+      "yearReleased": 1994
+    },
+    {
+      "rank": 8,
+      "trackName": "No Scrubs",
+      "artistName": "TLC",
+      "yearReleased": 1999
+    },
+    {
+      "rank": 9,
+      "trackName": "Return of the Mack",
+      "artistName": "Mark Morrison",
+      "yearReleased": 1996
+    },
+    {
+      "rank": 10,
+      "trackName": "I Got You (I Feel Good)",
+      "artistName": "James Brown feat. Bobby Byrd",
+      "yearReleased": 1993
+    }
+  ]
+}
