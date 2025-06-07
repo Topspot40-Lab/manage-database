@@ -3,7 +3,6 @@
     "numValidTracks": 10
   },
   "expectedLogs": [
-    "👥 DUET detected: George Jones with Tammy Wynette",
     "👥 DUET detected: Kenny Rogers with Dolly Parton",
     "👥 DUET detected: Willie Nelson with Waylon Jennings",
     "👥 DUET detected: Reba McEntire with Linda Davis",

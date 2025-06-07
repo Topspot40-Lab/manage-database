@@ -8,10 +8,7 @@ from dotenv import load_dotenv
 from backend.services.xai_prompt_builder import build_track_prompt
 from backend.services.xai_response_handler import parse_and_filter_tracks
 from backend.services.xai_api_client import fetch_xai_tracks
-from backend.config import TEST_FILE_NUMBER, TEST_JSON_DIR
-
-if TEST_FILE_NUMBER > 0:
-    test_file_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
+from backend.config import TEST_JSON_DIR
 
 print(f"📂 Current working directory: {os.getcwd()}")
 
@@ -39,14 +36,16 @@ def validate_tracks(data):
         logging.error(f"❌ Schema validation failed: {e.message}")
         return False
 
-def get_top_tracks_from_xai(decade, genre, num_tracks, language):
+def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
+
+
     buffer_size = 4 if num_tracks >= 40 else 1
     prompt = build_track_prompt(decade, genre, num_tracks, language, buffer_size)
     logging.info("🎵 Requesting top tracks from XAI...")
     tracks = []
 
-    if TEST_FILE_NUMBER > 0:
-        test_file_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
+    if test_file_number > 0:
+        test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
         logging.info(f"🧪 Loading test data from {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:

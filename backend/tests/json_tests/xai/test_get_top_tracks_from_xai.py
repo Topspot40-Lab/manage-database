@@ -28,6 +28,7 @@ python backend/tests/json_tests/xai/test_get_top_tracks_from_xai.py \
   --test_file_number 1
 """
 
+import json
 import sys
 import logging
 # import argparse
@@ -68,15 +69,9 @@ logging.info(f"📁 Test started in: {__file__}")
 # ---------------------------------------------------------------------
 import argparse
 
-args = argparse.Namespace(
-    decade="1960s",
-    genre="folk",
-    num_tracks=10,
-    test_file_number=1
-)
 
 # ---------------------------------------------------------------------
-# 🧪 CLI Argument Parsing
+# 🧪 CLI Argument Parsing or Fallback
 # ---------------------------------------------------------------------
 if __name__ == "__main__" or "pytest" not in sys.modules:
     parser = argparse.ArgumentParser(description="Run XAI track test against a specific test JSON file")
@@ -85,21 +80,42 @@ if __name__ == "__main__" or "pytest" not in sys.modules:
     parser.add_argument("--num_tracks", type=int, default=5, help="Number of top tracks to request")
     parser.add_argument("--test_file_number", type=int, default=1, help="Index of test file (e.g., 1 = json_test_file_1.json)")
     args = parser.parse_args()
-
+else:
+    # ✅ Default fallback values used by pytest
+    args = argparse.Namespace(
+        decade="1960s",
+        genre="folk",
+        num_tracks=10,
+        test_file_number=1
+    )
 
 # ---------------------------------------------------------------------
 # 🔬 Core Test Function
 # ---------------------------------------------------------------------
 def run_test():
+    # === Step 0: Load expectations early to get real metadata
+    test_file_path = TEST_JSON_DIR / f"json_test_file_{args.test_file_number}.json"
+    expected_count, expected_logs = load_expected_data(test_file_path)
+
+    # Load JSON to extract real genre/decade info for display
+    with open(test_file_path, "r", encoding="utf-8") as f:
+        test_json = json.load(f)
+        real_decade = test_json.get("category", args.decade)
+        real_genre = test_json.get("genre", args.genre)
+        real_num_tracks = len(test_json.get("tracks", []))
+
     logging.info(
-        f"🔍 TESTING: {args.num_tracks} tracks in {args.genre} ({args.decade}) [Test File #{args.test_file_number}]")
+        f"🔍 TESTING: {real_num_tracks} tracks in {real_genre} ({real_decade}) [Test File #{args.test_file_number}]"
+    )
+
 
     # === Step 1: Call the function and capture logs
     result, logs = capture_logs_while_running(lambda: get_top_tracks_from_xai(
-        decade=args.decade,  # ✅ This matches your argparse and the function signature
+        decade=args.decade,
         genre=args.genre,
         language="English",
-        num_tracks=args.num_tracks
+        num_tracks=args.num_tracks,
+        test_file_number=args.test_file_number  # ✅ <-- this is what forces TEST MODE
     ))
 
     # === Step 2: Validate structure
@@ -107,28 +123,24 @@ def run_test():
     assert "tracks" in result, "❌ Missing 'tracks' key in returned result"
     actual_count = len(result["tracks"])
 
-    # === Step 3: Load expectations
-    test_file_path = TEST_JSON_DIR / f"json_test_file_{args.test_file_number}.json"
-    expected_count, expected_logs = load_expected_data(test_file_path)
-
-    # === Step 4: Validate track count
+    # === Step 3: Validate track count
     assert actual_count == expected_count, (
         f"❌ Expected {expected_count} valid tracks, but got {actual_count}"
     )
 
-    # === Step 5: Validate logs
+    # === Step 4: Validate logs
+    logs_normalized = [line.lower() for line in logs.splitlines()]
     for expected_line in expected_logs:
-        assert expected_line in logs, f"❌ Expected log line not found:\n{expected_line}"
+        assert expected_line.lower() in logs_normalized, f"❌ Expected log line not found:\n{expected_line}"
 
-    # ✅ Step 6: Output track summary
+    # ✅ Step 5: Output track summary
     for track in result["tracks"]:
         logging.info(f"🎵 Rank {track.get('rank')}: {track.get('trackName')} by {track.get('artistName')}")
 
-    # ✅ Step 7: Final summary with file info
+    # ✅ Step 6: Final summary with file info
     test_file_name = f"json_test_file_{args.test_file_number}.json"
-    logging.info("✅ All validations passed for %s (%s - %s)", test_file_name, args.decade, args.genre)
+    logging.info("✅ All validations passed for %s (%s - %s)", test_file_name, real_decade, real_genre)
     print(f"\n✅ TEST PASSED: All validations completed successfully for file: {test_file_name}\n")
-
 
 # ---------------------------------------------------------------------
 # ✅ Pytest-Compatible Wrapper

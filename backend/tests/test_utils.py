@@ -42,30 +42,12 @@ def capture_logs_while_running(func):
 def load_expected_data(test_file_path: Path):
     """
     Load expected data for a test from a JSON file.
-
-    The test file must contain:
-      - "expected": {
-          "numValidTracks": <int>  # How many valid tracks we expect
-        }
-      - "expectedLogs": [
-          "...expected log message 1...",
-          "...expected log message 2..."
-        ]
-
-    This allows tests to validate not just the output but also the logs.
-
-    Args:
-        test_file_path (Path): Path to a test JSON file.
-
-    Returns:
-        tuple:
-            - expected_count (int): Number of valid tracks expected from XAI.
-            - expected_logs (List[str]): List of expected log strings.
     """
+    logging.info(f"🧪 Utils: Loading test data from {test_file_path}")  # ✅ ADD THIS LINE
+
     with open(test_file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Safely extract expected values
     expected_count = data.get("expected", {}).get("numValidTracks", 0)
     expected_logs = data.get("expectedLogs", [])
 
