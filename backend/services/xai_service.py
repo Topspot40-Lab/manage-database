@@ -2,13 +2,15 @@ import os
 import json
 import logging
 import requests
-from jsonschema import validate, ValidationError
+# from jsonschema import validate, ValidationError
 from dotenv import load_dotenv
 
 from backend.services.xai_prompt_builder import build_track_prompt
 from backend.services.xai_response_handler import parse_and_filter_tracks
 from backend.services.xai_api_client import fetch_xai_tracks
 from backend.config import TEST_JSON_DIR
+from utils.track_filters import validate_tracks
+
 
 print(f"📂 Current working directory: {os.getcwd()}")
 
@@ -27,18 +29,16 @@ SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../schemas/track_schema.j
 with open(SCHEMA_PATH, "r") as f:
     TRACK_SCHEMA = json.load(f)
 
-def validate_tracks(data):
-    """Validate the full wrapped track data against the schema."""
-    try:
-        validate(instance=data, schema=TRACK_SCHEMA)
-        return True
-    except ValidationError as e:
-        logging.error(f"❌ Schema validation failed: {e.message}")
-        return False
+# def validate_tracks(data):
+#     """Validate the full wrapped track data against the schema."""
+#     try:
+#         validate(instance=data, schema=TRACK_SCHEMA)
+#         return True
+#     except ValidationError as e:
+#         logging.error(f"❌ Schema validation failed: {e.message}")
+#         return False
 
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
-
-
     buffer_size = 4 if num_tracks >= 40 else 1
     prompt = build_track_prompt(decade, genre, num_tracks, language, buffer_size)
     logging.info("🎵 Requesting top tracks from XAI...")
@@ -46,27 +46,46 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
     if test_file_number > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
-        logging.info(f"🧪 Loading test data from {test_file_path}")
+        logging.info(f"🧪 TEST MODE ENABLED: Using {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
+            logging.info(f"📄 Loaded {len(raw_tracks)} test tracks from file.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=True)
         except Exception as e:
             logging.error(f"❌ Failed to load test file: {e}")
     else:
-        content = fetch_xai_tracks(prompt)
+        content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
+
+        logging.info(f"📦 Received content from XAI of type: {type(content).__name__}")
+
         if isinstance(content, list):
+            logging.info(f"✅ Received list of {len(content)} tracks directly from XAI.")
             tracks = content
-        else:
+        elif isinstance(content, str):
+            logging.info("🧾 Received string response. Attempting to parse...")
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
+        elif isinstance(content, dict):
+            logging.info(f"🧾 Received dict with keys: {list(content.keys())}")
+            raw_tracks = content.get("tracks", [])
+            if not isinstance(raw_tracks, list):
+                raise ValueError("❌ Expected 'tracks' key in XAI response to be a list.")
+            logging.info(f"✅ Extracted {len(raw_tracks)} tracks from 'tracks' key.")
+            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
+        else:
+            raise TypeError(f"❌ Unexpected content type from XAI: {type(content)}")
+
+    valid_tracks = validate_tracks(tracks)
+    logging.info(f"🧹 {len(valid_tracks)} valid tracks after filtering (out of {len(tracks)} total)")
 
     return {
         "language": language,
         "decade": decade,
         "genre": genre,
-        "tracks": tracks
+        "tracks": valid_tracks
     }
+
 
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     tracks = track_data if isinstance(track_data, list) else track_data.get("tracks", [])

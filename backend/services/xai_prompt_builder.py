@@ -1,5 +1,3 @@
-# backend/services/xai_prompt_builder.py
-
 def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
     prompted_num = num_tracks + buffer_size
     return (
@@ -16,9 +14,10 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
         "- 'Folk' should align with how the genre was understood in that time, avoiding modern indie-folk or retro imitations in early decades.\n"
         "Each entry must include: rank (integer), trackName (string), artistName (string), and yearReleased (integer). "
         "Format artistName based on the artist type:\n"
-        "- Use '&' or 'and' only for established, well-known groups from that decade (e.g., 'Simon & Garfunkel', 'Sonny & Cher').\n"
-        "- Use ' with ' to indicate two artists singing a duet (e.g., 'George Jones with Tammy Wynette').\n"
-        "- Use ' feat. ' to indicate a featured artist (e.g., 'James Brown feat. Bobby Byrd').\n"
+        "- Use '&' or 'and' only for **officially established duos or groups** from that decade (e.g., 'Simon & Garfunkel', 'Sonny & Cher').\n"
+        "- Use ' with ' to indicate a **duet**, where both artists are equally credited on the track (e.g., 'George Jones with Tammy Wynette').\n"
+        "- Use ' feat. ' to indicate a **featured artist**, who is not the main performer (e.g., 'James Brown feat. Bobby Byrd').\n"
+        "Be consistent in formatting. Do not invent group names or use multiple styles in one name.\n"
         "Include a few edge cases with each format to help test parsing logic.\n"
         "Return a valid JSON array only — no extra text."
     )

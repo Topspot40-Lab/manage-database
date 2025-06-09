@@ -81,7 +81,7 @@ def build_track_entry(base, request, spotify_data, now):
         "artist_name": artist_name_clean,
         "track_display_name": track_display_name,
         "genre": request.genre,
-        "decade": request.category,
+        "decade": request.decade,
         "spotify_track_id": spotify_data.get("spotify_track_id") if spotify_data else None,
         "spotify_artist_id": spotify_data.get("artist_id") if spotify_data else None,
         "mode_flag": mode_flag.value,
@@ -108,7 +108,7 @@ def build_ranking_entry(base, request, spotify_data, now):
         "artist_name": artist_name_clean,
         "spotify_track_id": spotify_data.get("spotify_track_id") if spotify_data else None,
         "genre": request.genre,
-        "decade": request.category,
+        "decade": request.decade,
         "tracklist": "TopSpot Autogen",
         "rank": base["rank"],
         "intro": base.get("intro"),
@@ -149,7 +149,7 @@ def build_final_json(enriched_tracks, request, now):
     final_json = {
         "core_tables": {
             "genre": [{"genre_name": request.genre}],
-            "decade": [{"decade_name": request.category}],
+            "decade": [{"decade_name": request.decade}],
             "artist": artists
         },
         "track_tables": {
@@ -160,7 +160,7 @@ def build_final_json(enriched_tracks, request, now):
                     "curator": "Mr. Ed",
                     "is_official": True,
                     "language": request.language[:2].lower(),
-                    "notes": f"Generated for {request.category} - {request.genre}",
+                    "notes": f"Generated for {request.decade} - {request.genre}",
                     "created_at": now
                 }
             ]

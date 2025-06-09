@@ -1,0 +1,229 @@
+{
+  "core_tables": {
+    "genre": [
+      {
+        "genre_name": "folk"
+      }
+    ],
+    "decade": [
+      {
+        "decade_name": "1980s"
+      }
+    ],
+    "artist": [
+      {
+        "artist_name": "The Fureys",
+        "spotify_artist_id": "1WHVWwMFnjB3oRcjr7nVPP",
+        "artist_artwork": "https://i.scdn.co/image/ab67616d0000b273a8a11442602047e6ce929df4",
+        "artist_description": "The Fureys, an Irish folk band formed in the 1970s, hail from Ballyfermot, Dublin, and were originally known as the Buskers. They gained international fame with hits like \"When You Were Sweet Sixteen\" and \"The Green Fields of France,\" blending traditional Irish music with their own compositions. The band, led by brothers Eddie and George Furey, has been celebrated for their emotive performances and contributions to Irish culture, earning them a special place in the hearts of fans worldwide.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "The Pogues",
+        "spotify_artist_id": "2wzMOQwNT6ZvVB4amvhFAH",
+        "artist_artwork": "https://i.scdn.co/image/066e909db6281a424881f7eb1fd11248050ed390",
+        "artist_description": "The Pogues, an Irish punk band formed in London in 1982, were known for blending traditional Irish folk with punk rock, creating a unique sound that captured audiences worldwide. Led by the charismatic Shane MacGowan, their most notable achievement was the 1987 hit \"Fairytale of New York,\" which has become a Christmas classic. Despite struggles with addiction and lineup changes, The Pogues left a lasting impact on music, influencing a wide range of artists and maintaining a dedicated fanbase.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Joni Mitchell",
+        "spotify_artist_id": "5hW4L92KnC6dX9t7tYM4Ve",
+        "artist_artwork": "https://i.scdn.co/image/68cfb061951dbd44c95422a54cb70baec0722ca3",
+        "artist_description": "Joni Mitchell, a Canadian singer-songwriter, is renowned for her contributions to folk and jazz music. Born in Alberta in 1943, she began her career in the late 1960s and is celebrated for albums like \"Blue\" and \"Court and Spark.\" Mitchell's innovative guitar tunings and deeply personal lyrics have earned her numerous Grammy Awards, and she was inducted into the Rock and Roll Hall of Fame in 1997.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Bob Dylan",
+        "spotify_artist_id": "74ASZWbe4lXaubB36ztrGX",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb791742524609864273747ef5",
+        "artist_description": "Bob Dylan, born Robert Allen Zimmerman in 1941 in Duluth, Minnesota, USA, is an iconic American singer-songwriter known for his profound influence on popular music and culture. His early career in the folk scene of the 1960s led to timeless hits like \"Blowin' in the Wind\" and \"The Times They Are a-Changin',\" earning him a Nobel Prize in Literature in 2016 for his poetic contributions to the American song tradition. Dylan's enigmatic persona and continuous reinvention have kept him relevant, with intriguing trivia such as changing his name to honor the poet Dylan Thomas and his rumored but unconfirmed marriage to Joan Baez.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "Peter, Paul",
+        "spotify_artist_id": "6yrBBtqX2gKCHCrZOYBDrB",
+        "artist_artwork": "https://i.scdn.co/image/8775d2330e168b1c4183a976afcf8bd529bd6d36",
+        "artist_description": "Peter, Paul, an American folk duo formed in the early 1960s, consists of Peter Yarrow and Paul Stookey, originally from New York. They rose to fame with hits like \"Puff, the Magic Dragon\" and were known for their involvement in the civil rights movement, often performing at benefit concerts. Both members have been honored with induction into the Songwriters Hall of Fame, reflecting their significant impact on American music and culture.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ]
+  },
+  "track_tables": {
+    "track": [
+      {
+        "track_name": "The Green Fields of France",
+        "artist_name": "The Fureys",
+        "track_display_name": "The Green Fields of France",
+        "genre": "folk",
+        "decade": "1980s",
+        "spotify_track_id": "1OKrTFOV4CLgJRJTMM0Flg",
+        "spotify_artist_id": "1WHVWwMFnjB3oRcjr7nVPP",
+        "mode_flag": 0,
+        "duration_ms": 357293,
+        "popularity": 45,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273a8a11442602047e6ce929df4",
+        "year_released": 1983,
+        "is_explicit": false,
+        "created_at": "2025-06-09T14:57:59.184398",
+        "detail": "This song, released in 1983, is a haunting reflection on the futility of war, penned by Eric Bogle. It tells the story of a young soldier's life cut short during World War I, narrated by a visitor to his grave. The track's emotional depth resonated deeply with audiences, leading to its widespread popularity across Ireland and beyond. Its impact was such that it became a staple in folk music circles, often performed at memorial services and events commemorating fallen soldiers. The song's ability to evoke empathy and reflection on the human cost of conflict has cemented its place in the hearts of many, making it a timeless piece of musical storytelling.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "Dirty Old Town",
+        "artist_name": "The Pogues",
+        "track_display_name": "Dirty Old Town",
+        "genre": "folk",
+        "decade": "1980s",
+        "spotify_track_id": "0qH487xSz8Z6Xk4kyOQkbG",
+        "spotify_artist_id": "2wzMOQwNT6ZvVB4amvhFAH",
+        "mode_flag": 0,
+        "duration_ms": 225426,
+        "popularity": 62,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2738dcbee93733dd5393e629653",
+        "year_released": 1985,
+        "is_explicit": false,
+        "created_at": "2025-06-09T14:57:59.184398",
+        "detail": "Originally written by Ewan MacColl in 1949, this song found new life when it was covered in 1985. It captures the essence of industrial towns, with its lyrics painting vivid images of soot-covered streets and the resilience of their inhabitants. The track's raw energy and storytelling prowess made it a favorite in pubs and at folk festivals, where it often inspired sing-alongs. Its influence extended beyond music, inspiring a sense of pride and nostalgia for working-class communities. The song's enduring popularity is a testament to its universal themes and the powerful way it connects listeners to the heart of urban life.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "Both Sides Now",
+        "artist_name": "Joni Mitchell",
+        "track_display_name": "Both Sides Now",
+        "genre": "folk",
+        "decade": "1980s",
+        "spotify_track_id": "3NW1YMA8kfNVTzGJCGBS8m",
+        "spotify_artist_id": "5hW4L92KnC6dX9t7tYM4Ve",
+        "mode_flag": 0,
+        "duration_ms": 273573,
+        "popularity": 63,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273d43c786431c6708e91d9b180",
+        "year_released": 1980,
+        "is_explicit": false,
+        "created_at": "2025-06-09T14:57:59.184398",
+        "detail": "First released in 1967, this track was re-recorded in 1980 with a fuller orchestral arrangement, showcasing the artist's evolving style and maturity. The song's introspective lyrics, which ponder the dualities of life, struck a chord with listeners, earning it critical acclaim and a place in the folk music canon. Its influence can be seen in the way it inspired countless other artists to explore similar themes of perspective and growth. The song's timeless message continues to resonate, reminding us to appreciate the multifaceted nature of our experiences.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "The Times They Are a-Changin'",
+        "artist_name": "Bob Dylan",
+        "track_display_name": "The Times They Are a-Changin'",
+        "genre": "folk",
+        "decade": "1980s",
+        "spotify_track_id": "52vA3CYKZqZVdQnzRrdZt6",
+        "spotify_artist_id": "74ASZWbe4lXaubB36ztrGX",
+        "mode_flag": 0,
+        "duration_ms": 192053,
+        "popularity": 74,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b812eed53f0d7e134fe446e",
+        "year_released": 1984,
+        "is_explicit": false,
+        "created_at": "2025-06-09T14:57:59.184398",
+        "detail": "Released in 1964, this song became an anthem for the civil rights and anti-war movements of the time. Its powerful lyrics, urging societal transformation, resonated with a generation eager for progress. The track's influence extended far beyond its initial release, inspiring activists and musicians alike. It remains a poignant reminder of the power of music to drive social change, its message as relevant today as it was decades ago. The song's enduring legacy is a testament to its ability to capture the zeitgeist of a pivotal moment in history.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "track_name": "Blowin' in the Wind",
+        "artist_name": "Peter, Paul",
+        "track_display_name": "Blowin' in the Wind",
+        "genre": "folk",
+        "decade": "1980s",
+        "spotify_track_id": "62Yu8QL1g9pdbvN4XL9Rah",
+        "spotify_artist_id": "6yrBBtqX2gKCHCrZOYBDrB",
+        "mode_flag": 0,
+        "duration_ms": 177360,
+        "popularity": 56,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2739239355346a8804ea5b362e3",
+        "year_released": 1986,
+        "is_explicit": false,
+        "created_at": "2025-06-09T14:57:59.184398",
+        "detail": "Originally written by Bob Dylan in 1962, this song was popularized by Peter, Paul and Mary in 1963, becoming a symbol of the folk revival. Its simple yet profound lyrics, questioning the nature of peace and freedom, struck a chord with audiences worldwide. The track's success helped propel the trio to fame and cemented its place in the folk music hall of fame. Its influence can be seen in the way it inspired a generation to engage with social issues, its message of hope and inquiry resonating across decades. The song's enduring popularity is a testament to its universal appeal and the power of its message.",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 1980s - folk",
+        "created_at": "2025-06-09T14:57:59.184398"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "track_ranking": [
+      {
+        "track_name": "The Green Fields of France",
+        "artist_name": "The Fureys",
+        "spotify_track_id": "1OKrTFOV4CLgJRJTMM0Flg",
+        "genre": "folk",
+        "decade": "1980s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 1,
+        "intro": "Kicking off at number 1 from the 1980s, the folk masterpiece 'The Green Fields of France' by The Fureys invites you into a poignant journey through history.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-09"
+      },
+      {
+        "track_name": "Dirty Old Town",
+        "artist_name": "The Pogues",
+        "spotify_track_id": "0qH487xSz8Z6Xk4kyOQkbG",
+        "genre": "folk",
+        "decade": "1980s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 2,
+        "intro": "Coming in at number 2, the 1980s folk classic 'Dirty Old Town' by The Pogues brings the gritty charm of urban life to the forefront.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-09"
+      },
+      {
+        "track_name": "Both Sides Now",
+        "artist_name": "Joni Mitchell",
+        "spotify_track_id": "3NW1YMA8kfNVTzGJCGBS8m",
+        "genre": "folk",
+        "decade": "1980s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 3,
+        "intro": "At number 3, dive into the 1980s folk gem 'Both Sides Now' by Joni Mitchell, a song that explores life's complexities with poetic grace.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-09"
+      },
+      {
+        "track_name": "The Times They Are a-Changin'",
+        "artist_name": "Bob Dylan",
+        "spotify_track_id": "52vA3CYKZqZVdQnzRrdZt6",
+        "genre": "folk",
+        "decade": "1980s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 4,
+        "intro": "Landing at number 4, the 1980s folk anthem 'The Times They Are a-Changin'' by Bob Dylan captures the spirit of an era demanding change.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-09"
+      },
+      {
+        "track_name": "Blowin' in the Wind",
+        "artist_name": "Peter, Paul and Mary",
+        "spotify_track_id": "62Yu8QL1g9pdbvN4XL9Rah",
+        "genre": "folk",
+        "decade": "1980s",
+        "tracklist": "TopSpot Autogen",
+        "rank": 5,
+        "intro": "Rounding out the top 5, the 1980s folk favorite 'Blowin' in the Wind' by Peter, Paul and Mary asks timeless questions with a gentle melody.",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-09"
+      }
+    ]
+  }
+}

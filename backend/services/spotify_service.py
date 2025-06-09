@@ -47,30 +47,22 @@ def get_spotify_client():
 # ✅ Determine mode_flag and featured artist
 def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[ModeFlag, Optional[str]]:
     name_lower = artist_name.lower()
-    is_duet = " and " in name_lower
-    is_feature = " ft. " in name_lower or "feat." in name_lower
-    is_group = "&" in artist_name
+
+    is_duet = " with " in name_lower
+    is_feature = " feat." in name_lower or " featuring " in name_lower
+    # ➕ NEW: default all others to SOLO unless proven otherwise
 
     mode_flag = ModeFlag.SOLO
     featured_artist_id = None
 
-    if len(artist_list) > 1:
-        second_artist = artist_list[1]
-        featured_artist_id = second_artist["id"]
-
-        if is_feature:
-            mode_flag = ModeFlag.FEATURED
-        elif is_duet:
-            mode_flag = ModeFlag.DUET
-        elif is_group:
-            mode_flag = ModeFlag.SOLO
+    if is_feature and len(artist_list) > 1:
+        mode_flag = ModeFlag.FEATURED
+        featured_artist_id = artist_list[1]["id"]
+    elif is_duet and len(artist_list) > 1:
+        mode_flag = ModeFlag.DUET
+        featured_artist_id = artist_list[1]["id"]
     else:
-        if is_duet or is_feature:
-            logging.warning(
-                f"❗ '{artist_name}' suggests duet or feature, but only one Spotify artist found: {[a['name'] for a in artist_list]}"
-            )
         mode_flag = ModeFlag.SOLO
-        featured_artist_id = None
 
     logging.info(f"🎙️ Detected mode_flag: {mode_flag.name} ({mode_flag.value})")
     return mode_flag, featured_artist_id

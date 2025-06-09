@@ -19,10 +19,32 @@ REQUIRED_FIELDS = [
 
 # Add alias mappings for renamed artists or known edge cases
 ARTIST_NAME_ALIASES = {
+    # ✅ Legacy group name → modern Spotify name
     "Dixie Chicks": "The Chicks",
-    "Prince": "The Artist Formerly Known as Prince",
-    # Add more here as needed
+
+    # ✅ Artist aliases or rebrands
+    "The Artist Formerly Known as Prince": "Prince",
+
+    # ✅ Duets often filed under solo artist
+    "Garth Brooks & Trisha Yearwood": "Garth Brooks",
+    "Tim McGraw with Faith Hill": "Tim McGraw",
+    "George Jones and Tammy Wynette": "George Jones",
+    "Paul Simon and Art Garfunkel": "Simon and Garfunkel",
+    "Simon and Garfunkel": "Simon and Garfunkel",  # for completeness
+
+    # ✅ Avoid group misinterpretation
+    "Elton John & Dua Lipa": "Elton John",
+    "Brooks & Dunn": "Brooks & Dunn",  # don't change this one
+    "Huey Lewis and the News": "Huey Lewis & The News",
+
+
+    # ✅ Latin music edge case
+    "Selena y Los Dinos": "Selena",
+
+    # ✅ Just in case "The Chicks" are the name used already
+    "The Chicks": "The Chicks",
 }
+
 
 def normalize_name(name: str) -> str:
     """

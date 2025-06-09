@@ -8,13 +8,12 @@ from backend.config import (
     XAI_API_URL,
     DEFAULT_XAI_MODEL,
     TEMPERATURE_DEFAULT,
-    TEST_FILE_NUMBER,
     TEST_JSON_DIR
 )
 
-def fetch_xai_tracks(prompt):
-    if TEST_FILE_NUMBER > 0:
-        test_path = TEST_JSON_DIR / f"json_test_file_{TEST_FILE_NUMBER}.json"
+def fetch_xai_tracks(prompt, test_file_number=0):
+    if test_file_number > 0:
+        test_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
         logging.warning(f"🧪 TEST MODE ENABLED: Using {test_path}")
         with open(test_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -42,3 +41,4 @@ def fetch_xai_tracks(prompt):
 
     content = response.json()["choices"][0]["message"]["content"]
     return content
+

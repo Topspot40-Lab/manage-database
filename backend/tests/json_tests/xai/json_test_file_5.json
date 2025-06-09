@@ -1,0 +1,65 @@
+{
+  "genre": "jazz",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Summertime",
+      "artistName": "Ella Fitzgerald & Louis Armstrong",
+      "yearReleased": 1957
+    },
+    {
+      "rank": 2,
+      "trackName": "In the Wee Small Hours of the Morning",
+      "artistName": "Frank Sinatra with Nelson Riddle",
+      "yearReleased": 1955
+    },
+    {
+      "rank": 3,
+      "trackName": "Fly Me to the Moon",
+      "artistName": "Frank Sinatra feat. Count Basie",
+      "yearReleased": 1964
+    },
+    {
+      "rank": 4,
+      "trackName": "Take Five",
+      "artistName": "Dave Brubeck",
+      "yearReleased": 1959
+    },
+    {
+      "rank": 5,
+      "trackName": "Moanin'",
+      "artistName": "Art Blakey & The Jazz Messengers",
+      "yearReleased": 1958
+    },
+    {
+      "rank": 6,
+      "trackName": "My Funny Valentine",
+      "artistName": "Chet Baker with Gerry Mulligan",
+      "yearReleased": 1956
+    },
+    {
+      "rank": 7,
+      "trackName": "Round Midnight",
+      "artistName": "Thelonious Monk with John Coltrane",
+      "yearReleased": 1957
+    },
+    {
+      "rank": 8,
+      "trackName": "Cheek to Cheek",
+      "artistName": "Fred Astaire feat. Oscar Peterson",
+      "yearReleased": 1954
+    },
+    {
+      "rank": 9,
+      "trackName": "All the Things You Are",
+      "artistName": "Oscar Peterson",
+      "yearReleased": 1952
+    },
+    {
+      "rank": 10,
+      "trackName": "Autumn Leaves",
+      "artistName": "Nat King Cole with George Shearing",
+      "yearReleased": 1956
+    }
+  ]
+}
