@@ -60,25 +60,32 @@ def process_artist(base, spotify_data, seen_artists, description_cache, language
     seen_artists[artist_name_clean] = True
     return artist_entry
 
-
 def build_track_entry(base, request, spotify_data, now):
     artist_name_raw = base["artistName"]
     track_name_raw = base["trackName"]
 
-    artist_name_clean, _ = parse_featured_artists(artist_name_raw)
+    # Split out main and featured/duet artist
+    artist_name_clean, featured_artist_name = parse_featured_artists(artist_name_raw)
     artist_name_clean = normalize_name(artist_name_clean)
     track_name_clean = normalize_name(track_name_raw)
 
-    mode_flag, featured_artist_id = determine_mode_flag(artist_name_raw, spotify_data.get("artistNameCandidates", []))
+    # Determine mode (SOLO, DUET, FEATURED, etc.)
+    mode_flag, featured_artist_id = determine_mode_flag(
+        artist_name_raw, spotify_data.get("artistNameCandidates", [])
+    )
+
+    # Format display name for UI/console
     track_display_name = format_track_display_name(
         track_name_clean,
-        spotify_data.get("featured_artist_name"),
+        featured_artist_name,
         mode_flag.value
     )
 
     track_entry = {
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
+        "featured_artist": featured_artist_name if featured_artist_name else None,
+        "featured_artist_id": featured_artist_id,
         "track_display_name": track_display_name,
         "genre": request.genre,
         "decade": request.decade,
@@ -97,6 +104,8 @@ def build_track_entry(base, request, spotify_data, now):
     }
 
     logging.debug(f"🎵 Track entry built: {track_entry}")
+    logging.debug(f"🎯 Final entry for '{track_display_name}': mode={mode_flag.name}, featured_id={featured_artist_id}")
+
     return track_entry
 
 def build_ranking_entry(base, request, spotify_data, now):
@@ -118,7 +127,6 @@ def build_ranking_entry(base, request, spotify_data, now):
 
     logging.debug(f"📊 Ranking entry built: {ranking_entry}")
     return ranking_entry
-
 def build_final_json(enriched_tracks, request, now):
     seen_artists = {}
     description_cache = {}
@@ -129,6 +137,7 @@ def build_final_json(enriched_tracks, request, now):
     for base in enriched_tracks:
         spotify_data = fetch_and_validate_tracks(base)
 
+        # 🧑 Main artist processing
         artist_entry = process_artist(
             base=base,
             spotify_data=spotify_data,
@@ -140,6 +149,26 @@ def build_final_json(enriched_tracks, request, now):
         if artist_entry:
             artists.append(artist_entry)
 
+        # 🎤 Featured artist processing (if present)
+        featured_artist_id = spotify_data.get("featured_artist_id")
+        featured_artist_name = base.get("featured_artist") or spotify_data.get("featured_artist_name")
+
+        if featured_artist_id and featured_artist_name:
+            featured_name_clean = normalize_name(featured_artist_name)
+            if featured_name_clean not in seen_artists:
+                logging.info(f"🎤 Adding featured artist: {featured_name_clean}")
+                featured_artist_entry = {
+                    "artist_name": featured_name_clean,
+                    "spotify_artist_id": featured_artist_id,
+                    "artist_artwork": None,
+                    "artist_description": "No biography available at this time.",
+                    "artist_mp3_url": "tts/detail_unavailable.mp3",
+                    "not_on_spotify": False
+                }
+                artists.append(featured_artist_entry)
+                seen_artists[featured_name_clean] = True
+
+        # 🎵 Track + Ranking processing
         track_entry = build_track_entry(base, request, spotify_data, now)
         ranking_entry = build_ranking_entry(base, request, spotify_data, now)
 

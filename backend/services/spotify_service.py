@@ -7,6 +7,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pathlib import Path
 
+
+
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -23,7 +25,7 @@ def format_track_display_name(track_name: str, featured_artist_name: Optional[st
     if mode_flag == 0 or not featured_artist_name:
         return track_name
     elif mode_flag == 2:  # DUET
-        return f"{track_name} and {featured_artist_name}"
+        return f"{track_name} WITH {featured_artist_name}"
     elif mode_flag == 3:  # FEATURED
         return f"{track_name} ft. {featured_artist_name}"
     else:
@@ -52,7 +54,7 @@ def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[Mode
     is_feature = " feat." in name_lower or " featuring " in name_lower
     # ➕ NEW: default all others to SOLO unless proven otherwise
 
-    mode_flag = ModeFlag.SOLO
+    # mode_flag = ModeFlag.SOLO
     featured_artist_id = None
 
     if is_feature and len(artist_list) > 1:
@@ -80,28 +82,40 @@ def get_spotify_data(track_name: str, artist_name: str):
 
         for track in results["tracks"]["items"]:
             artist_list = track["artists"]
-            result_artist = artist_list[0]["name"].lower().strip()
             expected_artist = artist_name.lower().strip()
 
+            # ✅ Check if expected artist appears anywhere in the artist list
+            matched_artist = next(
+                (artist for artist in artist_list if expected_artist in artist["name"].lower()), None
+            )
+
             logging.debug("🎧 Checking Spotify match:")
-            logging.debug(f"    🟢 result_artist:   '{result_artist}'")
             logging.debug(f"    🟡 expected_artist: '{expected_artist}'")
             logging.debug(f"    🎭 Full artist list: {[a['name'] for a in artist_list]}")
 
-            if expected_artist in result_artist or result_artist in expected_artist:
-                artist_id = artist_list[0]["id"]
-                mode_flag_enum, featured_artist_id = determine_mode_flag(artist_name, artist_list)
+            if matched_artist:
+                artist_id = matched_artist["id"]
+                mode_flag_enum, _ = determine_mode_flag(artist_name, artist_list)
 
                 artist_data = sp.artist(artist_id)
                 artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
 
                 logging.info(f"✅ Matched Spotify track: {track['name']}")
 
+                # ✅ NEW: Find the featured artist (not the matched one)
+                featured_artist = next(
+                    (artist for artist in artist_list if artist["id"] != artist_id),
+                    None
+                )
+
+                featured_artist_id = featured_artist["id"] if featured_artist else None
+                featured_artist_name = featured_artist["name"] if featured_artist else None
+
                 return {
                     "spotify_track_id": track["id"],
                     "artist_id": artist_id,
                     "featured_artist_id": featured_artist_id,
-                    "featured_artist_name": artist_list[1]["name"] if len(artist_list) > 1 else None,
+                    "featured_artist_name": featured_artist_name,
                     "mode_flag": mode_flag_enum.value,
                     "duration_ms": track["duration_ms"],
                     "popularity": track["popularity"],
@@ -111,7 +125,7 @@ def get_spotify_data(track_name: str, artist_name: str):
                 }
 
             else:
-                logging.warning(f"🪤 Rejected: '{result_artist}' is not a match for '{expected_artist}'")
+                logging.warning(f"🪤 Rejected: {[a['name'] for a in artist_list]} does not include '{artist_name}'")
 
         logging.warning(f"🚫 No acceptable Spotify match found for: {track_name} by {artist_name}")
         return {}
@@ -119,3 +133,4 @@ def get_spotify_data(track_name: str, artist_name: str):
     except Exception as e:
         logging.error(f"Spotify query error for {track_name} - {artist_name}: {e}")
         return {}
+
