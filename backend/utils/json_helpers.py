@@ -2,6 +2,9 @@ import os, json
 import re
 import unicodedata
 from typing import Dict
+import logging
+
+logger = logging.getLogger(__name__)
 
 JSON_BASE = "data/json_files/genredecade"
 

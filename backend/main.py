@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from fastapi import FastAPI
 import logging
+from backend.logging_setup import setup_logging
 
 # ---------------------------------------------------------------------------
 # 1) Ensure the project root is at the front of sys.path
@@ -21,7 +22,8 @@ logging.basicConfig(
     force=True # ✅ Makes sure it's always respected
 )
 
-
+# Set up logging BEFORE other imports or logic
+setup_logging()
 
 # ---------------------------------------------------------------------------
 # 4) Build the FastAPI app and plug everything in

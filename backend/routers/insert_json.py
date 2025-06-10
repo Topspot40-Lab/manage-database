@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException, Path, Depends
 from sqlmodel import Session, select
 import logging
+import sqlalchemy
 
 from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
 from utils.json_helpers import load_json
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["json-insert"])
 
@@ -14,27 +17,25 @@ def insert_json_to_db(
     genre: str = Path(...),
     db: Session = Depends(get_db)
 ):
-
-    import sqlalchemy
-    print(f"✯ Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
+    logger.info(f"Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
 
     # === 1. Load JSON File ===
     try:
         filename = f"{decade}_{genre}_en.json"
         data = load_json(decade, filename)
-        logging.info(f"📂 Loaded JSON file: {filename}")
+        logger.info(f"Loaded JSON file: {filename}")
     except FileNotFoundError:
-        logging.error("❌ JSON file not found")
+        logger.error("JSON file not found")
         raise HTTPException(404, "JSON file not found")
     except Exception as e:
-        logging.error(f"❌ Error reading JSON: {e}")
+        logger.error(f"Error reading JSON: {e}")
         raise HTTPException(500, f"Read error: {e}")
 
     try:
         # === 2. Handle Genre and Decade ===
         genre_name = data["core_tables"]["genre"][0]["genre_name"]
         decade_name = data["core_tables"]["decade"][0]["decade_name"]
-        logging.info(f"🎼 Genre: {genre_name}, 📅 Decade: {decade_name}")
+        logger.info(f"Genre: {genre_name}, Decade: {decade_name}")
 
         genre = db.exec(select(Genre).where(Genre.genre_name == genre_name)).first()
         if not genre:
@@ -42,7 +43,7 @@ def insert_json_to_db(
             db.add(genre)
             db.commit()
             db.refresh(genre)
-            logging.info(f"✅ Added new genre: {genre_name}")
+            logger.info(f"Added new genre: {genre_name}")
 
         decade = db.exec(select(Decade).where(Decade.decade_name == decade_name)).first()
         if not decade:
@@ -50,7 +51,7 @@ def insert_json_to_db(
             db.add(decade)
             db.commit()
             db.refresh(decade)
-            logging.info(f"✅ Added new decade: {decade_name}")
+            logger.info(f"Added new decade: {decade_name}")
 
         decade_genre = db.exec(
             select(DecadeGenre).where(
@@ -63,7 +64,7 @@ def insert_json_to_db(
             db.add(decade_genre)
             db.commit()
             db.refresh(decade_genre)
-            logging.info("🔗 Linked DecadeGenre")
+            logger.info("Linked DecadeGenre")
 
         # === 3. Deduplicate Artists in Memory ===
         unique_artists = []
@@ -99,12 +100,11 @@ def insert_json_to_db(
             key_id = sid if sid else None
             key_name = artist_name
 
-            # Check if this artist already exists by ID or name
             if (key_id and key_id in artist_map) or (key_name in artist_map):
                 continue
 
             if not sid and not a.get("not_on_spotify", False):
-                logging.warning(f"⚠️ Missing spotify_artist_id for artist: {artist_name}")
+                logger.warning(f"Missing spotify_artist_id for artist: {artist_name}")
                 raise HTTPException(400, f"Missing spotify_artist_id for artist: {artist_name}")
 
             artist = Artist(
@@ -117,17 +117,12 @@ def insert_json_to_db(
             db.add(artist)
             db.commit()
             db.refresh(artist)
-            logging.info(f"🎤 Added artist: {artist_name}")
+            logger.info(f"Added artist: {artist_name}")
 
-            # ✅ Insert all relevant keys for lookups
             key = sid if sid else artist_name
-            artist_map[artist_name] = artist.id  # always map name
+            artist_map[artist_name] = artist.id
             if sid:
-                artist_map[sid] = artist.id  # map ID if available
-            artist_map[key] = artist.id  # map whichever key will be used later
-
-            # ✅ Also map whatever key was used to deduplicate
-            key = sid if sid else artist_name
+                artist_map[sid] = artist.id
             artist_map[key] = artist.id
 
         for key, artist_id in artist_map.items():
@@ -146,8 +141,8 @@ def insert_json_to_db(
         for t in data["track_tables"]["track"]:
             sid = t.get("spotify_artist_id")
             artist_key = sid or t["artist_name"]
-            logging.info(f"🔍 Artist key: {artist_key}")
-            logging.info(f"🗜 All artist_map keys: {list(artist_map.keys())}")
+            logger.info(f"Artist key: {artist_key}")
+            logger.info(f"All artist_map keys: {list(artist_map.keys())}")
 
             artist_id = artist_map.get(artist_key)
             if not artist_id:
@@ -170,7 +165,7 @@ def insert_json_to_db(
                 ).first()
 
             if existing_track:
-                logging.info(f"🔁 Updating track: {t['track_name']}")
+                logger.info(f"Updating track: {t['track_name']}")
                 existing_track.track_name = t["track_name"]
                 existing_track.track_display_name = t.get("track_display_name")
                 existing_track.artist_id = artist_id
@@ -184,7 +179,7 @@ def insert_json_to_db(
                 existing_track.detail = t.get("detail")
                 existing_track.detail_mp3_url = t.get("detail_mp3_url")
             else:
-                logging.info(f"➕ Adding track: {t['track_name']}")
+                logger.info(f"Adding track: {t['track_name']}")
                 db.add(Track(
                     track_name=t["track_name"],
                     track_display_name=t.get("track_display_name"),
@@ -223,7 +218,7 @@ def insert_json_to_db(
                 ).first()
 
             if not track:
-                logging.error(f"🚫 Track not found for ranking: {r['track_name']}")
+                logger.error(f"Track not found for ranking: {r['track_name']}")
                 raise HTTPException(500, f"Track not found for ranking: {r['track_name']}")
 
             existing_ranking = db.exec(
@@ -234,18 +229,18 @@ def insert_json_to_db(
                 )
             ).first()
 
-            logging.info(
-                f"🔍 Checking for existing ranking: track_id={track.id}, decade_genre_id={decade_genre.id}, tracklist_id=1")
+            logger.info(
+                f"Checking for existing ranking: track_id={track.id}, decade_genre_id={decade_genre.id}, tracklist_id=1")
 
             if existing_ranking:
-                logging.info(f"✅ Found existing ranking: ID={existing_ranking.id}")
-                logging.info(f"🔁 Updating ranking for: {r['track_name']}")
+                logger.info(f"Found existing ranking: ID={existing_ranking.id}")
+                logger.info(f"Updating ranking for: {r['track_name']}")
                 existing_ranking.ranking = r["rank"]
                 existing_ranking.intro = r.get("intro")
                 existing_ranking.intro_mp3_url = r.get("intro_mp3_url")
                 existing_ranking.ranking_date = r["ranking_date"]
             else:
-                logging.warning(f"🆕 No existing ranking found — will attempt to insert.")
+                logger.warning("No existing ranking found — will attempt to insert.")
                 db.add(TrackRanking(
                     track_id=track.id,
                     decade_genre_id=decade_genre.id,
@@ -256,14 +251,14 @@ def insert_json_to_db(
                     ranking_date=r["ranking_date"]
                 ))
 
-            logging.info(f"🏆 Ranked track: {r['track_name']} → #{r['rank']}")
+            logger.info(f"Ranked track: {r['track_name']} → #{r['rank']}")
 
         db.commit()
 
-        logging.info("✅ JSON import complete.")
+        logger.info("JSON import complete.")
         return {"status": "success", "message": f"Inserted {filename}"}
 
     except Exception as e:
         db.rollback()
-        logging.error(f"❌ DB error: {e}")
+        logger.error(f"DB error: {e}")
         raise HTTPException(500, f"DB error: {e}")

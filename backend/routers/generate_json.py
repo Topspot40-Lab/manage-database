@@ -13,9 +13,9 @@ from backend.services.xai_service import (
 )
 
 from shared.filepaths import get_json_path
-from backend.services.track_generator import build_final_json  # ✅ fixed import
+from backend.services.track_generator import build_final_json
 
-logging.info("🪩 generate_json.py is now the OFFICIAL one ✅")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -27,30 +27,29 @@ class TrackRequest(BaseModel):
 
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 def generate_track_json(request: TrackRequest, test_file_number: int = 0):
-
     try:
-        logging.info("✅ A. Start generate_track_json")
+        logger.info("A. Start generate_track_json")
 
         now = datetime.now().isoformat()
 
         # Step 1: Get raw track list from XAI
-        logging.info("🔍 B. Calling get_top_tracks_from_xai")
+        logger.info("B. Calling get_top_tracks_from_xai")
         wrapped = get_top_tracks_from_xai(
             decade=request.decade,
             genre=request.genre,
             num_tracks=request.num_tracks,
             language=request.language,
-            test_file_number=test_file_number  # ✅ Add this
+            test_file_number=test_file_number
         )
 
         if not wrapped or "tracks" not in wrapped:
             raise HTTPException(status_code=500, detail="Failed to retrieve track list from XAI")
 
         track_list = wrapped["tracks"]
-        logging.info(f"📦 C. Retrieved {len(track_list)} tracks from XAI")
+        logger.info(f"C. Retrieved {len(track_list)} tracks from XAI")
 
         # Step 2: Enrich descriptions
-        logging.info("🧠 D. Enriching with get_track_descriptions_from_xai")
+        logger.info("D. Enriching with get_track_descriptions_from_xai")
         enriched = get_track_descriptions_from_xai(
             track_data=wrapped,
             language=request.language,
@@ -62,7 +61,7 @@ def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
         # Step 3: Build final JSON structure
-        logging.info("🗱 E. Building final JSON with build_final_json")
+        logger.info("E. Building final JSON with build_final_json")
         final_json = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
@@ -71,19 +70,19 @@ def generate_track_json(request: TrackRequest, test_file_number: int = 0):
 
         # Step 4: Save to file
         filepath = get_json_path(request.decade, request.genre, request.language[:2])
-        logging.info(f"📂 F. Saving file to: {filepath}")
+        logger.info(f"F. Saving file to: {filepath}")
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2)
 
-        logging.info("✅ G. JSON creation complete!")
+        logger.info("G. JSON creation complete")
 
         return {
-            "message": "🎉 JSON created successfully",
+            "message": "JSON created successfully",
             "file": str(filepath),
             "version": "v3-official",
             "track_count": len(track_list)
         }
 
     except Exception as e:
-        logging.exception("🔥 Unexpected error in generate_track_json")
+        logger.exception("Unexpected error in generate_track_json")
         raise HTTPException(status_code=500, detail=f"Internal error: {e}")

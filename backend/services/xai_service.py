@@ -2,82 +2,65 @@ import os
 import json
 import logging
 import requests
-# from jsonschema import validate, ValidationError
 from dotenv import load_dotenv
 
 from backend.services.xai_prompt_builder import build_track_prompt
 from backend.services.xai_response_handler import parse_and_filter_tracks
 from backend.services.xai_api_client import fetch_xai_tracks
-from backend.config import TEST_JSON_DIR
+from backend.config import TEST_JSON_DIR, ENABLE_ARTIST_DESCRIPTION, ENABLE_TRACK_DESCRIPTION, ENABLE_RANK_INTRO
 from utils.track_filters import validate_tracks
-
-
-print(f"📂 Current working directory: {os.getcwd()}")
 
 # Load environment variables
 load_dotenv()
 
-# Setup logging
 logger = logging.getLogger(__name__)
 
-# Constants
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../schemas/track_schema.json")
 
-# Load schema once at startup
 with open(SCHEMA_PATH, "r") as f:
     TRACK_SCHEMA = json.load(f)
-
-# def validate_tracks(data):
-#     """Validate the full wrapped track data against the schema."""
-#     try:
-#         validate(instance=data, schema=TRACK_SCHEMA)
-#         return True
-#     except ValidationError as e:
-#         logging.error(f"❌ Schema validation failed: {e.message}")
-#         return False
 
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
     buffer_size = 4 if num_tracks >= 40 else 1
     prompt = build_track_prompt(decade, genre, num_tracks, language, buffer_size)
-    logging.info("🎵 Requesting top tracks from XAI...")
+    logger.info("[XAI] Requesting top tracks...")
     tracks = []
 
     if test_file_number > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
-        logging.info(f"🧪 TEST MODE ENABLED: Using {test_file_path}")
+        logger.info(f"[TEST] Using {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
-            logging.info(f"📄 Loaded {len(raw_tracks)} test tracks from file.")
+            logger.info(f"[TEST] Loaded {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=True)
         except Exception as e:
-            logging.error(f"❌ Failed to load test file: {e}")
+            logger.error(f"[ERROR] Failed to load test file: {e}")
     else:
         content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
-
-        logging.info(f"📦 Received content from XAI of type: {type(content).__name__}")
+        logger.info(f"[XAI] Response type: {type(content).__name__}")
 
         if isinstance(content, list):
-            logging.info(f"✅ Received list of {len(content)} tracks directly from XAI.")
+            logger.info(f"[XAI] Received {len(content)} tracks.")
             tracks = content
         elif isinstance(content, str):
-            logging.info("🧾 Received string response. Attempting to parse...")
+            logger.info("[XAI] Parsing string response...")
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
         elif isinstance(content, dict):
-            logging.info(f"🧾 Received dict with keys: {list(content.keys())}")
+            logger.info(f"[XAI] Dict keys: {list(content.keys())}")
             raw_tracks = content.get("tracks", [])
             if not isinstance(raw_tracks, list):
-                raise ValueError("❌ Expected 'tracks' key in XAI response to be a list.")
-            logging.info(f"✅ Extracted {len(raw_tracks)} tracks from 'tracks' key.")
+                raise ValueError("Expected 'tracks' to be a list.")
+            logger.info(f"[XAI] Extracted {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
         else:
-            raise TypeError(f"❌ Unexpected content type from XAI: {type(content)}")
+            raise TypeError(f"Unexpected content type: {type(content)}")
 
     valid_tracks = validate_tracks(tracks)
-    logging.info(f"🧹 {len(valid_tracks)} valid tracks after filtering (out of {len(tracks)} total)")
+    logger.info(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
 
     return {
         "language": language,
@@ -86,16 +69,24 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
         "tracks": valid_tracks
     }
 
-
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
+    if not ENABLE_TRACK_DESCRIPTION and not ENABLE_RANK_INTRO:
+        logger.info("[SKIP] Track description and intro generation disabled.")
+        return {
+            "language": language,
+            "decade": decade,
+            "genre": genre,
+            "tracks": track_data.get("tracks", track_data)
+        }
+
     tracks = track_data if isinstance(track_data, list) else track_data.get("tracks", [])
     batch_size = 10
     total = len(tracks)
-    logging.debug(f"📝 Processing {total} tracks in batches of {batch_size}...")
+    logger.debug(f"[BATCH] Processing {total} tracks in batches of {batch_size}...")
 
     for batch_index in range(0, total, batch_size):
         batch = tracks[batch_index:batch_index + batch_size]
-        logging.info(f"🔹 Processing batch {batch_index // batch_size + 1}")
+        logger.info(f"[BATCH] Processing batch {batch_index // batch_size + 1}")
 
         formatted_input = [
             {
@@ -104,20 +95,30 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
                 "genre": genre,
                 "trackName": t.get("trackName"),
                 "artistName": t.get("artistName")
-            }
-            for t in batch
+            } for t in batch
         ]
 
+        # Build prompt dynamically based on enabled flags
+        requested_fields = []
+        instructions = []
+
+        if ENABLE_RANK_INTRO:
+            requested_fields.append("intro")
+            instructions.append(
+                "Each 'intro' should be a short one-liner with rank, decade, genre, track name, and artist name."
+            )
+
+        if ENABLE_TRACK_DESCRIPTION:
+            requested_fields.append("detail")
+            instructions.append(
+                "Each 'detail' should be a narrative in Casey Kasem's style, avoiding repetition from the intro."
+            )
+
+        joined_fields = ", ".join(requested_fields)
         prompt = (
-            f"Generate an 'intro' and 'detail' field in {language} for each of the following tracks. "
-            "Each 'intro' should be a short, engaging one-liner that introduces the track, explicitly using the provided rank, decade, genre, track name, and artist name. "
-            "Ensure variety in sentence structure to avoid repetition. "
-            "Each 'detail' should be a rich, engaging narrative in the style of Casey Kasem, including interesting facts about the song, artist, year of release, and cultural impact. "
-            "The 'detail' field MUST NOT repeat the rank, decade, genre, track name, or artist name. "
-            "Format the response strictly as a JSON array with the same number of entries as provided. "
-            "Return only a valid JSON array with:\n"
-            "- 'intro'\n"
-            "- 'detail'\n"
+            f"Generate the following fields in {language}: {joined_fields}. "
+            + " ".join(instructions)
+            + " Return only a valid JSON array with the requested fields.\n"
             f"Tracks:\n{json.dumps(formatted_input, indent=2)}"
         )
 
@@ -125,10 +126,10 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             "Authorization": f"Bearer {XAI_API_KEY}",
             "Content-Type": "application/json"
         }
+
         payload = {
             "messages": [
-                {"role": "system",
-                 "content": "You are an AI that strictly returns valid JSON arrays with no extra text."},
+                {"role": "system", "content": "You are an AI that returns valid JSON arrays only."},
                 {"role": "user", "content": prompt}
             ],
             "model": "grok-2-latest",
@@ -145,7 +146,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             for i, desc in enumerate(batch_descriptions):
                 tracks[batch_index + i].update(desc)
         except Exception as e:
-            logging.error(f"❌ Failed to fetch descriptions from XAI: {e}")
+            logger.error(f"[XAI ERROR] Failed to fetch descriptions: {e}")
             continue
 
     return {
@@ -155,24 +156,26 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         "tracks": tracks
     }
 
+
 def get_artist_description(artist_name: str, language: str = "English") -> str:
+    if not ENABLE_ARTIST_DESCRIPTION:
+        logger.info(f"[SKIP] Artist description disabled for {artist_name}.")
+        return f"(Description disabled for {artist_name})"
+
     prompt = (
-        f"Write a short artist biography in {language} for the musician named '{artist_name}'. "
-        "Include their nationality, genre, early life or origin story, notable achievements, and any personal or cultural trivia of interest. "
-        "Keep it concise (2–3 sentences), engaging, and informative. Do not include any JSON formatting or tags—just return plain text."
+        f"Write a short artist biography in {language} for '{artist_name}'. "
+        "Include nationality, genre, early story, key achievements, and trivia. "
+        "Keep it short (2–3 sentences) with no formatting."
     )
 
     headers = {
-        "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
+        "Authorization": f"Bearer {XAI_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
         "messages": [
-            {
-                "role": "system",
-                "content": "You are an AI that returns short, plain-text artist biographies with no formatting or markup."
-            },
+            {"role": "system", "content": "You return plain-text artist bios only."},
             {"role": "user", "content": prompt}
         ],
         "model": "grok-2-latest",
@@ -180,36 +183,24 @@ def get_artist_description(artist_name: str, language: str = "English") -> str:
         "temperature": 0.5
     }
 
-    logging.debug(f"📨 Prompt sent to XAI:\n{json.dumps(payload, indent=2)}")
+    logger.info(f"[ARTIST] Requesting bio for: {artist_name}")
 
     try:
-        logging.info(f"📚 Requesting artist bio for: {artist_name}")
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
-
-        if response.status_code != 200:
-            logging.error(f"❌ XAI rejected the request with status {response.status_code}")
-            logging.error(f"🦾 Response body:\n{response.text}")
-            logging.error(f"📬 Payload sent:\n{json.dumps(payload, indent=2)}")
-            raise requests.exceptions.HTTPError(response.text)
-
+        response.raise_for_status()
         result = response.json()
-        logging.debug(f"📦 XAI Response JSON:\n{json.dumps(result, indent=2)}")
         content = result["choices"][0]["message"]["content"]
 
         if not content.strip():
-            logging.warning(f"⚠️ Empty description returned for artist: {artist_name}")
-            print(f"⚠️ XAI returned EMPTY content for {artist_name}")
+            logger.warning(f"[EMPTY] No content returned for: {artist_name}")
             return f"(No description found for {artist_name})"
+
         return content.strip()
 
     except requests.exceptions.HTTPError as e:
-        try:
-            logging.error(f"❌ HTTPError: {e}")
-            logging.error(f"🦾 Response body:\n{e.response.text}")
-        except Exception as log_err:
-            logging.error(f"⚠️ Could not log response body: {log_err}")
+        logger.error(f"[HTTP ERROR] {e}")
         return f"(HTTP error fetching description for {artist_name})"
 
     except Exception as e:
-        logging.error(f"❌ Unexpected error: {e}")
+        logger.error(f"[ERROR] Unexpected issue: {e}")
         return f"(Unexpected error fetching description for {artist_name})"

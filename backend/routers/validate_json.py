@@ -1,3 +1,5 @@
+import logging
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Path
 from utils.json_helpers import load_json
 
@@ -20,6 +22,8 @@ def validate_json(
     genre: str = Path(...)
 ):
     filename = f"{decade}_{genre}_en.json"
+    full_path = Path("data/tracks") / decade / filename
+    logging.info(f"Validating JSON file at: {full_path.resolve()}")
 
     try:
         data = load_json(decade, filename)

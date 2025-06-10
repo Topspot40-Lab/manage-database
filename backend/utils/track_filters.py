@@ -1,4 +1,8 @@
 import logging
+from backend.config import ENABLE_ARTIST_DESCRIPTION, ENABLE_TRACK_DESCRIPTION, ENABLE_RANK_INTRO
+
+logger = logging.getLogger(__name__)
+
 
 # 🎙️ Whitelist of known duets to avoid misclassifying as groups
 KNOWN_DUET_PAIRS = {
@@ -27,7 +31,7 @@ def is_modern_artist(artist_name: str) -> bool:
     }
     result = artist_name.strip().lower() in {a.lower() for a in known_modern}
     if result:
-        logging.info(f"🛑 Rejected modern artist: '{artist_name}'")
+        logging.info(f" Rejected modern artist: '{artist_name}'")
     return result
 
 
@@ -50,7 +54,7 @@ def is_fake_mashup(track_name: str, artist_name: str) -> bool:
 
     for part1, part2, bad_artist in known_bad:
         if part1 in title and part2 in title and bad_artist in artist:
-            logging.info(f"🪤 Rejected mashup/fake combo: '{track_name}' by '{artist_name}'")
+            logging.info(f" Rejected mashup/fake combo: '{track_name}' by '{artist_name}'")
             return True
     return False
 
@@ -73,13 +77,21 @@ def classify_artist_type(artist_name: str, genre: str) -> str:
 
 
 # ✅ Master filter: Exclude tracks that are empty, modern imposters, or fake mashups
+from backend.config import ENABLE_TRACK_DESCRIPTION
+import logging
+
 def is_bad_track(track: dict) -> bool:
     artist = track.get("artistName") or track.get("artist_name", "")
     title = track.get("trackName") or track.get("track_name", "")
 
     if not artist or not title:
-        logging.warning(f"⚠️ Missing artist or title in track: {track}")
+        logging.warning(f"Missing artist or title in track: {track}")
         return True
+
+    if ENABLE_TRACK_DESCRIPTION and not track.get("detail"):
+        logging.warning(f"Missing track description for: '{title}' by '{artist}'")
+        return True
+
     if is_modern_artist(artist):
         return True
     if is_fake_mashup(title, artist):
@@ -88,10 +100,11 @@ def is_bad_track(track: dict) -> bool:
     placeholder_titles = {"unknown", "track name", "song title"}
     title_lower = title.strip().lower()
     if title_lower in placeholder_titles or "example" in title_lower or "placeholder" in title_lower:
-        logging.warning(f"⚠️ Rejected placeholder title: '{title}'")
+        logging.warning(f"Rejected placeholder title: '{title}'")
         return True
 
     return False
+
 
 
 # ✅ Validates an entire track list (assumes each entry is a dict)
@@ -101,5 +114,5 @@ def validate_tracks(tracks: list) -> list:
         if not is_bad_track(track):
             valid_tracks.append(track)
         else:
-            logging.warning(f"⛔ Invalid track skipped: {track}")
+            logging.warning(f" Invalid track skipped: {track}")
     return valid_tracks

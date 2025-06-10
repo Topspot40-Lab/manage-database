@@ -7,11 +7,11 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pathlib import Path
 
-
-
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
+
+logger = logging.getLogger(__name__)
 
 # ✅ Define ModeFlag enum locally if not imported
 class ModeFlag(Enum):
@@ -52,9 +52,7 @@ def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[Mode
 
     is_duet = " with " in name_lower
     is_feature = " feat." in name_lower or " featuring " in name_lower
-    # ➕ NEW: default all others to SOLO unless proven otherwise
 
-    # mode_flag = ModeFlag.SOLO
     featured_artist_id = None
 
     if is_feature and len(artist_list) > 1:
@@ -66,7 +64,7 @@ def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[Mode
     else:
         mode_flag = ModeFlag.SOLO
 
-    logging.info(f"🎙️ Detected mode_flag: {mode_flag.name} ({mode_flag.value})")
+    logger.info(f"[SPOTIFY] Detected mode_flag: {mode_flag.name} ({mode_flag.value})")
     return mode_flag, featured_artist_id
 
 # ✅ Main data fetch function
@@ -77,21 +75,19 @@ def get_spotify_data(track_name: str, artist_name: str):
         results = sp.search(q=query, type="track", limit=3)
 
         if not results["tracks"]["items"]:
-            logging.warning(f"❌ No Spotify results for: {track_name} by {artist_name}")
+            logger.warning(f"[SPOTIFY] No results for: {track_name} by {artist_name}")
             return {}
 
         for track in results["tracks"]["items"]:
             artist_list = track["artists"]
             expected_artist = artist_name.lower().strip()
 
-            # ✅ Check if expected artist appears anywhere in the artist list
             matched_artist = next(
                 (artist for artist in artist_list if expected_artist in artist["name"].lower()), None
             )
 
-            logging.debug("🎧 Checking Spotify match:")
-            logging.debug(f"    🟡 expected_artist: '{expected_artist}'")
-            logging.debug(f"    🎭 Full artist list: {[a['name'] for a in artist_list]}")
+            logger.debug(f"[SPOTIFY] expected_artist: '{expected_artist}'")
+            logger.debug(f"[SPOTIFY] artist_list: {[a['name'] for a in artist_list]}")
 
             if matched_artist:
                 artist_id = matched_artist["id"]
@@ -100,9 +96,8 @@ def get_spotify_data(track_name: str, artist_name: str):
                 artist_data = sp.artist(artist_id)
                 artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
 
-                logging.info(f"✅ Matched Spotify track: {track['name']}")
+                logger.info(f"[SPOTIFY] Matched track: {track['name']}")
 
-                # ✅ NEW: Find the featured artist (not the matched one)
                 featured_artist = next(
                     (artist for artist in artist_list if artist["id"] != artist_id),
                     None
@@ -125,12 +120,11 @@ def get_spotify_data(track_name: str, artist_name: str):
                 }
 
             else:
-                logging.warning(f"🪤 Rejected: {[a['name'] for a in artist_list]} does not include '{artist_name}'")
+                logger.warning(f"[SPOTIFY] Rejected: {[a['name'] for a in artist_list]} does not include '{artist_name}'")
 
-        logging.warning(f"🚫 No acceptable Spotify match found for: {track_name} by {artist_name}")
+        logger.warning(f"[SPOTIFY] No acceptable match for: {track_name} by {artist_name}")
         return {}
 
     except Exception as e:
-        logging.error(f"Spotify query error for {track_name} - {artist_name}: {e}")
+        logger.error(f"[SPOTIFY] Query error for {track_name} - {artist_name}: {e}")
         return {}
-

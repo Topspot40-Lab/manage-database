@@ -12,29 +12,51 @@ load_dotenv()
 # -----------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent  # Root directory (above /backend)
 
-# Directory for test JSON files used in XAI-related unit tests
 TEST_JSON_DIR = BASE_DIR / "backend" / "tests" / "json_tests" / "xai"
-
-# Path to the JSON schema used for validating XAI track structures
 SCHEMA_PATH = BASE_DIR / "../schemas/track_schema.json"
 
 # -----------------------------------------------------------------------------
 # 🔑 XAI API CONFIGURATION
 # -----------------------------------------------------------------------------
-XAI_API_KEY = os.getenv("XAI_API_KEY")  # Your key from x.ai
+XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
-DEFAULT_XAI_MODEL = "grok-2-latest"  # Could be made configurable in future
-TEMPERATURE_DEFAULT = 0.3  # General purpose temperature
+DEFAULT_XAI_MODEL = "grok-2-latest"
+TEMPERATURE_DEFAULT = 0.3
 
 # -----------------------------------------------------------------------------
 # 🎛️ PROMPT BEHAVIOR AND GENERATION CONFIG
 # -----------------------------------------------------------------------------
-BATCH_SIZE = 10            # Tracks per request when generating intro/detail
-TEMPERATURE_MAIN = 0.3     # Track list prompt temperature
-TEMPERATURE_BIO = 0.5      # Artist biography prompt temperature
+BATCH_SIZE = 10
+TEMPERATURE_MAIN = 0.3
+TEMPERATURE_BIO = 0.5
 
 # -----------------------------------------------------------------------------
 # 🧪 (REMOVED) Test File Toggle – Now controlled via CLI
 # -----------------------------------------------------------------------------
 TEST_FILE_NUMBER = 1
 
+# -----------------------------------------------------------------------------
+# 📋 FEATURE FLAGS (Text Generation)
+# -----------------------------------------------------------------------------
+ENABLE_ARTIST_DESCRIPTION = True
+ENABLE_TRACK_DESCRIPTION = True
+ENABLE_RANK_INTRO = True
+
+# -----------------------------------------------------------------------------
+# 📡 LOGGING CONFIGURATION
+# -----------------------------------------------------------------------------
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Global default (can override via .env)
+
+LOG_LEVELS_BY_MODULE = {
+    "backend.services.xai_service": "DEBUG",
+    "backend.services.spotify_service": "WARNING",
+    "backend.services.utils": "INFO",
+    # Add more modules as needed
+}
+
+# -----------------------------------------------------------------------------
+# 🎨 LOGGING OPTIONS (via .env)
+# -----------------------------------------------------------------------------
+LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "True") == "True"
+LOG_COLOR_ENABLED = os.getenv("LOG_COLOR_ENABLED", "True") == "True"
+LOG_FILE_PATH = "topspot.log"
