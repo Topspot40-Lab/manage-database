@@ -2,13 +2,15 @@ import os
 import json
 import logging
 import requests
+from typing import Optional
 from dotenv import load_dotenv
 
 from backend.services.xai_prompt_builder import build_track_prompt
 from backend.services.xai_response_handler import parse_and_filter_tracks
 from backend.services.xai_api_client import fetch_xai_tracks
 from backend.config import TEST_JSON_DIR, ENABLE_ARTIST_DESCRIPTION, ENABLE_TRACK_DESCRIPTION, ENABLE_RANK_INTRO
-from utils.track_filters import validate_tracks
+from backend.utils.track_filters import validate_tracks
+
 
 # Load environment variables
 load_dotenv()
@@ -72,6 +74,8 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     if not ENABLE_TRACK_DESCRIPTION and not ENABLE_RANK_INTRO:
         logger.info("[SKIP] Track description and intro generation disabled.")
+        logger.info("🧮 Skipping description generation — no tokens used.")
+
         return {
             "language": language,
             "decade": decade,
@@ -157,10 +161,13 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
     }
 
 
-def get_artist_description(artist_name: str, language: str = "English") -> str:
+
+
+def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:
+
     if not ENABLE_ARTIST_DESCRIPTION:
         logger.info(f"[SKIP] Artist description disabled for {artist_name}.")
-        return f"(Description disabled for {artist_name})"
+        return None
 
     prompt = (
         f"Write a short artist biography in {language} for '{artist_name}'. "

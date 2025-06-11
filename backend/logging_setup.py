@@ -48,7 +48,7 @@ def setup_logging():
 
     # File handler
     if LOG_FILE_ENABLED:
-        file_handler = logging.FileHandler(LOG_FILE_PATH)
+        file_handler = logging.FileHandler(LOG_FILE_PATH, encoding="utf-8")  # ✅ FIXED HERE
         file_formatter = logging.Formatter(
             "%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s"
         )

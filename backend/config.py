@@ -7,6 +7,12 @@ from pathlib import Path
 # Load environment variables from .env file
 load_dotenv()
 
+
+# config.py
+
+APP_VERSION = "1.0.1"
+LAST_UPDATED = "2025-06-11"
+
 # -----------------------------------------------------------------------------
 # 📁 PATH SETTINGS
 # -----------------------------------------------------------------------------
@@ -38,9 +44,9 @@ TEST_FILE_NUMBER = 1
 # -----------------------------------------------------------------------------
 # 📋 FEATURE FLAGS (Text Generation)
 # -----------------------------------------------------------------------------
-ENABLE_ARTIST_DESCRIPTION = True
-ENABLE_TRACK_DESCRIPTION = True
-ENABLE_RANK_INTRO = True
+ENABLE_ARTIST_DESCRIPTION = False
+ENABLE_TRACK_DESCRIPTION = False
+ENABLE_RANK_INTRO = False
 
 # -----------------------------------------------------------------------------
 # 📡 LOGGING CONFIGURATION
@@ -48,15 +54,27 @@ ENABLE_RANK_INTRO = True
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Global default (can override via .env)
 
 LOG_LEVELS_BY_MODULE = {
-    "backend.services.xai_service": "DEBUG",
+    "backend.services.xai_service": "INFO",
     "backend.services.spotify_service": "WARNING",
     "backend.services.utils": "INFO",
     # Add more modules as needed
 }
 
 # -----------------------------------------------------------------------------
-# 🎨 LOGGING OPTIONS (via .env)
+# 🎨 LOGGING OPTIONS — These values are controlled via your .env file
+#
+# LOG_FILE_ENABLED:
+#   - Set to "true" to enable logging to a file (default: true)
+#   - Set to "false" to disable file logging (terminal only)
+#
+# LOG_COLOR_ENABLED:
+#   - Set to "true" to enable ANSI color codes in console logs (default: true)
+#   - Set to "false" if your terminal doesn't support color
+#
+# LOG_FILE_PATH:
+#   - The name of the log file where logs will be written (if enabled)
 # -----------------------------------------------------------------------------
-LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "True") == "True"
-LOG_COLOR_ENABLED = os.getenv("LOG_COLOR_ENABLED", "True") == "True"
+
+LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").strip().lower() == "true"
+LOG_COLOR_ENABLED = os.getenv("LOG_COLOR_ENABLED", "true").strip().lower() == "true"
 LOG_FILE_PATH = "topspot.log"

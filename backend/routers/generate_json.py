@@ -26,7 +26,8 @@ class TrackRequest(BaseModel):
     num_tracks: int = Field(..., ge=1, le=50, description="Number of tracks to generate (1–50)")
 
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
-def generate_track_json(request: TrackRequest, test_file_number: int = 0):
+async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
+
     try:
         logger.info("A. Start generate_track_json")
 

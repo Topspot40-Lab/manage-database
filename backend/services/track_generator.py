@@ -1,6 +1,7 @@
 import logging
 from backend.services.spotify_service import get_spotify_data, determine_mode_flag, format_track_display_name
-from utils.json_helpers import parse_featured_artists, normalize_name
+from backend.utils.json_helpers import parse_featured_artists, normalize_name
+
 
 def fetch_and_validate_tracks(base):
     artist_name_raw = base["artistName"]
@@ -36,7 +37,7 @@ def process_artist(base, spotify_data, seen_artists, description_cache, language
         logging.info(f"🔍 Fetching description for: {artist_name_clean}")
         desc = get_artist_description(artist_name_clean, language=language)
         if not desc:
-            desc = "No biography available at this time."
+            desc = None
         description_cache[artist_name_clean] = desc
 
     detail_mp3_url = (

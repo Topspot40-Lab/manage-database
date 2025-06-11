@@ -84,23 +84,28 @@ def is_bad_track(track: dict) -> bool:
     artist = track.get("artistName") or track.get("artist_name", "")
     title = track.get("trackName") or track.get("track_name", "")
 
+    # Check for required fields
     if not artist or not title:
-        logging.warning(f"Missing artist or title in track: {track}")
+        logging.warning(f"[INVALID] Missing artist or title in track: {track}")
         return True
 
+    # Warn if description is missing — don't reject
     if ENABLE_TRACK_DESCRIPTION and not track.get("detail"):
-        logging.warning(f"Missing track description for: '{title}' by '{artist}'")
-        return True
+        logging.warning(f"[WARN] Missing track description: '{title}' by '{artist}' — Will enrich later.")
 
+    # Block modern artists
     if is_modern_artist(artist):
         return True
+
+    # Block known hallucinated/fake combos
     if is_fake_mashup(title, artist):
         return True
 
+    # Block obvious placeholders
     placeholder_titles = {"unknown", "track name", "song title"}
     title_lower = title.strip().lower()
     if title_lower in placeholder_titles or "example" in title_lower or "placeholder" in title_lower:
-        logging.warning(f"Rejected placeholder title: '{title}'")
+        logging.warning(f"[REJECTED] Placeholder title: '{title}'")
         return True
 
     return False

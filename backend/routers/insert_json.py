@@ -5,18 +5,20 @@ import sqlalchemy
 
 from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
-from utils.json_helpers import load_json
+from backend.utils.json_helpers import load_json
+
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["json-insert"])
 
 @router.post("/insert-json-to-db/{decade}/{genre}")
-def insert_json_to_db(
+async def insert_json_to_db(
     decade: str = Path(...),
     genre: str = Path(...),
     db: Session = Depends(get_db)
 ):
+
     logger.info(f"Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
 
     # === 1. Load JSON File ===

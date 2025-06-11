@@ -1,7 +1,8 @@
 import logging
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Path
-from utils.json_helpers import load_json
+from backend.utils.json_helpers import load_json
+
 
 router = APIRouter(prefix="", tags=["json-validate"])
 
