@@ -7,6 +7,13 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pathlib import Path
 
+import re
+
+def clean_track_title(title: str) -> str:
+    """Remove any parenthetical like (The Fishin' Song) or (Remastered) from track title."""
+    return re.sub(r"\s*\(.*?\)", "", title).strip()
+
+
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -71,11 +78,27 @@ def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[Mode
 def get_spotify_data(track_name: str, artist_name: str):
     try:
         sp = get_spotify_client()
-        query = f"track:{track_name} artist:{artist_name}"
-        results = sp.search(q=query, type="track", limit=3)
 
-        if not results["tracks"]["items"]:
-            logger.warning(f"[SPOTIFY] No results for: {track_name} by {artist_name}")
+        track_name_clean = clean_track_title(track_name)
+        query = f"track:{track_name_clean} artist:{artist_name}"
+
+        results = sp.search(q=query, type="track", limit=3)
+        track = None
+
+        if results["tracks"]["items"]:
+            for t in results["tracks"]["items"]:
+                artist_list = t["artists"]
+                artist_names = [a["name"].lower() for a in artist_list]
+                if artist_name.lower() in artist_names:
+                    track = t
+                    break
+
+        # 🛠️ Retry if no match
+        if not track:
+            track = fallback_spotify_search(sp, track_name, artist_name)
+
+        if not track:
+            logger.warning(f"[SPOTIFY] No acceptable match for: {track_name} by {artist_name}")
             return {}
 
         for track in results["tracks"]["items"]:
@@ -128,3 +151,18 @@ def get_spotify_data(track_name: str, artist_name: str):
     except Exception as e:
         logger.error(f"[SPOTIFY] Query error for {track_name} - {artist_name}: {e}")
         return {}
+
+def fallback_spotify_search(sp, track_name, artist_name):
+    logger.info(f"[SPOTIFY][RETRY] Trying fallback search: '{track_name} {artist_name}'")
+
+    fallback_query = f"{track_name} {artist_name}"
+    results = sp.search(q=fallback_query, type="track", limit=5)
+
+    for track in results["tracks"]["items"]:
+        track_artist_names = [a["name"].lower() for a in track["artists"]]
+        if artist_name.lower() in track_artist_names:
+            logger.info(f"[SPOTIFY][RETRY] Matched in fallback: {track['name']} by {track_artist_names}")
+            return track
+
+    logger.warning(f"[SPOTIFY][RETRY] No match in fallback search.")
+    return None

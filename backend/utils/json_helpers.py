@@ -46,8 +46,21 @@ ARTIST_NAME_ALIASES = {
 
     # ✅ Just in case "The Chicks" are the name used already
     "The Chicks": "The Chicks",
-}
 
+    "Dave & Sugar": "Dave and Sugar",
+    "Les Paul & Mary Ford": "Les Paul and Mary Ford",
+    "Kenny Rogers & Dottie West": "Kenny Rogers and Dottie West",
+    "Porter Wagoner & Dolly Parton": "Porter Wagoner and Dolly Parton",
+    "James Taylor & Carly Simon": "James Taylor and Carly Simon",
+    "George Jones & Tammy Wynette": "George Jones and Tammy Wynette",  # Consistency
+
+    # For Spotify's preferences
+    "Captain & Tennille": "Captain and Tennille",
+    "Ike & Tina Turner": "Ike and Tina Turner",
+    "Peter, Paul & Mary": "Peter, Paul and Mary",
+
+    # Add any you catch in log warnings
+}
 
 def normalize_name(name: str) -> str:
     """
@@ -60,8 +73,12 @@ def normalize_name(name: str) -> str:
     name = "".join(c for c in name if not unicodedata.combining(c))
     name = name.strip()
 
-    # Apply alias override if one exists
-    return ARTIST_NAME_ALIASES.get(name, name)
+    corrected = ARTIST_NAME_ALIASES.get(name, name)
+
+    if name != corrected:
+        logger.info(f"🎭 Alias applied: '{name}' → '{corrected}'")
+
+    return corrected
 
 def parse_featured_artists(raw_artist_name: str):
     """

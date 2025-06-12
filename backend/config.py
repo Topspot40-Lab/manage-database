@@ -48,6 +48,12 @@ ENABLE_ARTIST_DESCRIPTION = False
 ENABLE_TRACK_DESCRIPTION = False
 ENABLE_RANK_INTRO = False
 
+# config.py
+GENERATE_JSON_LOGGING_ENABLED = True  # ✅ Toggle logging of generate-json summary
+GENERATE_JSON_LOG_PATH = "backend/logs/generate_json_summary.log"
+
+
+
 # -----------------------------------------------------------------------------
 # 📡 LOGGING CONFIGURATION
 # -----------------------------------------------------------------------------

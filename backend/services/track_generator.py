@@ -83,6 +83,7 @@ def build_track_entry(base, request, spotify_data, now):
     )
 
     track_entry = {
+        "rank": base.get("rank"),
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
         "featured_artist": featured_artist_name if featured_artist_name else None,
@@ -205,4 +206,5 @@ def build_final_json(enriched_tracks, request, now):
     }
 
     logging.info(f"📦 Final JSON built with {len(tracks)} tracks and {len(artists)} artists.")
-    return final_json
+    return final_json, tracks, artists
+
