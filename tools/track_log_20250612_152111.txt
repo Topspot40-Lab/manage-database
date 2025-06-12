@@ -1,0 +1,7 @@
+🚀 Starting batch generation... 
+Genre: country, Language: English, Tracks per Decade: 2 
+ 
+🕒 1950s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\1950s\\1950s_country_en.json","version":"v3-official","track_count":2} 
+🕒 1960s 
+ 

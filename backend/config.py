@@ -50,7 +50,7 @@ ENABLE_RANK_INTRO = False
 
 # config.py
 GENERATE_JSON_LOGGING_ENABLED = True  # ✅ Toggle logging of generate-json summary
-GENERATE_JSON_LOG_PATH = "backend/logs/generate_json_summary.log"
+GENERATE_JSON_LOG_PATH = "backend/logs/new_json_all_decades.log"
 
 
 

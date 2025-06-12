@@ -1,0 +1,19 @@
+🚀 Starting batch generation... 
+Genre: pop, Language: English, Tracks per Decade: 2 
+ 
+🕒 1950s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\1950s\\1950s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 1960s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\1960s\\1960s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 1970s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\1970s\\1970s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 1980s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\1980s\\1980s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 1990s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\1990s\\1990s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 2000s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\2000s\\2000s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 2010s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\2010s\\2010s_pop_en.json","version":"v3-official","track_count":2} 
+🕒 2020s 
+{"message":"JSON created successfully","file":"C:\\Users\\Owner\\pp\\topspot_json_creator\\data\\json_files\\genredecade\\2020s\\2020s_pop_en.json","version":"v3-official","track_count":2} 
