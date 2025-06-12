@@ -128,6 +128,7 @@ def build_ranking_entry(base, request, spotify_data, now):
 
     logging.debug(f"📊 Ranking entry built: {ranking_entry}")
     return ranking_entry
+
 def build_final_json(enriched_tracks, request, now):
     seen_artists = {}
     description_cache = {}
@@ -158,12 +159,15 @@ def build_final_json(enriched_tracks, request, now):
             featured_name_clean = normalize_name(featured_artist_name)
             if featured_name_clean not in seen_artists:
                 logging.info(f"🎤 Adding featured artist: {featured_name_clean}")
+
+                # 🔍 Try to fetch artwork for featured artist
+                featured_spotify_data = get_spotify_data(base["trackName"], featured_name_clean)
                 featured_artist_entry = {
                     "artist_name": featured_name_clean,
                     "spotify_artist_id": featured_artist_id,
-                    "artist_artwork": None,
-                    "artist_description": "No biography available at this time.",
-                    "artist_mp3_url": "tts/detail_unavailable.mp3",
+                    "artist_artwork": featured_spotify_data.get("artist_artwork") if featured_spotify_data else None,
+                    "artist_description": None,
+                    "artist_mp3_url": None,
                     "not_on_spotify": False
                 }
                 artists.append(featured_artist_entry)
