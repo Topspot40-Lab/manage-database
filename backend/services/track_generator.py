@@ -205,6 +205,12 @@ def build_final_json(enriched_tracks, request, now):
         }
     }
 
+
+
+    final_json["tracks"] = tracks
+    final_json["artists"] = artists
+
     logging.info(f"📦 Final JSON built with {len(tracks)} tracks and {len(artists)} artists.")
     return final_json, tracks, artists
+
 

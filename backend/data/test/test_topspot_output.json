@@ -1,0 +1,30 @@
+{
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Amanda (feat. Morgane Stapleton)",
+      "artistName": "Chris Stapleton",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "31N3agcx1BKlLkYBXAx1Ax",
+      "popularity": 57,
+      "album_artwork": "https://i.scdn.co/image/ab67616d0000b273fc2edb932c33d1bfd21a3766"
+    },
+    {
+      "trackName": "Jolene",
+      "artistName": "Dolly Parton",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "3RauEVgRgj1IuWdJ9BqtN2",
+      "rank": 2
+    },
+    {
+      "rank": 3,
+      "trackName": "Crazy",
+      "artistName": "Patsy Cline",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "valid_id_here"
+    }
+  ]
+}

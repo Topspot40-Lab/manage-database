@@ -1,0 +1,51 @@
+{
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Amanda",
+      "artistName": "Waylon Jennings",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": null
+    },
+    {
+      "rank": 2,
+      "trackName": "Honky Tonk Hero",
+      "artistName": "Billy Joe Shaver",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": null
+    },
+    {
+      "rank": 3,
+      "trackName": "Crazy",
+      "artistName": "Patsy Cline",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "valid_id_here"
+    }
+  ],
+  "spares": [
+    {
+      "trackName": "Jolene",
+      "artistName": "Dolly Parton",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "3RauEVgRgj1IuWdJ9BqtN2"
+    },
+    {
+      "trackName": "Mama Tried",
+      "artistName": "Merle Haggard",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "5DS2TZYxrQNEtPQtFakHUd"
+    },
+    {
+      "trackName": "You're My Best Friend",
+      "artistName": "Don Williams",
+      "genre": "country",
+      "decade": "1960s",
+      "spotify_track_id": "0DYb1PtXj0QbMvKjeFZux8"
+    }
+  ]
+}

@@ -6,6 +6,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Literal
 import json
+from backend.services.spotify_service import handle_missing_track, reassign_ranks
+from backend.services.track_generator import build_track_entry
+
+
 
 from backend.services.xai_service import (
     get_top_tracks_from_xai,
@@ -70,6 +74,44 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             request=request,
             now=now
         )
+
+        print("📦 final_json keys:", final_json.keys())
+
+
+        # 🧹 Filter tracks from the final JSON data
+        tracks = final_json["tracks"]
+        spare_tracks = final_json.get("spares", [])  # Optional: Add support for spare pool
+
+        # 🛠 Fix or replace broken tracks
+        for track in tracks[:]:  # Iterate over a copy so you can safely remove
+            if not track.get("spotify_track_id"):
+                handle_missing_track(track, tracks, spare_tracks)
+
+        # 🚮 Remove any still-invalid tracks
+        tracks = [t for t in tracks if t.get("spotify_track_id")]
+        # 🎒 Refill to ensure 40 total tracks
+        while len(tracks) < 40 and spare_tracks:
+            spare = spare_tracks.pop(0)
+
+            # 🔎 Validate required fields
+            missing_keys = [key for key in ("trackName", "artistName") if key not in spare]
+            if missing_keys:
+                logging.warning(f"⚠️ Skipping spare track due to missing keys: {missing_keys} — {spare}")
+                continue
+
+            # 🛠 Rebuild track_entry properly
+            try:
+                rebuilt = build_track_entry(spare, request, spotify_data=None, now=now)
+                rebuilt["rank"] = len(tracks) + 1
+                tracks.append(rebuilt)
+                logging.info(f"✅ Added spare track: {rebuilt['track_display_name']}")
+            except Exception as e:
+                logging.warning(f"❌ Failed to rebuild spare track: {e}")
+                continue
+
+        # 🔁 Update final JSON and ranks
+        reassign_ranks(tracks)
+        final_json["tracks"] = tracks
 
         # Step 4: Save to file
         filepath = get_json_path(request.decade, request.genre, request.language[:2])
