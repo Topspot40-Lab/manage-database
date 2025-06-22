@@ -26,12 +26,14 @@ def setup_logging():
             pass
         print("⚠️  colorlog not installed. Run `pip install colorlog` for color support.")
 
-    # 🎨 Select formatter
+    # 🎨 Select formatter with function, module, line info
+    formatter_string = "%(asctime)s [%(levelname)s] [%(module)s.%(funcName)s:%(lineno)d] %(message)s\n"
+
     colored_formatter_class = ColoredFormatter if LOG_COLOR_ENABLED else None
 
     if LOG_COLOR_ENABLED and colored_formatter_class and colored_formatter_class != logging.Formatter:
         formatter = colored_formatter_class(
-            "%(log_color)s%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s",
+            "%(log_color)s" + formatter_string,
             log_colors={
                 "DEBUG": "cyan",
                 "INFO": "green",
@@ -41,9 +43,7 @@ def setup_logging():
             }
         )
     else:
-        formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s"
-        )
+        formatter = logging.Formatter(formatter_string)
 
     # 🖥️ Console handler
     console_handler = logging.StreamHandler(sys.stdout)
@@ -57,9 +57,7 @@ def setup_logging():
             os.makedirs(log_dir, exist_ok=True)
 
         file_handler = logging.FileHandler(LOG_FILE_PATH, encoding="utf-8")
-        file_formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s"
-        )
+        file_formatter = logging.Formatter(formatter_string)
         file_handler.setFormatter(file_formatter)
         handlers.append(file_handler)
 

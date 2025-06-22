@@ -20,7 +20,7 @@ from shared.filepaths import get_json_path
 from backend.services.track_generator import build_final_json
 
 from backend.utils.log_helpers import log_generate_json_summary
-from backend.utils.log_helpers import log_summary_table
+# from backend.utils.log_helpers import log_summary_table
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +36,12 @@ class TrackRequest(BaseModel):
 async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
 
     try:
-        logger.info("A. Start generate_track_json")
+        logger.debug("A. Start generate_track_json")
 
         now = datetime.now().isoformat()
 
         # Step 1: Get raw track list from XAI
-        logger.info("B. Calling get_top_tracks_from_xai")
+        logger.debug("B. Calling get_top_tracks_from_xai")
         wrapped = get_top_tracks_from_xai(
             decade=request.decade,
             genre=request.genre,
@@ -54,10 +54,10 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             raise HTTPException(status_code=500, detail="Failed to retrieve track list from XAI")
 
         track_list = wrapped["tracks"]
-        logger.info(f"C. Retrieved {len(track_list)} tracks from XAI")
+        logger.debug(f"C. Retrieved {len(track_list)} tracks from XAI")
 
         # Step 2: Enrich descriptions
-        logger.info("D. Enriching with get_track_descriptions_from_xai")
+        logger.debug("D. Enriching with get_track_descriptions_from_xai")
         enriched = get_track_descriptions_from_xai(
             track_data=wrapped,
             language=request.language,
@@ -75,11 +75,9 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             now=now
         )
 
-        print("📦 final_json keys:", final_json.keys())
-
 
         # 🧹 Filter tracks from the final JSON data
-        tracks = final_json["tracks"]
+        tracks = final_json["track_tables"]["track"]
         spare_tracks = final_json.get("spares", [])  # Optional: Add support for spare pool
 
         # 🛠 Fix or replace broken tracks
@@ -111,11 +109,11 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
 
         # 🔁 Update final JSON and ranks
         reassign_ranks(tracks)
-        final_json["tracks"] = tracks
+        final_json["track_tables"]["track"] = tracks
 
         # Step 4: Save to file
         filepath = get_json_path(request.decade, request.genre, request.language[:2])
-        logger.info(f"F. Saving file to: {filepath}")
+        logger.debug(f"F. Saving file to: {filepath}")
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2)
 
@@ -132,18 +130,19 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
         )
 
         # Mock stats — fill in from actual processing results
-        summary_data = [
-            {"decade": "1950s", "total": 40, "good": 39, "missed": 1, "duets": "None"},
-            {"decade": "1960s", "total": 40, "good": 39, "missed": 1, "duets": "None"},
-            {"decade": "1970s", "total": 40, "good": 35, "missed": 5, "duets": 1},
-            {"decade": "1980s", "total": 40, "good": 36, "missed": 4, "duets": 2},
-            {"decade": "1990s", "total": 40, "good": 39, "missed": 1, "duets": 1},
-            {"decade": "2000s", "total": 40, "good": 39, "missed": 1, "duets": 3},
-            {"decade": "2010s", "total": 40, "good": 39, "missed": 1, "duets": 3},
-            {"decade": "2020s", "total": 40, "good": 37, "missed": 3, "duets": 3},
-        ]
+        # summary_data = [
+        #     {"decade": "1950s", "total": 40, "good": 39, "missed": 1, "duets": "None"},
+        #     {"decade": "1960s", "total": 40, "good": 39, "missed": 1, "duets": "None"},
+        #     {"decade": "1970s", "total": 40, "good": 35, "missed": 5, "duets": 1},
+        #     {"decade": "1980s", "total": 40, "good": 36, "missed": 4, "duets": 2},
+        #     {"decade": "1990s", "total": 40, "good": 39, "missed": 1, "duets": 1},
+        #     {"decade": "2000s", "total": 40, "good": 39, "missed": 1, "duets": 3},
+        #     {"decade": "2010s", "total": 40, "good": 39, "missed": 1, "duets": 3},
+        #     {"decade": "2020s", "total": 40, "good": 37, "missed": 3, "duets": 3},
+        # ]
 
-        log_summary_table(summary_data)
+        # This is not working properly
+        # log_summary_table(summary_data)
 
         logger.info("G. JSON creation complete")
 

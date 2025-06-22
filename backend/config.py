@@ -19,7 +19,8 @@ LAST_UPDATED = "2025-06-11"
 BASE_DIR = Path(__file__).resolve().parent.parent  # Root directory (above /backend)
 
 TEST_JSON_DIR = BASE_DIR / "backend" / "tests" / "json_tests" / "xai"
-SCHEMA_PATH = BASE_DIR / "../schemas/track_schema.json"
+SCHEMA_PATH = BASE_DIR / "backend" / "schemas" / "track_schema.json"
+
 
 # -----------------------------------------------------------------------------
 # 🔑 XAI API CONFIGURATION
@@ -61,8 +62,9 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Global default (can override via .
 LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true"
 
 LOG_LEVELS_BY_MODULE = {
-    "backend.services.xai_service": "INFO",
+    "backend.services.xai_service": "DEBUG",
     "backend.services.spotify_service": "WARNING",
+    "backend.services.track_generator": "DEBUG",
     "backend.services.utils": "INFO",
     "spotipy": "WARNING",           # 🔇 Suppress Spotipy's debug/info chatter
     "urllib3": "WARNING",           # 🔇 Suppress low-level HTTP logs

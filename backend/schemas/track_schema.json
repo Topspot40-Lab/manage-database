@@ -1,23 +1,117 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["language", "decade", "genre", "tracks"],
+  "required": ["core_tables", "track_tables", "ranking_tables"],
   "properties": {
-    "language": { "type": "string" },
-    "decade": { "type": "string" },
-    "genre": { "type": "string" },
-    "tracks": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["rank", "trackName", "artistName", "yearReleased"],
-        "properties": {
-          "rank": { "type": "integer", "minimum": 1 },
-          "trackName": { "type": "string", "minLength": 1 },
-          "artistName": { "type": "string", "minLength": 1 },
-          "yearReleased": { "type": "integer", "minimum": 1900, "maximum": 2100 },
-          "intro": { "type": "string" },
-          "detail": { "type": "string" }
+    "core_tables": {
+      "type": "object",
+      "required": ["genre", "decade", "artist"],
+      "properties": {
+        "genre": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["genre_name"],
+            "properties": {
+              "genre_name": { "type": "string" }
+            }
+          }
+        },
+        "decade": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["decade_name"],
+            "properties": {
+              "decade_name": { "type": "string" }
+            }
+          }
+        },
+        "artist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["artist_name", "spotify_artist_id"],
+            "properties": {
+              "artist_name": { "type": "string" },
+              "spotify_artist_id": { "type": "string" },
+              "artist_artwork": { "type": ["string", "null"] },
+              "artist_description": { "type": ["string", "null"] },
+              "artist_mp3_url": { "type": ["string", "null"] },
+              "not_on_spotify": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "track_tables": {
+      "type": "object",
+      "required": ["track", "tracklist"],
+      "properties": {
+        "track": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rank", "track_name", "artist_name", "year_released"],
+            "properties": {
+              "rank": { "type": "integer", "minimum": 1 },
+              "track_name": { "type": "string" },
+              "artist_name": { "type": "string" },
+              "year_released": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+              "track_display_name": { "type": "string" },
+              "duration_ms": { "type": "integer" },
+              "mode_flag": { "type": "integer" },
+              "album_artwork": { "type": ["string", "null"] },
+              "popularity": { "type": ["integer", "null"] },
+              "spotify_track_id": { "type": "string" },
+              "spotify_artist_id": { "type": "string" },
+              "is_explicit": { "type": "boolean" },
+              "detail": { "type": ["string", "null"] },
+              "detail_mp3_url": { "type": ["string", "null"] },
+              "not_on_spotify": { "type": "boolean" },
+              "created_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "tracklist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "curator", "language", "created_at"],
+            "properties": {
+              "name": { "type": "string" },
+              "curator": { "type": "string" },
+              "is_official": { "type": "boolean" },
+              "language": { "type": "string" },
+              "notes": { "type": ["string", "null"] },
+              "created_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "ranking_tables": {
+      "type": "object",
+      "required": ["track_ranking"],
+      "properties": {
+        "track_ranking": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["track_name", "artist_name", "spotify_track_id", "rank", "ranking_date"],
+            "properties": {
+              "track_name": { "type": "string" },
+              "artist_name": { "type": "string" },
+              "spotify_track_id": { "type": "string" },
+              "genre": { "type": "string" },
+              "decade": { "type": "string" },
+              "tracklist": { "type": "string" },
+              "rank": { "type": "integer", "minimum": 1 },
+              "intro": { "type": ["string", "null"] },
+              "intro_mp3_url": { "type": ["string", "null"] },
+              "ranking_date": { "type": "string", "format": "date" }
+            }
+          }
         }
       }
     }

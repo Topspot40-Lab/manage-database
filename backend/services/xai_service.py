@@ -27,42 +27,42 @@ with open(SCHEMA_PATH, "r") as f:
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
     buffer_size = 4 if num_tracks >= 40 else 1
     prompt = build_track_prompt(decade, genre, num_tracks, language, buffer_size)
-    logger.info("[XAI] Requesting top tracks...")
+    logger.debug("[XAI] Requesting top tracks...")
     tracks = []
 
     if test_file_number > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
-        logger.info(f"[TEST] Using {test_file_path}")
+        logger.debug(f"[TEST] Using {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
-            logger.info(f"[TEST] Loaded {len(raw_tracks)} tracks.")
+            logger.debug(f"[TEST] Loaded {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=True)
         except Exception as e:
             logger.error(f"[ERROR] Failed to load test file: {e}")
     else:
         content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
-        logger.info(f"[XAI] Response type: {type(content).__name__}")
+        # logger.debug(f"[XAI] Response type: {type(content).__name__}")
 
         if isinstance(content, list):
-            logger.info(f"[XAI] Received {len(content)} tracks.")
+            logger.debug(f"[XAI] Received {len(content)} tracks.")
             tracks = content
         elif isinstance(content, str):
-            logger.info("[XAI] Parsing string response...")
+            # logger.debug("[XAI] Parsing string response...")
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
         elif isinstance(content, dict):
-            logger.info(f"[XAI] Dict keys: {list(content.keys())}")
+            logger.debug(f"[XAI] Dict keys: {list(content.keys())}")
             raw_tracks = content.get("tracks", [])
             if not isinstance(raw_tracks, list):
                 raise ValueError("Expected 'tracks' to be a list.")
-            logger.info(f"[XAI] Extracted {len(raw_tracks)} tracks.")
+            logger.debug(f"[XAI] Extracted {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
         else:
             raise TypeError(f"Unexpected content type: {type(content)}")
 
     valid_tracks = validate_tracks(tracks)
-    logger.info(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
+    logger.debug(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
 
     return {
         "language": language,
@@ -73,8 +73,8 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     if not ENABLE_TRACK_DESCRIPTION and not ENABLE_RANK_INTRO:
-        logger.info("[SKIP] Track description and intro generation disabled.")
-        logger.info("🧮 Skipping description generation — no tokens used.")
+        # logger.debug("[SKIP] Track description and intro generation disabled.")
+        logger.debug("🧮 Skipping description generation — no tokens used.")
 
         return {
             "language": language,
@@ -90,7 +90,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
 
     for batch_index in range(0, total, batch_size):
         batch = tracks[batch_index:batch_index + batch_size]
-        logger.info(f"[BATCH] Processing batch {batch_index // batch_size + 1}")
+        logger.debug(f"[BATCH] Processing batch {batch_index // batch_size + 1}")
 
         formatted_input = [
             {
@@ -166,7 +166,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
 def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:
 
     if not ENABLE_ARTIST_DESCRIPTION:
-        logger.info(f"[SKIP] Artist description disabled for {artist_name}.")
+        logger.debug(f"[SKIP] Artist description disabled for {artist_name}.")
         return None
 
     prompt = (
@@ -190,7 +190,7 @@ def get_artist_description(artist_name: str, language: str = "English") -> Optio
         "temperature": 0.5
     }
 
-    logger.info(f"[ARTIST] Requesting bio for: {artist_name}")
+    logger.debug(f"[ARTIST] Requesting bio for: {artist_name}")
 
     try:
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
