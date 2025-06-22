@@ -1,0 +1,12 @@
+🛠️  Logging Setup Summary
+├─ App Version: 1.0.1 (Last updated: 2025-06-11)
+├─ Startup Time: 2025-06-22 11:54:56
+├─ Global Log Level: INFO
+├─ Module Overrides:
+│   ├─ backend.services.xai_service: INFO (effective: INFO)
+│   ├─ backend.services.spotify_service: WARNING (effective: WARNING)
+│   ├─ backend.services.utils: INFO (effective: INFO)
+│   ├─ spotipy: WARNING (effective: WARNING)
+│   ├─ urllib3: WARNING (effective: WARNING)
+│   ├─ requests: WARNING (effective: WARNING)
+│   ├─ httpx: WARNING (effective: WARNING)

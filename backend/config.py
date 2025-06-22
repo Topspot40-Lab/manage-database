@@ -58,6 +58,7 @@ GENERATE_JSON_LOG_PATH = "backend/logs/new_json_all_decades.log"
 # 📡 LOGGING CONFIGURATION
 # -----------------------------------------------------------------------------
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Global default (can override via .env)
+LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true"
 
 LOG_LEVELS_BY_MODULE = {
     "backend.services.xai_service": "INFO",

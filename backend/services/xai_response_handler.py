@@ -32,9 +32,9 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
                 logging.info(f"[FEATURED DETECTED] {artist_name_raw.title()}")
 
     # Trim to requested count if not in test mode
-    if not is_test_mode and len(tracks) > num_tracks:
-        logging.info(f"[TRIM] Reducing track count from {len(tracks)} to {num_tracks}")
-        tracks = tracks[:num_tracks]
+    # if not is_test_mode and len(tracks) > num_tracks:
+    #     logging.info(f"[TRIM] Reducing track count from {len(tracks)} to {num_tracks}")
+    #     tracks = tracks[:num_tracks]
 
     return tracks
 
