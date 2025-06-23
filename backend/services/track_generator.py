@@ -134,11 +134,17 @@ def build_ranking_entry(base, request, spotify_data, now):
     return ranking_entry
 
 def build_final_json(enriched_tracks, request, now):
+    from backend.services.spotify_service import handle_missing_track  # Ensure this is imported
+    from backend.config import SCHEMA_PATH
+    import json
+
     seen_artists = {}
     description_cache = {}
     artists = []
     tracks = []
     rankings = []
+    bad_tracks = []
+    spare_tracks = []  # Optional: pass spares into handle_missing_track()
 
     for base in enriched_tracks:
         spotify_data = fetch_and_validate_tracks(base)
@@ -155,8 +161,8 @@ def build_final_json(enriched_tracks, request, now):
             artists.append(artist_entry)
 
         # 🎤 Featured artist processing (if present)
-        featured_artist_id = spotify_data.get("featured_artist_id")
-        featured_artist_name = base.get("featured_artist") or spotify_data.get("featured_artist_name")
+        featured_artist_id = spotify_data.get("featured_artist_id") if spotify_data else None
+        featured_artist_name = base.get("featured_artist") or (spotify_data.get("featured_artist_name") if spotify_data else None)
 
         if featured_artist_id and featured_artist_name:
             featured_name_clean = normalize_name(featured_artist_name)
@@ -178,9 +184,30 @@ def build_final_json(enriched_tracks, request, now):
         track_entry = build_track_entry(base, request, spotify_data, now)
         ranking_entry = build_ranking_entry(base, request, spotify_data, now)
 
-        tracks.append(track_entry)
-        rankings.append(ranking_entry)
+        if not track_entry or not track_entry.get("spotify_track_id"):
+            bad_tracks.append(track_entry)
+            continue
 
+        # Only keep as many tracks as requested
+        if len(tracks) < request.num_tracks:
+            tracks.append(track_entry)
+            rankings.append(ranking_entry)
+        else:
+            spare_tracks.append(track_entry)
+
+    # 🎯 Give the user a chance to fix bad tracks
+    for bad_track in bad_tracks:
+        try:
+            handle_missing_track(bad_track, tracks, spare_tracks)
+        except Exception as e:
+            logger.warning(f"⚠️ Error handling missing track: {e}")
+
+    if spare_tracks:
+        logger.info(f"🪙 {len(spare_tracks)} spare tracks available.")
+    else:
+        logger.warning("🚨 No spare tracks available after filtering.")
+
+    # 🧱 Build final structure after fixes
     final_json = {
         "core_tables": {
             "genre": [{"genre_name": request.genre}],
@@ -205,11 +232,8 @@ def build_final_json(enriched_tracks, request, now):
         }
     }
 
-    # ✅ Schema validation
+    # ✅ Schema validation (after cleanup)
     try:
-        from backend.config import SCHEMA_PATH
-        import json
-
         with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
             schema = json.load(f)
         validate(instance=final_json, schema=schema)
@@ -220,13 +244,17 @@ def build_final_json(enriched_tracks, request, now):
     except Exception as e:
         logger.warning(f"⚠️ Could not validate against schema: {e}")
 
-
     logger.debug("🔍 JSON Preview (keys only):")
     for key in final_json:
         logger.debug(f"  🔹 {key}: {list(final_json[key].keys())}")
 
-
-
     logger.info(f"📦 Final JSON built with {len(tracks)} tracks and {len(artists)} artists.")
+
+    logger.info(f"🧾 Track Summary:")
+    logger.info(f"   - Tracks Requested: {request.num_tracks}")
+    logger.info(f"   - Final Tracks Included: {len(tracks)}")
+    logger.info(f"   - Spare Tracks Remaining: {len(spare_tracks)}")
+    logger.info(f"   - Tracks Replaced or Skipped: {len(bad_tracks)}")
+
     return final_json, tracks, artists
 

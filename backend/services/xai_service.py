@@ -25,8 +25,12 @@ with open(SCHEMA_PATH, "r") as f:
     TRACK_SCHEMA = json.load(f)
 
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
-    buffer_size = 4 if num_tracks >= 40 else 1
-    prompt = build_track_prompt(decade, genre, num_tracks, language, buffer_size)
+    buffer_size = max(4, round(num_tracks * 0.25))
+    total_requested = num_tracks + buffer_size
+    logger.info(f"[XAI] Requesting {total_requested} tracks (target={num_tracks}, buffer={buffer_size})")
+
+    prompt = build_track_prompt(decade, genre, total_requested, language, buffer_size)
+
     logger.debug("[XAI] Requesting top tracks...")
     tracks = []
 
@@ -38,7 +42,8 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
             logger.debug(f"[TEST] Loaded {len(raw_tracks)} tracks.")
-            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=True)
+            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), total_requested, is_test_mode=True)
+
         except Exception as e:
             logger.error(f"[ERROR] Failed to load test file: {e}")
     else:
@@ -63,6 +68,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
     valid_tracks = validate_tracks(tracks)
     logger.debug(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
+    logger.debug(f"[CLEANUP] Returning {len(valid_tracks)} cleaned tracks from {total_requested} requested.")
 
     return {
         "language": language,

@@ -168,6 +168,10 @@ def fallback_spotify_search(sp, track_name, artist_name):
     return None
 
 def get_similar_tracks(track_name: str, limit=5):
+    if not track_name or "[Unknown" in track_name:
+        logger.warning(f"[SPOTIFY][SUGGESTIONS] Skipping suggestions for invalid track_name: {track_name}")
+        return []
+
     sp = get_spotify_client()
     results = sp.search(q=f"track:{track_name}", type="track", limit=limit)
 
@@ -187,7 +191,11 @@ def prompt_user_for_replacement(track_name, artist_name, suggestions):
     print(f"\n🎯 Suggestions for: '{track_name}' by {artist_name}\n")
     for idx, item in enumerate(suggestions, 1):
         print(f"[{idx}] {item['trackName']} – {item['artistName']} (Popularity: {item['popularity']})")
-        print(f"    🔗 https://open.spotify.com/track/{item['spotifyTrackId']}")
+        track_name = item.get("trackName", "[Unknown]")
+        artist_name = item.get("artistName", "[Unknown]")
+        popularity = item.get("popularity", "N/A")
+        print(f"[{idx}] {track_name} – {artist_name} (Popularity: {popularity})")
+
     while True:
         choice = input("📝 Choose replacement [1–{}] or [s]kip: ".format(len(suggestions))).strip().lower()
         if choice == 's':
@@ -195,19 +203,34 @@ def prompt_user_for_replacement(track_name, artist_name, suggestions):
         if choice.isdigit() and 1 <= int(choice) <= len(suggestions):
             return suggestions[int(choice) - 1]
         print("❗ Invalid choice.")
-
-
 def choose_spare_track(spare_tracks):
+    import pprint
+    print("\n🧪 DEBUG: Spare Track Sample:")
+    pprint.pprint(spare_tracks[:3])  # View first few entries
+
     print("\n🎒 Spare Tracks:")
     for idx, track in enumerate(spare_tracks, 1):
-        print(f"[{idx}] {track['trackName']} by {track['artistName']}")
+        track_name = track.get("trackName") or track.get("track_name", "[Unknown]")
+        artist_name = track.get("artistName") or track.get("artist_name", "[Unknown]")
+        popularity = track.get("popularity")
+        spotify_id = track.get("spotifyTrackId") or track.get("spotify_track_id")
+
+        line = f"[{idx}] {track_name} by {artist_name}"
+        if popularity:
+            line += f" (Popularity: {popularity})"
+        print(line)
+        if spotify_id:
+            print(f"    🔗 https://open.spotify.com/track/{spotify_id}")
+
     while True:
-        choice = input("Choose spare [1–{}] or [s]kip: ".format(len(spare_tracks))).strip().lower()
+        choice = input(f"Choose spare [1–{len(spare_tracks)}] or [s]kip: ").strip().lower()
         if choice == 's':
             return None
-        if choice.isdigit() and 1 <= int(choice) <= len(spare_tracks):
-            return spare_tracks.pop(int(choice) - 1)
-        print("❗ Invalid choice.")
+        if choice.isdigit():
+            index = int(choice)
+            if 1 <= index <= len(spare_tracks):
+                return spare_tracks.pop(index - 1)
+        print("❗ Invalid choice. Please try again.")
 
 def reassign_ranks(tracks):
     for i, track in enumerate(tracks, 1):
@@ -229,7 +252,10 @@ def log_missing_track_action(original_track, action, replacement=None, category=
     with open(log_file, "a", encoding="utf-8") as f:
         f.write("=========================================\n")
         f.write(f"🕒 {timestamp}\n")
-        f.write(f"❌ Original Track: {original_track['trackName']} by {original_track['artistName']}\n")
+        track_name = original_track.get("trackName") or original_track.get("track_name") or "[Unknown Track]"
+        artist_name = original_track.get("artistName") or original_track.get("artist_name") or "[Unknown Artist]"
+        f.write(f"❌ Original Track: {track_name} by {artist_name}\n")
+
         f.write(f"🛠️ Action Taken: {action}\n")
 
         if replacement:
@@ -244,37 +270,48 @@ def log_missing_track_action(original_track, action, replacement=None, category=
         f.write("\n")
 
 
-
 def handle_missing_track(bad_track, tracks, spare_tracks):
-    track_name = bad_track.get("trackName", "[Unknown Track]")
-    artist_name = bad_track.get("artistName", "[Unknown Artist]")
+    track_name = bad_track.get("trackName") or bad_track.get("track_name") or "[Unknown Track]"
+    artist_name = bad_track.get("artistName") or bad_track.get("artist_name") or "[Unknown Artist]"
 
+    if not track_name.strip() or not artist_name.strip():
+        logger.warning(f"❌ Cannot handle missing track — missing name/artist: {bad_track}")
+        print(f"\n❌ Cannot suggest replacements — track or artist name missing.\n")
+        return
 
     suggestions = get_similar_tracks(track_name)
 
     print(f"\n❌ Missing track ID for: '{track_name}' by '{artist_name}'")
+
     print("\n🎯 Spotify Suggestions:")
     if suggestions:
         for idx, item in enumerate(suggestions, start=1):
-            print(f"[{idx}] {item['trackName']} – {item['artistName']} (Popularity: {item['popularity']})")
-            print(f"    🔗 https://open.spotify.com/track/{item['spotifyTrackId']}")
+            name = item.get("trackName", "[Unknown]")
+            artist = item.get("artistName", "[Unknown]")
+            popularity = item.get("popularity")
+            spotify_id = item.get("spotifyTrackId")
+            print(f"[{idx}] {name} – {artist}" + (f" (Popularity: {popularity})" if popularity else ""))
+            if spotify_id:
+                print(f"    🔗 https://open.spotify.com/track/{spotify_id}")
     else:
         print("⚠️ No suggestions found.")
 
     print("\n🎒 Spare Tracks:")
     if spare_tracks:
         for idx, track in enumerate(spare_tracks, 1):
-            print(f"[{idx}] {track['trackName']} by {track['artistName']}")
+            tname = track.get("trackName", "[Unknown]")
+            aname = track.get("artistName", "[Unknown]")
+            print(f"[{idx}] {tname} by {aname}")
     else:
         print("⚠️ No spare tracks available.")
 
-    print("\n💡 Options:")
+    print("\n💡 What would you like to do?")
     print("[1] Replace with Spotify suggestion")
     print("[2] Replace with spare track")
     print("[3] Skip and keep this track")
     print("[4] Delete this track and reassign ranks")
 
-    choice = input("Your choice [1-4]: ").strip()
+    choice = input("Your choice [1–4]: ").strip()
 
     category = bad_track.get("decade", "unknown")
     genre = bad_track.get("genre", "unknown")
@@ -283,9 +320,9 @@ def handle_missing_track(bad_track, tracks, spare_tracks):
         chosen = prompt_user_for_replacement(track_name, artist_name, suggestions)
         if chosen:
             bad_track.update({
-                "trackName": chosen["trackName"],
-                "artistName": chosen["artistName"],
-                "spotify_track_id": chosen["spotifyTrackId"],
+                "trackName": chosen.get("trackName", "[Unknown]"),
+                "artistName": chosen.get("artistName", "[Unknown]"),
+                "spotify_track_id": chosen.get("spotifyTrackId"),
                 "popularity": chosen.get("popularity"),
                 "album_artwork": chosen.get("album_artwork")
             })
@@ -295,8 +332,11 @@ def handle_missing_track(bad_track, tracks, spare_tracks):
     elif choice == '2' and spare_tracks:
         spare = choose_spare_track(spare_tracks)
         if spare:
-            index = tracks.index(bad_track)
-            tracks[index] = spare
+            try:
+                index = tracks.index(bad_track)
+                tracks[index] = spare
+            except ValueError:
+                tracks.append(spare)
             reassign_ranks(tracks)
             log_missing_track_action(bad_track, "Replaced with spare track", spare, category, genre)
             return
@@ -306,7 +346,10 @@ def handle_missing_track(bad_track, tracks, spare_tracks):
         return
 
     elif choice == '4':
-        tracks.remove(bad_track)
+        try:
+            tracks.remove(bad_track)
+        except ValueError:
+            pass
         reassign_ranks(tracks)
         log_missing_track_action(bad_track, "Deleted and removed from track list", None, category, genre)
         return
