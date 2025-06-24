@@ -6,3 +6,59 @@
 🔗 Spotify URL: https://open.spotify.com/track/2F5lTjxNzxoVP0jRxLSN9Z
 🌟 Popularity: 63
 
+=========================================
+🕒 2025-06-24 15:11:41
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-24 15:11:42
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 47
+
+=========================================
+🕒 2025-06-24 16:23:29
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-24 16:23:30
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 47
+
+=========================================
+🕒 2025-06-24 16:27:15
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-24 16:27:17
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 47
+
+=========================================
+🕒 2025-06-24 16:42:29
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 47
+

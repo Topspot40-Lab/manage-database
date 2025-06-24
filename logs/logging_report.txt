@@ -1,6 +1,6 @@
 🛠️  Logging Setup Summary
 ├─ App Version: 1.0.1 (Last updated: 2025-06-11)
-├─ Startup Time: 2025-06-24 14:04:49
+├─ Startup Time: 2025-06-24 17:01:20
 ├─ Global Log Level: INFO
 ├─ Module Overrides:
 │   ├─ backend.services.xai_service: DEBUG (effective: DEBUG)

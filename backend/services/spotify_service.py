@@ -227,15 +227,14 @@ def get_similar_tracks(track_name: str, limit=5):
         })
     return suggestions
 
-
 def prompt_user_for_replacement(track_name, artist_name, suggestions):
     print(f"\n🎯 Suggestions for: '{track_name}' by {artist_name}\n")
+
     for idx, item in enumerate(suggestions, 1):
-        print(f"[{idx}] {item['trackName']} – {item['artistName']} (Popularity: {item['popularity']})")
-        track_name = item.get("trackName", "[Unknown]")
-        artist_name = item.get("artistName", "[Unknown]")
+        suggestion_track = item.get("trackName", "[Unknown]")
+        suggestion_artist = item.get("artistName", "[Unknown]")
         popularity = item.get("popularity", "N/A")
-        print(f"[{idx}] {track_name} – {artist_name} (Popularity: {popularity})")
+        print(f"[{idx}] {suggestion_track} – {suggestion_artist} (Popularity: {popularity})")
 
     while True:
         choice = input("📝 Choose replacement [1–{}] or [s]kip: ".format(len(suggestions))).strip().lower()
@@ -244,6 +243,8 @@ def prompt_user_for_replacement(track_name, artist_name, suggestions):
         if choice.isdigit() and 1 <= int(choice) <= len(suggestions):
             return suggestions[int(choice) - 1]
         print("❗ Invalid choice.")
+
+
 def choose_spare_track(spare_tracks):
     import pprint
     print("\n🧪 DEBUG: Spare Track Sample:")

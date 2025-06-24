@@ -1,5 +1,4 @@
 import logging
-from backend.config import ENABLE_ARTIST_DESCRIPTION, ENABLE_TRACK_DESCRIPTION, ENABLE_RANK_INTRO
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +68,7 @@ def classify_artist_type(artist_name: str, genre: str) -> str:
         return "DUET"
     if " feat." in name or " featuring " in name:
         return "FEATURED"
-    if "&" in name or " and " in name:
-        if genre.lower() in {"jazz", "folk", "country"}:
-            return "DUET"
-        return "GROUP"
+
     return "SOLO"
 
 

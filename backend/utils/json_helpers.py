@@ -93,7 +93,7 @@ def parse_featured_artists(raw_artist_name: str):
     # pattern = r"(.*?)\s+(?:ft\.|feat\.|featuring|with|&|and)\s+(.*)"
 
     # Removed "&" because of conflict with 'Brooks & Dunn' and 'Elton John & Dua Lipa'
-    pattern = r"(.*?)\s+(?:ft\.|feat\.|featuring|with|and)\s+(.*)"
+    pattern = r"(.*?)\s+(?:ft\.|feat\.|featuring|with)\s+(.*)"
 
     match = re.search(pattern, raw_artist_name, re.IGNORECASE)
     if match:

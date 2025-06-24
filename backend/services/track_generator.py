@@ -4,6 +4,8 @@ logger = logging.getLogger(__name__)
 from backend.services.spotify_service import get_spotify_data, determine_mode_flag, format_track_display_name
 from backend.utils.json_helpers import parse_featured_artists, normalize_name
 from jsonschema import validate, ValidationError
+from backend.services.spotify_service import get_similar_tracks, prompt_user_for_replacement
+
 
 
 def fetch_and_validate_tracks(base):
@@ -17,9 +19,29 @@ def fetch_and_validate_tracks(base):
 
     logger.debug(f"🎯 [Rank #{rank}] Searching Spotify with: '{track_name_clean}' by '{artist_name_clean}'")
 
+    # Attempt original search
     spotify_data = get_spotify_data(track_name_clean, artist_name_clean)
-    return spotify_data
 
+    if not spotify_data:
+        logger.warning(f"🎵 No Spotify match for: '{track_name_clean}' by '{artist_name_clean}'")
+
+        # Suggest alternatives
+        suggestions = get_similar_tracks(track_name_clean)
+        if suggestions:
+            replacement = prompt_user_for_replacement(track_name_clean, artist_name_clean, suggestions)
+            if replacement:
+                logger.info(f"🛠️ Replacement chosen: '{replacement['trackName']}' by '{replacement['artistName']}'")
+                # Replace in base (in case caller uses it later)
+                base["trackName"] = replacement["trackName"]
+                base["artistName"] = replacement["artistName"]
+                # Retry Spotify search with replacement
+                spotify_data = get_spotify_data(replacement["trackName"], replacement["artistName"])
+            else:
+                logger.warning(f"⚠️ Skipping [Rank #{rank}] '{track_name_raw}' by '{artist_name_raw}' — no replacement selected.")
+        else:
+            logger.warning(f"⚠️ No fallback suggestions found for: '{track_name_clean}'")
+
+    return spotify_data
 
 def process_artist(base, spotify_data, seen_artists, description_cache, language):
     from backend.services.xai_service import get_artist_description
