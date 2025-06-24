@@ -6,19 +6,60 @@ from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pathlib import Path
-
 import re
-
-def clean_track_title(title: str) -> str:
-    """Remove any parenthetical like (The Fishin' Song) or (Remastered) from track title."""
-    return re.sub(r"\s*\(.*?\)", "", title).strip()
-
+import difflib
+from backend.utils.json_helpers import normalize_name
 
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
+
+def auto_select_best_spotify_match(track_name: str, suggestions: list[dict]) -> tuple[Optional[dict], str]:
+    """
+    Attempt to auto-select the best Spotify match from suggestions.
+
+    Returns:
+        - best_match (dict) or None
+        - reason (str) describing match logic
+    """
+    if not suggestions:
+        return None, "No Spotify suggestions available"
+
+    simplified_input = track_name.lower().split("(")[0].strip()
+
+    for suggestion in suggestions:
+        name = suggestion.get("trackName", "").lower()
+        simplified_name = name.split("(")[0].strip()
+
+        if simplified_input == simplified_name:
+            logger.info(f"🎯 Exact simplified match: '{simplified_input}' == '{simplified_name}'")
+            return suggestion, "Exact match after simplification"
+
+        if simplified_input in simplified_name:
+            logger.info(f"🧠 Partial simplified match: '{simplified_input}' in '{simplified_name}'")
+            return suggestion, "Partial match after simplification"
+
+    suggestion_names = [s.get("trackName") for s in suggestions if "trackName" in s]
+    closest_matches = difflib.get_close_matches(track_name, suggestion_names, n=1, cutoff=0.6)
+
+    if closest_matches:
+        selected = next((s for s in suggestions if s.get("trackName") == closest_matches[0]), None)
+        if selected:
+            logger.info(f"🌀 Fuzzy match selected: '{closest_matches[0]}' for '{track_name}'")
+            return selected, "Fuzzy match (difflib)"
+
+    fallback = suggestions[0]
+    logger.warning(f"⚠️ No strong match for '{track_name}'. Falling back to: '{fallback.get('trackName')}'")
+    return fallback, "Fallback to top Spotify suggestion"
+
+
+def clean_track_title(title: str) -> str:
+    """Remove any parenthetical like (The Fishin' Song) or (Remastered) from track title."""
+    return re.sub(r"\s*\(.*?\)", "", title).strip()
+
+
 
 # ✅ Define ModeFlag enum locally if not imported
 class ModeFlag(Enum):
@@ -269,90 +310,109 @@ def log_missing_track_action(original_track, action, replacement=None, category=
 
         f.write("\n")
 
-
-def handle_missing_track(bad_track, tracks, spare_tracks):
+def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
     track_name = bad_track.get("trackName") or bad_track.get("track_name") or "[Unknown Track]"
     artist_name = bad_track.get("artistName") or bad_track.get("artist_name") or "[Unknown Artist]"
 
     if not track_name.strip() or not artist_name.strip():
         logger.warning(f"❌ Cannot handle missing track — missing name/artist: {bad_track}")
         print(f"\n❌ Cannot suggest replacements — track or artist name missing.\n")
-        return
+        return False
 
+    # 📝 Preserve original name/artist for fallback matching
+    bad_track["original_track_name"] = track_name
+    bad_track["original_artist_name"] = artist_name
+
+    # 🚀 Try auto-match
     suggestions = get_similar_tracks(track_name)
-
-    print(f"\n❌ Missing track ID for: '{track_name}' by '{artist_name}'")
-
-    print("\n🎯 Spotify Suggestions:")
-    if suggestions:
-        for idx, item in enumerate(suggestions, start=1):
-            name = item.get("trackName", "[Unknown]")
-            artist = item.get("artistName", "[Unknown]")
-            popularity = item.get("popularity")
-            spotify_id = item.get("spotifyTrackId")
-            print(f"[{idx}] {name} – {artist}" + (f" (Popularity: {popularity})" if popularity else ""))
-            if spotify_id:
-                print(f"    🔗 https://open.spotify.com/track/{spotify_id}")
-    else:
-        print("⚠️ No suggestions found.")
-
-    print("\n🎒 Spare Tracks:")
-    if spare_tracks:
-        for idx, track in enumerate(spare_tracks, 1):
-            tname = track.get("trackName", "[Unknown]")
-            aname = track.get("artistName", "[Unknown]")
-            print(f"[{idx}] {tname} by {aname}")
-    else:
-        print("⚠️ No spare tracks available.")
-
-    print("\n💡 What would you like to do?")
-    print("[1] Replace with Spotify suggestion")
-    print("[2] Replace with spare track")
-    print("[3] Skip and keep this track")
-    print("[4] Delete this track and reassign ranks")
-
-    choice = input("Your choice [1–4]: ").strip()
+    best_match, reason = auto_select_best_spotify_match(track_name, suggestions)
 
     category = bad_track.get("decade", "unknown")
     genre = bad_track.get("genre", "unknown")
 
-    if choice == '1' and suggestions:
-        chosen = prompt_user_for_replacement(track_name, artist_name, suggestions)
-        if chosen:
-            bad_track.update({
-                "trackName": chosen.get("trackName", "[Unknown]"),
-                "artistName": chosen.get("artistName", "[Unknown]"),
-                "spotify_track_id": chosen.get("spotifyTrackId"),
-                "popularity": chosen.get("popularity"),
-                "album_artwork": chosen.get("album_artwork")
-            })
-            log_missing_track_action(bad_track, "Replaced with Spotify suggestion", chosen, category, genre)
-            return
+    if best_match:
+        print(f"✅ Auto-matched '{track_name}' → '{best_match.get('trackName')}' ({reason})")
+        extra = enrich_track_from_spotify(best_match["spotifyTrackId"])
 
-    elif choice == '2' and spare_tracks:
-        spare = choose_spare_track(spare_tracks)
-        if spare:
-            try:
-                index = tracks.index(bad_track)
-                tracks[index] = spare
-            except ValueError:
-                tracks.append(spare)
-            reassign_ranks(tracks)
-            log_missing_track_action(bad_track, "Replaced with spare track", spare, category, genre)
-            return
+        new_track_name = best_match["trackName"]
+        new_artist_name = best_match["artistName"]
 
-    elif choice == '3':
-        log_missing_track_action(bad_track, "Skipped — kept original with missing ID", None, category, genre)
-        return
+        bad_track.update({
+            # ✅ For ranking_table and diagnostics
+            "trackName": new_track_name,
+            "artistName": new_artist_name,
 
-    elif choice == '4':
-        try:
-            tracks.remove(bad_track)
-        except ValueError:
-            pass
-        reassign_ranks(tracks)
-        log_missing_track_action(bad_track, "Deleted and removed from track list", None, category, genre)
-        return
+            # ✅ For track_table consistency
+            "track_name": new_track_name,
+            "artist_name": new_artist_name,
+            "track_display_name": format_track_display_name(
+                normalize_name(new_track_name),
+                None,
+                0  # ModeFlag.SOLO — adjust if you later re-evaluate mode
+            ),
 
-    print("❗ Invalid or unavailable option.")
-    handle_missing_track(bad_track, tracks, spare_tracks)
+            "spotify_track_id": best_match["spotifyTrackId"],
+            "album_artwork": extra["album_artwork"],
+            "artist_id": extra["artist_id"],
+            "artist_artwork": extra["artist_artwork"],
+            "duration_ms": extra["duration_ms"],
+            "popularity": extra["popularity"],
+            "match_reason": reason,
+            "auto_matched": True
+        })
+        # ✅ Try to replace original track
+        original_rank = bad_track.get("rank")
+        replaced = False
+
+        for i, t in enumerate(tracks):
+            t_rank = t.get("rank")
+            t_name = t.get("trackName") or t.get("track_name")
+            t_artist = t.get("artistName") or t.get("artist_name")
+
+            if (
+                t_name == bad_track["original_track_name"]
+                and t_artist == bad_track["original_artist_name"]
+            ) or (original_rank is not None and t_rank == original_rank):
+                tracks[i] = bad_track
+                replaced = True
+                logger.debug(f"🔁 Replaced original track at index {i} (rank {t_rank})")
+                break
+
+        # 🧩 Fallback: reinsert at index based on rank
+        if not replaced and original_rank is not None:
+            insert_index = original_rank - 1
+            if insert_index < len(tracks):
+                logger.warning(f"⚠️ Could not find match by name/rank — inserting at index {insert_index}")
+                tracks.insert(insert_index, bad_track)
+            else:
+                logger.warning(f"📌 Rank index too high ({insert_index}) — appending at end")
+                tracks.append(bad_track)
+        elif not replaced:
+            logger.warning(f"📌 No rank found — appending track to end")
+            tracks.append(bad_track)
+
+        log_missing_track_action(
+            bad_track,
+            f"✅ Auto-replaced with Spotify suggestion ({reason})",
+            best_match,
+            category,
+            genre
+        )
+
+        return True
+
+    # ❌ Auto-match failed, fallback will be triggered
+    print(f"\n❌ Missing track ID for: '{track_name}' by '{artist_name}'")
+    return False
+
+def enrich_track_from_spotify(track_id: str) -> dict:
+    sp = get_spotify_client()
+    data = sp.track(track_id)
+    return {
+        "duration_ms": data["duration_ms"],
+        "popularity": data["popularity"],
+        "album_artwork": data["album"]["images"][0]["url"] if data["album"]["images"] else None,
+        "artist_id": data["artists"][0]["id"],
+        "artist_artwork": sp.artist(data["artists"][0]["id"])["images"][0]["url"]
+                         if sp.artist(data["artists"][0]["id"])["images"] else None,
+    }

@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Load environment variables from .env file
-load_dotenv()
 
+load_dotenv()
 
 # config.py
 
@@ -66,6 +66,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.spotify_service": "WARNING",
     "backend.services.track_generator": "DEBUG",
     "backend.services.utils": "INFO",
+    "backend.logging.track_logging": "DEBUG",
     "spotipy": "WARNING",           # 🔇 Suppress Spotipy's debug/info chatter
     "urllib3": "WARNING",           # 🔇 Suppress low-level HTTP logs
     "requests": "WARNING",          # 🔇 Optional, depending on if you use it

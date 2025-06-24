@@ -9,16 +9,17 @@ from jsonschema import validate, ValidationError
 def fetch_and_validate_tracks(base):
     artist_name_raw = base["artistName"]
     track_name_raw = base["trackName"]
+    rank = base.get("rank", "?")  # 👈 Optional safeguard
 
     artist_name_clean, _ = parse_featured_artists(artist_name_raw)
     artist_name_clean = normalize_name(artist_name_clean)
     track_name_clean = normalize_name(track_name_raw)
 
-    logger.debug(f"🎯 Searching Spotify with: '{track_name_clean}' by '{artist_name_clean}'")
+    logger.debug(f"🎯 [Rank #{rank}] Searching Spotify with: '{track_name_clean}' by '{artist_name_clean}'")
 
     spotify_data = get_spotify_data(track_name_clean, artist_name_clean)
-    # logger.debug(f"✅ Spotify data received: {spotify_data}")
     return spotify_data
+
 
 def process_artist(base, spotify_data, seen_artists, description_cache, language):
     from backend.services.xai_service import get_artist_description
@@ -112,10 +113,13 @@ def build_track_entry(base, request, spotify_data, now):
     logger.debug(f"🎯 Final entry for '{track_display_name}': mode={mode_flag.name}, featured_id={featured_artist_id}")
 
     return track_entry
-
 def build_ranking_entry(base, request, spotify_data, now):
-    artist_name_clean = normalize_name(base["artistName"])
-    track_name_clean = normalize_name(base["trackName"])
+    artist_name_clean = normalize_name(
+        base.get("artistName") or base.get("artist_name")
+    )
+    track_name_clean = normalize_name(
+        base.get("trackName") or base.get("track_name")
+    )
 
     ranking_entry = {
         "track_name": track_name_clean,
@@ -130,7 +134,6 @@ def build_ranking_entry(base, request, spotify_data, now):
         "ranking_date": now[:10]
     }
 
-    # logger.debug(f"📊 Ranking entry built: {ranking_entry}")
     return ranking_entry
 
 def build_final_json(enriched_tracks, request, now):
@@ -198,9 +201,24 @@ def build_final_json(enriched_tracks, request, now):
     # 🎯 Give the user a chance to fix bad tracks
     for bad_track in bad_tracks:
         try:
-            handle_missing_track(bad_track, tracks, spare_tracks)
+            success = handle_missing_track(bad_track, tracks, spare_tracks)
+            if success:
+                spotify_data = {
+                    "spotify_track_id": bad_track.get("spotify_track_id"),
+                    "album_artwork": bad_track.get("album_artwork"),
+                    "artist_id": bad_track.get("artist_id"),
+                    "artist_artwork": bad_track.get("artist_artwork"),
+                    "duration_ms": bad_track.get("duration_ms"),
+                    "popularity": bad_track.get("popularity"),
+                    "featured_artist_id": bad_track.get("featured_artist_id"),
+                    "featured_artist_name": bad_track.get("featured_artist"),
+                }
+                ranking_entry = build_ranking_entry(bad_track, request, spotify_data, now)
+                rankings.append(ranking_entry)
+                logger.debug(f"📊 Added ranking entry for recovered track: #{bad_track.get('rank')} — {bad_track.get('trackName')}")
         except Exception as e:
             logger.warning(f"⚠️ Error handling missing track: {e}")
+
 
     if spare_tracks:
         logger.info(f"🪙 {len(spare_tracks)} spare tracks available.")
