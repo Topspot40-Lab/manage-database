@@ -223,27 +223,51 @@ def get_similar_tracks(track_name: str, limit=5):
             "artistName": item["artists"][0]["name"],
             "spotifyTrackId": item["id"],
             "popularity": item.get("popularity", 0),
-            "album_artwork": item["album"]["images"][0]["url"] if item["album"]["images"] else None
+            "album_artwork": item["album"]["images"][0]["url"] if item["album"]["images"] else None,
+            "yearReleased": item["album"].get("release_date", "")[:4]  # Gets the year only
         })
     return suggestions
 
-def prompt_user_for_replacement(track_name, artist_name, suggestions):
-    print(f"\n🎯 Suggestions for: '{track_name}' by {artist_name}\n")
+def prompt_user_for_replacement(track_name, artist_name, suggestions, spare_tracks=None):
+    print(f"\n🎯 Missing track: '{track_name}' by {artist_name}")
+    print("Here are possible replacements:")
 
+    # Show Spotify suggestions
     for idx, item in enumerate(suggestions, 1):
         suggestion_track = item.get("trackName", "[Unknown]")
         suggestion_artist = item.get("artistName", "[Unknown]")
+        year_released = item.get("yearReleased", "????")
         popularity = item.get("popularity", "N/A")
-        print(f"[{idx}] {suggestion_track} – {suggestion_artist} (Popularity: {popularity})")
+        print(f"[{idx}] {suggestion_track} – {suggestion_artist} ({year_released}) — Popularity: {popularity}")
+
+    # Show spare tracks if available
+    if spare_tracks:
+        print("\n🎵 Spare Tracks:")
+        for s_idx, item in enumerate(spare_tracks, 1):
+            spare_track = item.get("trackName", "[Unknown]")
+            spare_artist = item.get("artistName", "[Unknown]")
+            year_released = item.get("yearReleased", "????")
+            print(f"[S{s_idx}] {spare_track} – {spare_artist} ({year_released})")
+
+    print("[s] Skip this track")
 
     while True:
-        choice = input("📝 Choose replacement [1–{}] or [s]kip: ".format(len(suggestions))).strip().lower()
+        choice = input("📝 Choose a Spotify [1–{}], a Spare [S1–S#], or [s]kip: ".format(len(suggestions))).strip().lower()
+
         if choice == 's':
             return None
-        if choice.isdigit() and 1 <= int(choice) <= len(suggestions):
-            return suggestions[int(choice) - 1]
-        print("❗ Invalid choice.")
 
+        if choice.isdigit():
+            choice_int = int(choice)
+            if 1 <= choice_int <= len(suggestions):
+                return suggestions[choice_int - 1]
+
+        if choice.startswith('s') and len(choice) > 1 and choice[1:].isdigit():
+            spare_index = int(choice[1:]) - 1
+            if spare_tracks and 0 <= spare_index < len(spare_tracks):
+                return spare_tracks[spare_index]
+
+        print("❗ Invalid input.")
 
 def choose_spare_track(spare_tracks):
     import pprint

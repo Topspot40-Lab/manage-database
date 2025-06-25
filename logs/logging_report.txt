@@ -1,6 +1,6 @@
 🛠️  Logging Setup Summary
 ├─ App Version: 1.0.1 (Last updated: 2025-06-11)
-├─ Startup Time: 2025-06-24 17:01:20
+├─ Startup Time: 2025-06-24 20:57:47
 ├─ Global Log Level: INFO
 ├─ Module Overrides:
 │   ├─ backend.services.xai_service: DEBUG (effective: DEBUG)
@@ -8,6 +8,7 @@
 │   ├─ backend.services.track_generator: DEBUG (effective: DEBUG)
 │   ├─ backend.services.utils: INFO (effective: INFO)
 │   ├─ backend.logging.track_logging: DEBUG (effective: DEBUG)
+│   ├─ backend.routers.validate_json: DEBUG (effective: DEBUG)
 │   ├─ spotipy: WARNING (effective: WARNING)
 │   ├─ urllib3: WARNING (effective: WARNING)
 │   ├─ requests: WARNING (effective: WARNING)

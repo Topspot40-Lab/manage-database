@@ -8,7 +8,8 @@ from backend.services.spotify_service import get_similar_tracks, prompt_user_for
 
 
 
-def fetch_and_validate_tracks(base):
+def fetch_and_validate_tracks(base, spare_tracks=None):
+
     artist_name_raw = base["artistName"]
     track_name_raw = base["trackName"]
     rank = base.get("rank", "?")  # 👈 Optional safeguard
@@ -21,25 +22,39 @@ def fetch_and_validate_tracks(base):
 
     # Attempt original search
     spotify_data = get_spotify_data(track_name_clean, artist_name_clean)
-
     if not spotify_data:
         logger.warning(f"🎵 No Spotify match for: '{track_name_clean}' by '{artist_name_clean}'")
 
-        # Suggest alternatives
         suggestions = get_similar_tracks(track_name_clean)
-        if suggestions:
-            replacement = prompt_user_for_replacement(track_name_clean, artist_name_clean, suggestions)
+        logger.debug(f"🧠 Retrieved {len(suggestions)} Spotify suggestions.")
+
+        if suggestions or spare_tracks:
+            replacement = prompt_user_for_replacement(
+                track_name_clean,
+                artist_name_clean,
+                suggestions,
+                # spare_tracks=spare_tracks
+            )
+
             if replacement:
-                logger.info(f"🛠️ Replacement chosen: '{replacement['trackName']}' by '{replacement['artistName']}'")
-                # Replace in base (in case caller uses it later)
+                replacement_type = "Spare Track" if replacement in spare_tracks else "Spotify Suggestion"
+                logger.info(
+                    f"🛠️ Replacement ({replacement_type}) selected: '{replacement['trackName']}' by '{replacement['artistName']}'")
+
                 base["trackName"] = replacement["trackName"]
                 base["artistName"] = replacement["artistName"]
-                # Retry Spotify search with replacement
+
+                # Remove used spare from pool
+                if spare_tracks and replacement in spare_tracks:
+                    spare_tracks.remove(replacement)
+                    logger.debug(f"🧹 Spare track removed from pool after use.")
+
                 spotify_data = get_spotify_data(replacement["trackName"], replacement["artistName"])
             else:
-                logger.warning(f"⚠️ Skipping [Rank #{rank}] '{track_name_raw}' by '{artist_name_raw}' — no replacement selected.")
+                logger.warning(
+                    f"⚠️ Skipping [Rank #{rank}] '{track_name_raw}' by '{artist_name_raw}' — no replacement selected.")
         else:
-            logger.warning(f"⚠️ No fallback suggestions found for: '{track_name_clean}'")
+            logger.warning(f"⚠️ No fallback suggestions or spare tracks found for: '{track_name_clean}'")
 
     return spotify_data
 
@@ -172,7 +187,7 @@ def build_final_json(enriched_tracks, request, now):
     spare_tracks = []  # Optional: pass spares into handle_missing_track()
 
     for base in enriched_tracks:
-        spotify_data = fetch_and_validate_tracks(base)
+        spotify_data = fetch_and_validate_tracks(base, spare_tracks)
 
         # 🧑 Main artist processing
         artist_entry = process_artist(

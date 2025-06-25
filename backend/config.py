@@ -67,6 +67,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.track_generator": "DEBUG",
     "backend.services.utils": "INFO",
     "backend.logging.track_logging": "DEBUG",
+    "backend.routers.validate_json": "DEBUG",
     "spotipy": "WARNING",           # 🔇 Suppress Spotipy's debug/info chatter
     "urllib3": "WARNING",           # 🔇 Suppress low-level HTTP logs
     "requests": "WARNING",          # 🔇 Optional, depending on if you use it

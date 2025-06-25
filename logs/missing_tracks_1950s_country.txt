@@ -78,3 +78,11 @@
 ✅ Replacement Track: I'm Waiting for Ships That Never Come In by Nick Lucas
 🔗 Spotify URL: https://open.spotify.com/track/0IFzYPbeOe6ZjKheaperJu
 
+=========================================
+🕒 2025-06-24 17:13:04
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 47
+
