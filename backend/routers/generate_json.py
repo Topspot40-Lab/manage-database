@@ -34,7 +34,7 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
     try:
         logger.debug("A. Start generate_track_json")
 
-        now = datetime.now()
+        now = datetime.now().isoformat()
 
         # Step 1: Get raw track list from XAI
         logger.debug("B. Calling get_top_tracks_from_xai")

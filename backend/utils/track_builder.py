@@ -89,7 +89,7 @@ def build_final_json(enriched_tracks, request, now):
         "language": request.language,
         "category": request.decade,
         "genre": request.genre,
-        "generatedAt": now.isoformat(),
+        "generatedAt": now,
         "track_tables": {
             "track": tracks,
             "artist": artists,
