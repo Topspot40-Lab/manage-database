@@ -118,3 +118,83 @@
 🔗 Spotify URL: https://open.spotify.com/track/2F5lTjxNzxoVP0jRxLSN9Z
 🌟 Popularity: 63
 
+=========================================
+🕒 2025-06-26 16:03:21
+❌ Original Track: Islands in the Stream by Dolly Parton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Islands in the Stream by Dolly Parton
+🔗 Spotify URL: https://open.spotify.com/track/4mnOVRRXsaqg9Nb041xR8u
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 16:03:23
+❌ Original Track: He Stopped Loving Her Today by George Jones
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: He Stopped Loving Her Today by George Jones
+🔗 Spotify URL: https://open.spotify.com/track/1q0wCfrE9eGFMzS2g8aVnx
+🌟 Popularity: 63
+
+=========================================
+🕒 2025-06-26 16:03:24
+❌ Original Track: Luckenbach, Texas (Back to the Basics of Love) (feat. Willie Nelson) by Waylon Jennings
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Luckenbach, Texas (Back to the Basics of Love) (feat. Willie Nelson) by Waylon Jennings
+🔗 Spotify URL: https://open.spotify.com/track/4WScDSwAa9m48pgHugVkCo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-26 16:03:26
+❌ Original Track: Forever and Ever, Amen by Randy Travis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Forever and Ever, Amen by Randy Travis
+🔗 Spotify URL: https://open.spotify.com/track/1ipcb9qXpSHWhSUvdxJhsx
+🌟 Popularity: 82
+
+=========================================
+🕒 2025-06-26 16:03:28
+❌ Original Track: Does He Love You by Reba McEntire
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Does He Love You by Reba McEntire
+🔗 Spotify URL: https://open.spotify.com/track/0wFQnci5YCcwbKAWNBzqiA
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-26 16:03:29
+❌ Original Track: Elvira by Oscar Maydon
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Elvira by Oscar Maydon
+🔗 Spotify URL: https://open.spotify.com/track/1xgWArLVFD1AKsLzftZYc2
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 16:03:31
+❌ Original Track: Her Town Too (with J.D. Souther) by James Taylor
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Her Town Too (with J.D. Souther) by James Taylor
+🔗 Spotify URL: https://open.spotify.com/track/3ukAkL7aLVrDf7x2XiUkNZ
+🌟 Popularity: 52
+
+=========================================
+🕒 2025-06-26 16:03:32
+❌ Original Track: All My Rowdy Friends (Have Settled Down) by Hank Williams, Jr.
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: All My Rowdy Friends (Have Settled Down) by Hank Williams, Jr.
+🔗 Spotify URL: https://open.spotify.com/track/2F5lTjxNzxoVP0jRxLSN9Z
+🌟 Popularity: 63
+
+=========================================
+🕒 2025-06-26 16:03:34
+❌ Original Track: Two Dozen Roses by Shenandoah
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Two Dozen Roses by Shenandoah
+🔗 Spotify URL: https://open.spotify.com/track/0e05wFNr6zg1ULcp4NKs1p
+🌟 Popularity: 76
+
+=========================================
+🕒 2025-06-26 16:03:35
+❌ Original Track: Fishin' in the Dark by Nitty Gritty Dirt Band
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Fishin' in the Dark by Nitty Gritty Dirt Band
+🔗 Spotify URL: https://open.spotify.com/track/15jhnquhNS1IZMlM493UBW
+🌟 Popularity: 79
+

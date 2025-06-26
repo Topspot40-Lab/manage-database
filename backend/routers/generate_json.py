@@ -3,8 +3,6 @@
 import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import Literal
 import json
 from backend.services.spotify_service import handle_missing_track, reassign_ranks
 from backend.utils.track_builder import build_track_entry, build_final_json
@@ -14,19 +12,24 @@ from backend.services.xai_service import (
     get_track_descriptions_from_xai,
 )
 from shared.filepaths import get_json_path
+from pydantic import BaseModel
+from typing import Optional
 
 from backend.utils.log_helpers import log_generate_json_summary
-# from backend.utils.log_helpers import log_summary_table
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+
 class TrackRequest(BaseModel):
-    decade: str = Field(..., description="Decade, e.g. '1960s'")
-    genre: str = Field(..., description="Genre, e.g. 'rock'")
-    language: Literal["English", "Spanish"] = Field(..., description="Language used for TTS and descriptions")
-    num_tracks: int = Field(..., ge=1, le=50, description="Number of tracks to generate (1–50)")
+    genre: str
+    decade: str
+    language: str
+    num_tracks: int
+    test_file_number: Optional[int] = None  # already exists?
+    test_mode: Optional[bool] = False       # 👈 Add this line
 
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
@@ -65,12 +68,13 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
         # Step 3: Build final JSON structure
+        # Step 3: Build final JSON structure
         final_json, track_entries, artist_entries = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
-            now=now
+            now=now,
+            is_test_mode=request.test_mode  # ✅ Correct keyword
         )
-
 
         # 🧹 Filter tracks from the final JSON data
         tracks = final_json["track_tables"]["track"]
