@@ -7,17 +7,12 @@ from pydantic import BaseModel, Field
 from typing import Literal
 import json
 from backend.services.spotify_service import handle_missing_track, reassign_ranks
-from backend.services.track_generator import build_track_entry
-
-
-
+from backend.services.track_generator import build_track_entry, build_final_json
 from backend.services.xai_service import (
     get_top_tracks_from_xai,
     get_track_descriptions_from_xai,
 )
-
 from shared.filepaths import get_json_path
-from backend.services.track_generator import build_final_json
 
 from backend.utils.log_helpers import log_generate_json_summary
 # from backend.utils.log_helpers import log_summary_table
@@ -102,7 +97,8 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
                 rebuilt = build_track_entry(spare, request, spotify_data=None, now=now)
                 rebuilt["rank"] = len(tracks) + 1
                 tracks.append(rebuilt)
-                logging.info(f"✅ Added spare track: {rebuilt['track_display_name']}")
+                logging.info(f"✅ Added spare track: {rebuilt['artist_display_name']}")
+
             except Exception as e:
                 logging.warning(f"❌ Failed to rebuild spare track: {e}")
                 continue

@@ -160,14 +160,13 @@ class Tracklist(SQLModel, table=True):
     notes: Optional[str] = Field(default=None)
     created_at: Optional[datetime] = Field(default=None)
 
-
 class Track(SQLModel, table=True):
     __tablename__ = "track"
     __table_args__ = {"schema": "track_tables", "extend_existing": True}
 
     id: int = Field(default=None, primary_key=True)
     track_name: str = Field(nullable=False)
-    track_display_name: str = Field(nullable=False)
+    artist_display_name: Optional[str] = Field(default=None)  # ✅ NEW: replaces `track_display_name`
     spotify_track_id: str = Field(nullable=False)
     mode_flag: ModeFlag = Field(default=ModeFlag.SOLO)
     duration_ms: Optional[int] = Field(default=None)

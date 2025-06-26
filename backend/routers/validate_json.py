@@ -14,7 +14,7 @@ REQUIRED_FIELDS_TRACK_RANKING = [
     "genre",
     "decade",
     "rank",
-    "intro",
+    # "intro",
     "ranking_date"
 ]
 

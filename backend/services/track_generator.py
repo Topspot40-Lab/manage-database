@@ -1,315 +1,443 @@
+import os
 import logging
+from typing import List, Tuple, Optional
+from enum import Enum
+from dotenv import load_dotenv
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+from pathlib import Path
+import re
+import difflib
+from backend.utils.json_helpers import normalize_name
+
+# Load .env from the project root
+env_path = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(dotenv_path=env_path)
+
 logger = logging.getLogger(__name__)
 
-from backend.services.spotify_service import get_spotify_data, determine_mode_flag, format_track_display_name
-from backend.utils.json_helpers import parse_featured_artists, normalize_name
-from jsonschema import validate, ValidationError
-from backend.services.spotify_service import get_similar_tracks, prompt_user_for_replacement
+def auto_select_best_spotify_match(track_name: str, suggestions: list[dict]) -> tuple[Optional[dict], str]:
+    """
+    Attempt to auto-select the best Spotify match from suggestions.
+
+    Returns:
+        - best_match (dict) or None
+        - reason (str) describing match logic
+    """
+    if not suggestions:
+        return None, "No Spotify suggestions available"
+
+    simplified_input = track_name.lower().split("(")[0].strip()
+
+    for suggestion in suggestions:
+        name = suggestion.get("trackName", "").lower()
+        simplified_name = name.split("(")[0].strip()
+
+        if simplified_input == simplified_name:
+            logger.info(f"🎯 Exact simplified match: '{simplified_input}' == '{simplified_name}'")
+            return suggestion, "Exact match after simplification"
+
+        if simplified_input in simplified_name:
+            logger.info(f"🧠 Partial simplified match: '{simplified_input}' in '{simplified_name}'")
+            return suggestion, "Partial match after simplification"
+
+    suggestion_names = [s.get("trackName") for s in suggestions if "trackName" in s]
+    closest_matches = difflib.get_close_matches(track_name, suggestion_names, n=1, cutoff=0.6)
+
+    if closest_matches:
+        selected = next((s for s in suggestions if s.get("trackName") == closest_matches[0]), None)
+        if selected:
+            logger.info(f"🌀 Fuzzy match selected: '{closest_matches[0]}' for '{track_name}'")
+            return selected, "Fuzzy match (difflib)"
+
+    fallback = suggestions[0]
+    logger.warning(f"⚠️ No strong match for '{track_name}'. Falling back to: '{fallback.get('trackName')}'")
+    return fallback, "Fallback to top Spotify suggestion"
+
+
+def clean_track_title(title: str) -> str:
+    """Remove any parenthetical like (The Fishin' Song) or (Remastered) from track title."""
+    return re.sub(r"\s*\(.*?\)", "", title).strip()
 
 
 
-def fetch_and_validate_tracks(base, spare_tracks=None):
+# ✅ Define ModeFlag enum locally if not imported
+class ModeFlag(Enum):
+    SOLO = 0
+    GROUP = 1
+    DUET = 2
+    FEATURED = 3
 
-    artist_name_raw = base["artistName"]
-    track_name_raw = base["trackName"]
-    rank = base.get("rank", "?")  # 👈 Optional safeguard
+# ✅ Format the track display name based on mode_flag
+def format_track_display_name(track_name: str, featured_artist_name: Optional[str], mode_flag: int) -> str:
+    if mode_flag == 0 or not featured_artist_name:
+        return track_name
+    elif mode_flag == 2:  # DUET
+        return f"{track_name} WITH {featured_artist_name}"
+    elif mode_flag == 3:  # FEATURED
+        return f"{track_name} ft. {featured_artist_name}"
+    else:
+        return track_name  # fallback or GROUP
 
-    artist_name_clean, _ = parse_featured_artists(artist_name_raw)
-    artist_name_clean = normalize_name(artist_name_clean)
-    track_name_clean = normalize_name(track_name_raw)
+# ✅ Authenticate with Spotify
+def get_spotify_client():
+    client_id = os.getenv("SPOTIPY_CLIENT_ID")
+    client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 
-    logger.debug(f"🎯 [Rank #{rank}] Searching Spotify with: '{track_name_clean}' by '{artist_name_clean}'")
+    if not client_id or not client_secret:
+        raise Exception("Spotify credentials are not set in the environment.")
 
-    # Attempt original search
-    spotify_data = get_spotify_data(track_name_clean, artist_name_clean)
-    if not spotify_data:
-        logger.warning(f"🎵 No Spotify match for: '{track_name_clean}' by '{artist_name_clean}'")
+    return spotipy.Spotify(
+        auth_manager=SpotifyClientCredentials(
+            client_id=client_id,
+            client_secret=client_secret
+        )
+    )
 
-        suggestions = get_similar_tracks(track_name_clean)
-        logger.debug(f"🧠 Retrieved {len(suggestions)} Spotify suggestions.")
+# ✅ Determine mode_flag and featured artist
+def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[ModeFlag, Optional[str]]:
+    name_lower = artist_name.lower()
 
-        if suggestions or spare_tracks:
-            replacement = prompt_user_for_replacement(
-                track_name_clean,
-                artist_name_clean,
-                suggestions,
-                # spare_tracks=spare_tracks
+    is_duet = " with " in name_lower
+    is_feature = " feat." in name_lower or " featuring " in name_lower
+
+    featured_artist_id = None
+
+    if is_feature and len(artist_list) > 1:
+        mode_flag = ModeFlag.FEATURED
+        featured_artist_id = artist_list[1]["id"]
+    elif is_duet and len(artist_list) > 1:
+        mode_flag = ModeFlag.DUET
+        featured_artist_id = artist_list[1]["id"]
+    else:
+        mode_flag = ModeFlag.SOLO
+
+    logger.info(f"[SPOTIFY] Detected mode_flag: {mode_flag.name} ({mode_flag.value})")
+    return mode_flag, featured_artist_id
+
+# ✅ Main data fetch function
+def get_spotify_data(track_name: str, artist_name: str):
+    try:
+        sp = get_spotify_client()
+
+        track_name_clean = clean_track_title(track_name)
+        query = f"track:{track_name_clean} artist:{artist_name}"
+
+        results = sp.search(q=query, type="track", limit=3)
+        track = None
+
+        if results["tracks"]["items"]:
+            for t in results["tracks"]["items"]:
+                artist_list = t["artists"]
+                artist_names = [a["name"].lower() for a in artist_list]
+                if artist_name.lower() in artist_names:
+                    track = t
+                    break
+
+        # 🛠️ Retry if no match
+        if not track:
+            track = fallback_spotify_search(sp, track_name, artist_name)
+
+        if not track:
+            logger.warning(f"[SPOTIFY] No acceptable match for: {track_name} by {artist_name}")
+            return {}
+
+        for track in results["tracks"]["items"]:
+            artist_list = track["artists"]
+            expected_artist = artist_name.lower().strip()
+
+            matched_artist = next(
+                (artist for artist in artist_list if expected_artist in artist["name"].lower()), None
             )
 
-            if replacement:
-                replacement_type = "Spare Track" if replacement in spare_tracks else "Spotify Suggestion"
-                logger.info(
-                    f"🛠️ Replacement ({replacement_type}) selected: '{replacement['trackName']}' by '{replacement['artistName']}'")
+            logger.debug(f"[SPOTIFY] expected_artist: '{expected_artist}'")
+            logger.debug(f"[SPOTIFY] artist_list: {[a['name'] for a in artist_list]}")
 
-                base["trackName"] = replacement["trackName"]
-                base["artistName"] = replacement["artistName"]
+            if matched_artist:
+                artist_id = matched_artist["id"]
+                mode_flag_enum, _ = determine_mode_flag(artist_name, artist_list)
 
-                # Remove used spare from pool
-                if spare_tracks and replacement in spare_tracks:
-                    spare_tracks.remove(replacement)
-                    logger.debug(f"🧹 Spare track removed from pool after use.")
+                artist_data = sp.artist(artist_id)
+                artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
 
-                spotify_data = get_spotify_data(replacement["trackName"], replacement["artistName"])
+                logger.info(f"[SPOTIFY] Matched track: {track['name']}")
+
+                featured_artist = next(
+                    (artist for artist in artist_list if artist["id"] != artist_id),
+                    None
+                )
+
+                featured_artist_id = featured_artist["id"] if featured_artist else None
+                featured_artist_name = featured_artist["name"] if featured_artist else None
+
+                return {
+                    "spotify_track_id": track["id"],
+                    "artist_id": artist_id,
+                    "featured_artist_id": featured_artist_id,
+                    "featured_artist_name": featured_artist_name,
+                    "mode_flag": mode_flag_enum.value,
+                    "duration_ms": track["duration_ms"],
+                    "popularity": track["popularity"],
+                    "album_artwork": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
+                    "artist_artwork": artist_image,
+                    "artistNameCandidates": artist_list
+                }
+
             else:
-                logger.warning(
-                    f"⚠️ Skipping [Rank #{rank}] '{track_name_raw}' by '{artist_name_raw}' — no replacement selected.")
-        else:
-            logger.warning(f"⚠️ No fallback suggestions or spare tracks found for: '{track_name_clean}'")
+                logger.warning(f"[SPOTIFY] Rejected: {[a['name'] for a in artist_list]} does not include '{artist_name}'")
 
-    return spotify_data
+        logger.warning(f"[SPOTIFY] No acceptable match for: {track_name} by {artist_name}")
+        return {}
 
-def process_artist(base, spotify_data, seen_artists, description_cache, language):
-    from backend.services.xai_service import get_artist_description
-
-    artist_name_raw = base["artistName"]
-    artist_name_clean, _ = parse_featured_artists(artist_name_raw)
-    artist_name_clean = normalize_name(artist_name_clean)
-
-    # ✅ Only skip if we already cached a valid Spotify match
-    if artist_name_clean in seen_artists:
-        logger.debug(f"🛑 Skipping already-processed artist: {artist_name_clean}")
-        return None
-
-    if not spotify_data or not spotify_data.get("artist_id"):
-        logger.warning(f"⚠️  Skipping '{artist_name_clean}' — no valid Spotify ID")
-        return None
-
-    if artist_name_clean not in description_cache:
-        logger.debug(f"🔍 Fetching description for: {artist_name_clean}")
-        desc = get_artist_description(artist_name_clean, language=language)
-        if not desc:
-            desc = None
-        description_cache[artist_name_clean] = desc
-
-    detail_mp3_url = (
-        base.get("detail_mp3_url")
-        if spotify_data.get("artist_id")
-        else "tts/detail_unavailable.mp3"
-    )
-
-    artist_entry = {
-        "artist_name": artist_name_clean,
-        "spotify_artist_id": spotify_data["artist_id"],
-        "artist_artwork": spotify_data.get("artist_artwork"),
-        "artist_description": description_cache[artist_name_clean],
-        "artist_mp3_url": detail_mp3_url,
-        "not_on_spotify": False,
-    }
-
-    # logger.debug(f"🎨 Artist entry built: {artist_entry}")
-
-    # ✅ Now safe to mark as processed
-    seen_artists[artist_name_clean] = True
-    return artist_entry
-
-def build_track_entry(base, request, spotify_data, now):
-    artist_name_raw = base["artistName"]
-    track_name_raw = base["trackName"]
-
-    # Split out main and featured/duet artist
-    artist_name_clean, featured_artist_name = parse_featured_artists(artist_name_raw)
-    artist_name_clean = normalize_name(artist_name_clean)
-    track_name_clean = normalize_name(track_name_raw)
-
-    # Determine mode (SOLO, DUET, FEATURED, etc.)
-    mode_flag, featured_artist_id = determine_mode_flag(
-        artist_name_raw, spotify_data.get("artistNameCandidates", [])
-    )
-
-    # Format display name for UI/console
-    track_display_name = format_track_display_name(
-        track_name_clean,
-        featured_artist_name,
-        mode_flag.value
-    )
-
-    track_entry = {
-        "rank": base.get("rank"),
-        "track_name": track_name_clean,
-        "artist_name": artist_name_clean,
-        "featured_artist": featured_artist_name if featured_artist_name else None,
-        "featured_artist_id": featured_artist_id,
-        "track_display_name": track_display_name,
-        "genre": request.genre,
-        "decade": request.decade,
-        "spotify_track_id": spotify_data.get("spotify_track_id") if spotify_data else None,
-        "spotify_artist_id": spotify_data.get("artist_id") if spotify_data else None,
-        "mode_flag": mode_flag.value,
-        "duration_ms": spotify_data.get("duration_ms") if spotify_data else None,
-        "popularity": spotify_data.get("popularity") if spotify_data else None,
-        "album_artwork": spotify_data.get("album_artwork") if spotify_data else None,
-        "year_released": int(base["yearReleased"]),
-        "is_explicit": False,
-        "created_at": now,
-        "detail": base.get("detail"),
-        "detail_mp3_url": base.get("detail_mp3_url"),
-        "not_on_spotify": not spotify_data or not spotify_data.get("spotify_track_id")
-    }
-
-    # logger.debug(f"🎵 Track entry built: {track_entry}")
-    logger.debug(f"🎯 Final entry for '{track_display_name}': mode={mode_flag.name}, featured_id={featured_artist_id}")
-
-    return track_entry
-def build_ranking_entry(base, request, spotify_data, now):
-    artist_name_clean = normalize_name(
-        base.get("artistName") or base.get("artist_name")
-    )
-    track_name_clean = normalize_name(
-        base.get("trackName") or base.get("track_name")
-    )
-
-    ranking_entry = {
-        "track_name": track_name_clean,
-        "artist_name": artist_name_clean,
-        "spotify_track_id": spotify_data.get("spotify_track_id") if spotify_data else None,
-        "genre": request.genre,
-        "decade": request.decade,
-        "tracklist": "TopSpot Autogen",
-        "rank": base["rank"],
-        "intro": base.get("intro"),
-        "intro_mp3_url": base.get("intro_mp3_url"),
-        "ranking_date": now[:10]
-    }
-
-    return ranking_entry
-
-def build_final_json(enriched_tracks, request, now):
-    from backend.services.spotify_service import handle_missing_track  # Ensure this is imported
-    from backend.config import SCHEMA_PATH
-    import json
-
-    seen_artists = {}
-    description_cache = {}
-    artists = []
-    tracks = []
-    rankings = []
-    bad_tracks = []
-    spare_tracks = []  # Optional: pass spares into handle_missing_track()
-
-    for base in enriched_tracks:
-        spotify_data = fetch_and_validate_tracks(base, spare_tracks)
-
-        # 🧑 Main artist processing
-        artist_entry = process_artist(
-            base=base,
-            spotify_data=spotify_data,
-            seen_artists=seen_artists,
-            description_cache=description_cache,
-            language=request.language
-        )
-        if artist_entry:
-            artists.append(artist_entry)
-
-        # 🎤 Featured artist processing (if present)
-        featured_artist_id = spotify_data.get("featured_artist_id") if spotify_data else None
-        featured_artist_name = base.get("featured_artist") or (spotify_data.get("featured_artist_name") if spotify_data else None)
-
-        if featured_artist_id and featured_artist_name:
-            featured_name_clean = normalize_name(featured_artist_name)
-            if featured_name_clean not in seen_artists:
-                logger.debug(f"🎤 Adding featured artist: {featured_name_clean}")
-                featured_spotify_data = get_spotify_data(base["trackName"], featured_name_clean)
-                featured_artist_entry = {
-                    "artist_name": featured_name_clean,
-                    "spotify_artist_id": featured_artist_id,
-                    "artist_artwork": featured_spotify_data.get("artist_artwork") if featured_spotify_data else None,
-                    "artist_description": None,
-                    "artist_mp3_url": None,
-                    "not_on_spotify": False
-                }
-                artists.append(featured_artist_entry)
-                seen_artists[featured_name_clean] = True
-
-        # 🎵 Track + Ranking processing
-        track_entry = build_track_entry(base, request, spotify_data, now)
-        ranking_entry = build_ranking_entry(base, request, spotify_data, now)
-
-        if not track_entry or not track_entry.get("spotify_track_id"):
-            bad_tracks.append(track_entry)
-            continue
-
-        # Only keep as many tracks as requested
-        if len(tracks) < request.num_tracks:
-            tracks.append(track_entry)
-            rankings.append(ranking_entry)
-        else:
-            spare_tracks.append(track_entry)
-
-    # 🎯 Give the user a chance to fix bad tracks
-    for bad_track in bad_tracks:
-        try:
-            success = handle_missing_track(bad_track, tracks, spare_tracks)
-            if success:
-                spotify_data = {
-                    "spotify_track_id": bad_track.get("spotify_track_id"),
-                    "album_artwork": bad_track.get("album_artwork"),
-                    "artist_id": bad_track.get("artist_id"),
-                    "artist_artwork": bad_track.get("artist_artwork"),
-                    "duration_ms": bad_track.get("duration_ms"),
-                    "popularity": bad_track.get("popularity"),
-                    "featured_artist_id": bad_track.get("featured_artist_id"),
-                    "featured_artist_name": bad_track.get("featured_artist"),
-                }
-                ranking_entry = build_ranking_entry(bad_track, request, spotify_data, now)
-                rankings.append(ranking_entry)
-                logger.debug(f"📊 Added ranking entry for recovered track: #{bad_track.get('rank')} — {bad_track.get('trackName')}")
-        except Exception as e:
-            logger.warning(f"⚠️ Error handling missing track: {e}")
-
-
-    if spare_tracks:
-        logger.info(f"🪙 {len(spare_tracks)} spare tracks available.")
-    else:
-        logger.warning("🚨 No spare tracks available after filtering.")
-
-    # 🧱 Build final structure after fixes
-    final_json = {
-        "core_tables": {
-            "genre": [{"genre_name": request.genre}],
-            "decade": [{"decade_name": request.decade}],
-            "artist": artists
-        },
-        "track_tables": {
-            "track": tracks,
-            "tracklist": [
-                {
-                    "name": "TopSpot Autogen",
-                    "curator": "Mr. Ed",
-                    "is_official": True,
-                    "language": request.language[:2].lower(),
-                    "notes": f"Generated for {request.decade} - {request.genre}",
-                    "created_at": now
-                }
-            ]
-        },
-        "ranking_tables": {
-            "track_ranking": rankings
-        }
-    }
-
-    # ✅ Schema validation (after cleanup)
-    try:
-        with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-            schema = json.load(f)
-        validate(instance=final_json, schema=schema)
-        logger.info("✅ JSON schema validation passed.")
-    except ValidationError as e:
-        logger.error(f"❌ JSON schema validation failed: {e.message}")
-        raise
     except Exception as e:
-        logger.warning(f"⚠️ Could not validate against schema: {e}")
+        logger.error(f"[SPOTIFY] Query error for {track_name} - {artist_name}: {e}")
+        return {}
 
-    logger.debug("🔍 JSON Preview (keys only):")
-    for key in final_json:
-        logger.debug(f"  🔹 {key}: {list(final_json[key].keys())}")
+def fallback_spotify_search(sp, track_name, artist_name):
+    logger.info(f"[SPOTIFY][RETRY] Trying fallback search: '{track_name} {artist_name}'")
 
-    logger.info(f"📦 Final JSON built with {len(tracks)} tracks and {len(artists)} artists.")
+    fallback_query = f"{track_name} {artist_name}"
+    results = sp.search(q=fallback_query, type="track", limit=5)
 
-    logger.info(f"🧾 Track Summary:")
-    logger.info(f"   - Tracks Requested: {request.num_tracks}")
-    logger.info(f"   - Final Tracks Included: {len(tracks)}")
-    logger.info(f"   - Spare Tracks Remaining: {len(spare_tracks)}")
-    logger.info(f"   - Tracks Replaced or Skipped: {len(bad_tracks)}")
+    for track in results["tracks"]["items"]:
+        track_artist_names = [a["name"].lower() for a in track["artists"]]
+        if artist_name.lower() in track_artist_names:
+            logger.info(f"[SPOTIFY][RETRY] Matched in fallback: {track['name']} by {track_artist_names}")
+            return track
 
-    return final_json, tracks, artists
+    logger.warning(f"[SPOTIFY][RETRY] No match in fallback search.")
+    return None
 
+def get_similar_tracks(track_name: str, limit=5):
+    if not track_name or "[Unknown" in track_name:
+        logger.warning(f"[SPOTIFY][SUGGESTIONS] Skipping suggestions for invalid track_name: {track_name}")
+        return []
+
+    sp = get_spotify_client()
+    results = sp.search(q=f"track:{track_name}", type="track", limit=limit)
+
+    suggestions = []
+    for item in results["tracks"]["items"]:
+        suggestions.append({
+            "trackName": item["name"],
+            "artistName": item["artists"][0]["name"],
+            "spotifyTrackId": item["id"],
+            "popularity": item.get("popularity", 0),
+            "album_artwork": item["album"]["images"][0]["url"] if item["album"]["images"] else None,
+            "yearReleased": item["album"].get("release_date", "")[:4]  # Gets the year only
+        })
+    return suggestions
+
+def prompt_user_for_replacement(track_name, artist_name, suggestions, spare_tracks=None):
+    print(f"\n🎯 Missing track: '{track_name}' by {artist_name}")
+    print("Here are possible replacements:")
+
+    # Show Spotify suggestions
+    for idx, item in enumerate(suggestions, 1):
+        suggestion_track = item.get("trackName", "[Unknown]")
+        suggestion_artist = item.get("artistName", "[Unknown]")
+        year_released = item.get("yearReleased", "????")
+        popularity = item.get("popularity", "N/A")
+        print(f"[{idx}] {suggestion_track} – {suggestion_artist} ({year_released}) — Popularity: {popularity}")
+
+    # Show spare tracks if available
+    if spare_tracks:
+        print("\n🎵 Spare Tracks:")
+        for s_idx, item in enumerate(spare_tracks, 1):
+            spare_track = item.get("trackName", "[Unknown]")
+            spare_artist = item.get("artistName", "[Unknown]")
+            year_released = item.get("yearReleased", "????")
+            print(f"[S{s_idx}] {spare_track} – {spare_artist} ({year_released})")
+
+    print("[s] Skip this track")
+
+    while True:
+        choice = input("📝 Choose a Spotify [1–{}], a Spare [S1–S#], or [s]kip: ".format(len(suggestions))).strip().lower()
+
+        if choice == 's':
+            return None
+
+        if choice.isdigit():
+            choice_int = int(choice)
+            if 1 <= choice_int <= len(suggestions):
+                return suggestions[choice_int - 1]
+
+        if choice.startswith('s') and len(choice) > 1 and choice[1:].isdigit():
+            spare_index = int(choice[1:]) - 1
+            if spare_tracks and 0 <= spare_index < len(spare_tracks):
+                return spare_tracks[spare_index]
+
+        print("❗ Invalid input.")
+
+def choose_spare_track(spare_tracks):
+    import pprint
+    print("\n🧪 DEBUG: Spare Track Sample:")
+    pprint.pprint(spare_tracks[:3])  # View first few entries
+
+    print("\n🎒 Spare Tracks:")
+    for idx, track in enumerate(spare_tracks, 1):
+        track_name = track.get("trackName") or track.get("track_name", "[Unknown]")
+        artist_name = track.get("artistName") or track.get("artist_name", "[Unknown]")
+        popularity = track.get("popularity")
+        spotify_id = track.get("spotifyTrackId") or track.get("spotify_track_id")
+
+        line = f"[{idx}] {track_name} by {artist_name}"
+        if popularity:
+            line += f" (Popularity: {popularity})"
+        print(line)
+        if spotify_id:
+            print(f"    🔗 https://open.spotify.com/track/{spotify_id}")
+
+    while True:
+        choice = input(f"Choose spare [1–{len(spare_tracks)}] or [s]kip: ").strip().lower()
+        if choice == 's':
+            return None
+        if choice.isdigit():
+            index = int(choice)
+            if 1 <= index <= len(spare_tracks):
+                return spare_tracks.pop(index - 1)
+        print("❗ Invalid choice. Please try again.")
+
+def reassign_ranks(tracks):
+    for i, track in enumerate(tracks, 1):
+        track["rank"] = i
+def log_missing_track_action(original_track, action, replacement=None, category=None, genre=None):
+    import os
+    from datetime import datetime
+
+    # ✅ Make sure the logs directory exists
+    os.makedirs("logs", exist_ok=True)
+
+    # 🏷️ Safe file naming
+    safe_category = category.replace(" ", "_") if category else "unknown"
+    safe_genre = genre.replace(" ", "_") if genre else "unknown"
+    log_file = f"logs/missing_tracks_{safe_category}_{safe_genre}.txt"
+
+    # 🕒 Write log
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write("=========================================\n")
+        f.write(f"🕒 {timestamp}\n")
+        track_name = original_track.get("trackName") or original_track.get("track_name") or "[Unknown Track]"
+        artist_name = original_track.get("artistName") or original_track.get("artist_name") or "[Unknown Artist]"
+        f.write(f"❌ Original Track: {track_name} by {artist_name}\n")
+
+        f.write(f"🛠️ Action Taken: {action}\n")
+
+        if replacement:
+            f.write(f"✅ Replacement Track: {replacement['trackName']} by {replacement['artistName']}\n")
+            # ✅ Handle both camelCase and snake_case
+            spotify_id = replacement.get("spotifyTrackId") or replacement.get("spotify_track_id")
+            if spotify_id:
+                f.write(f"🔗 Spotify URL: https://open.spotify.com/track/{spotify_id}\n")
+            if replacement.get("popularity"):
+                f.write(f"🌟 Popularity: {replacement['popularity']}\n")
+
+        f.write("\n")
+
+def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
+    track_name = bad_track.get("trackName") or bad_track.get("track_name") or "[Unknown Track]"
+    artist_name = bad_track.get("artistName") or bad_track.get("artist_name") or "[Unknown Artist]"
+
+    if not track_name.strip() or not artist_name.strip():
+        logger.warning(f"❌ Cannot handle missing track — missing name/artist: {bad_track}")
+        print(f"\n❌ Cannot suggest replacements — track or artist name missing.\n")
+        return False
+
+    # 📝 Preserve original name/artist for fallback matching
+    bad_track["original_track_name"] = track_name
+    bad_track["original_artist_name"] = artist_name
+
+    # 🚀 Try auto-match
+    suggestions = get_similar_tracks(track_name)
+    best_match, reason = auto_select_best_spotify_match(track_name, suggestions)
+
+    category = bad_track.get("decade", "unknown")
+    genre = bad_track.get("genre", "unknown")
+
+    if best_match:
+        print(f"✅ Auto-matched '{track_name}' → '{best_match.get('trackName')}' ({reason})")
+        extra = enrich_track_from_spotify(best_match["spotifyTrackId"])
+
+        new_track_name = best_match["trackName"]
+        new_artist_name = best_match["artistName"]
+
+        bad_track.update({
+            # ✅ For ranking_table and diagnostics
+            "trackName": new_track_name,
+            "artistName": new_artist_name,
+
+            # ✅ For track_table consistency
+            "track_name": new_track_name,
+            "artist_name": new_artist_name,
+            "track_display_name": format_track_display_name(
+                normalize_name(new_track_name),
+                None,
+                0  # ModeFlag.SOLO — adjust if you later re-evaluate mode
+            ),
+
+            "spotify_track_id": best_match["spotifyTrackId"],
+            "album_artwork": extra["album_artwork"],
+            "artist_id": extra["artist_id"],
+            "artist_artwork": extra["artist_artwork"],
+            "duration_ms": extra["duration_ms"],
+            "popularity": extra["popularity"],
+            "match_reason": reason,
+            "auto_matched": True
+        })
+        # ✅ Try to replace original track
+        original_rank = bad_track.get("rank")
+        replaced = False
+
+        for i, t in enumerate(tracks):
+            t_rank = t.get("rank")
+            t_name = t.get("trackName") or t.get("track_name")
+            t_artist = t.get("artistName") or t.get("artist_name")
+
+            if (
+                t_name == bad_track["original_track_name"]
+                and t_artist == bad_track["original_artist_name"]
+            ) or (original_rank is not None and t_rank == original_rank):
+                tracks[i] = bad_track
+                replaced = True
+                logger.debug(f"🔁 Replaced original track at index {i} (rank {t_rank})")
+                break
+
+        # 🧩 Fallback: reinsert at index based on rank
+        if not replaced and original_rank is not None:
+            insert_index = original_rank - 1
+            if insert_index < len(tracks):
+                logger.warning(f"⚠️ Could not find match by name/rank — inserting at index {insert_index}")
+                tracks.insert(insert_index, bad_track)
+            else:
+                logger.warning(f"📌 Rank index too high ({insert_index}) — appending at end")
+                tracks.append(bad_track)
+        elif not replaced:
+            logger.warning(f"📌 No rank found — appending track to end")
+            tracks.append(bad_track)
+
+        log_missing_track_action(
+            bad_track,
+            f"✅ Auto-replaced with Spotify suggestion ({reason})",
+            best_match,
+            category,
+            genre
+        )
+
+        return True
+
+    # ❌ Auto-match failed, fallback will be triggered
+    print(f"\n❌ Missing track ID for: '{track_name}' by '{artist_name}'")
+    return False
+
+def enrich_track_from_spotify(track_id: str) -> dict:
+    sp = get_spotify_client()
+    data = sp.track(track_id)
+    return {
+        "duration_ms": data["duration_ms"],
+        "popularity": data["popularity"],
+        "album_artwork": data["album"]["images"][0]["url"] if data["album"]["images"] else None,
+        "artist_id": data["artists"][0]["id"],
+        "artist_artwork": sp.artist(data["artists"][0]["id"])["images"][0]["url"]
+                         if sp.artist(data["artists"][0]["id"])["images"] else None,
+    }

@@ -7,10 +7,9 @@ from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
 from backend.utils.json_helpers import load_json
 
-
 logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="", tags=["json-insert"])
+
 
 @router.post("/insert-json-to-db/{decade}/{genre}")
 async def insert_json_to_db(
@@ -18,10 +17,8 @@ async def insert_json_to_db(
     genre: str = Path(...),
     db: Session = Depends(get_db)
 ):
-
     logger.info(f"Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
 
-    # === 1. Load JSON File ===
     try:
         filename = f"{decade}_{genre}_en.json"
         data = load_json(decade, filename)
@@ -34,7 +31,6 @@ async def insert_json_to_db(
         raise HTTPException(500, f"Read error: {e}")
 
     try:
-        # === 2. Handle Genre and Decade ===
         genre_name = data["core_tables"]["genre"][0]["genre_name"]
         decade_name = data["core_tables"]["decade"][0]["decade_name"]
         logger.info(f"Genre: {genre_name}, Decade: {decade_name}")
@@ -68,7 +64,7 @@ async def insert_json_to_db(
             db.refresh(decade_genre)
             logger.info("Linked DecadeGenre")
 
-        # === 3. Deduplicate Artists in Memory ===
+        # Deduplicate artists
         unique_artists = []
         seen_keys = set()
         for a in data["core_tables"]["artist"]:
@@ -80,7 +76,7 @@ async def insert_json_to_db(
                 seen_keys.add(key)
         data["core_tables"]["artist"] = unique_artists
 
-        # === 4. Insert Artists and ArtistGenre ===
+        # Insert artists
         artist_names_in_json = [a["artist_name"] for a in data["core_tables"]["artist"]]
         spotify_ids_in_json = [a["spotify_artist_id"] for a in data["core_tables"]["artist"] if a.get("spotify_artist_id")]
 
@@ -139,12 +135,10 @@ async def insert_json_to_db(
 
         db.commit()
 
-        # === 5. Insert Tracks ===
+        # Insert tracks
         for t in data["track_tables"]["track"]:
             sid = t.get("spotify_artist_id")
             artist_key = sid or t["artist_name"]
-            logger.info(f"Artist key: {artist_key}")
-            logger.info(f"All artist_map keys: {list(artist_map.keys())}")
 
             artist_id = artist_map.get(artist_key)
             if not artist_id:
@@ -169,7 +163,7 @@ async def insert_json_to_db(
             if existing_track:
                 logger.info(f"Updating track: {t['track_name']}")
                 existing_track.track_name = t["track_name"]
-                existing_track.track_display_name = t.get("track_display_name")
+                existing_track.artist_display_name = t.get("artist_display_name")
                 existing_track.artist_id = artist_id
                 existing_track.duration_ms = t["duration_ms"]
                 existing_track.popularity = t["popularity"]
@@ -184,7 +178,7 @@ async def insert_json_to_db(
                 logger.info(f"Adding track: {t['track_name']}")
                 db.add(Track(
                     track_name=t["track_name"],
-                    track_display_name=t.get("track_display_name"),
+                    artist_display_name=t.get("artist_display_name"),
                     artist_id=artist_id,
                     spotify_track_id=spotify_tid,
                     duration_ms=t["duration_ms"],
@@ -200,7 +194,7 @@ async def insert_json_to_db(
 
         db.commit()
 
-        # === 6. Insert Track Rankings ===
+        # Insert rankings
         for r in data["ranking_tables"]["track_ranking"]:
             track = None
             spotify_tid = r.get("spotify_track_id")
@@ -231,18 +225,13 @@ async def insert_json_to_db(
                 )
             ).first()
 
-            logger.info(
-                f"Checking for existing ranking: track_id={track.id}, decade_genre_id={decade_genre.id}, tracklist_id=1")
-
             if existing_ranking:
-                logger.info(f"Found existing ranking: ID={existing_ranking.id}")
                 logger.info(f"Updating ranking for: {r['track_name']}")
                 existing_ranking.ranking = r["rank"]
                 existing_ranking.intro = r.get("intro")
                 existing_ranking.intro_mp3_url = r.get("intro_mp3_url")
                 existing_ranking.ranking_date = r["ranking_date"]
             else:
-                logger.warning("No existing ranking found — will attempt to insert.")
                 db.add(TrackRanking(
                     track_id=track.id,
                     decade_genre_id=decade_genre.id,

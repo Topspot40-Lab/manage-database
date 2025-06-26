@@ -100,6 +100,14 @@
         "not_on_spotify": false
       },
       {
+        "artist_name": "Hank Williams, Jr.",
+        "spotify_artist_id": "2dyeCWctcFRt3Pha76ONgb",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebf2335981837c8ac955769cd0",
+        "artist_description": null,
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
         "artist_name": "Shenandoah",
         "spotify_artist_id": "36eTeLNx8ErucrEyRm6JOo",
         "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebbd57c56985bbe3cd4e2e577b",
@@ -136,7 +144,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273ab243ed96c6518acc60f9b1b",
         "year_released": 1983,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -158,7 +166,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27370baa048c4fdcc6c8152f399",
         "year_released": 1980,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -180,7 +188,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2737aba43759d148ce148e78977",
         "year_released": 1982,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -202,7 +210,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273723376f081b369b02795a7fb",
         "year_released": 1987,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -224,7 +232,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273e376a074222ca95e8989ca09",
         "year_released": 1984,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -246,7 +254,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273ce1080453dcd330ce552acb4",
         "year_released": 1981,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -268,7 +276,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273cc7b65dbd52148c716a9a76b",
         "year_released": 1981,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -283,25 +291,17 @@
         "genre": "2",
         "decade": "test",
         "spotify_track_id": "2F5lTjxNzxoVP0jRxLSN9Z",
-        "spotify_artist_id": null,
+        "spotify_artist_id": "2dyeCWctcFRt3Pha76ONgb",
         "mode_flag": 0,
         "duration_ms": 240373,
         "popularity": 63,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27340182999eec31669632d692d",
         "year_released": 1984,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
-        "not_on_spotify": true,
-        "original_track_name": "All My Rowdy Friends",
-        "original_artist_name": "Hank Williams Jr.",
-        "trackName": "All My Rowdy Friends (Have Settled Down)",
-        "artistName": "Hank Williams, Jr.",
-        "artist_id": "2dyeCWctcFRt3Pha76ONgb",
-        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebf2335981837c8ac955769cd0",
-        "match_reason": "Exact match after simplification",
-        "auto_matched": true
+        "not_on_spotify": false
       },
       {
         "rank": 9,
@@ -320,7 +320,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27365d20f83aecb125df605a892",
         "year_released": 1988,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -342,7 +342,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273e1c1a8cacd3c3a68dae25264",
         "year_released": 1987,
         "is_explicit": false,
-        "created_at": "2025-06-24T15:10:02.001489",
+        "created_at": "2025-06-24T21:29:46.991637",
         "detail": null,
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -355,7 +355,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for test - 2",
-        "created_at": "2025-06-24T15:10:02.001489"
+        "created_at": "2025-06-24T21:29:46.991637"
       }
     ]
   },
@@ -446,6 +446,18 @@
         "ranking_date": "2025-06-24"
       },
       {
+        "track_name": "All My Rowdy Friends (Have Settled Down)",
+        "artist_name": "Hank Williams, Jr.",
+        "spotify_track_id": "2F5lTjxNzxoVP0jRxLSN9Z",
+        "genre": "2",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "rank": 8,
+        "intro": null,
+        "intro_mp3_url": null,
+        "ranking_date": "2025-06-24"
+      },
+      {
         "track_name": "Two Dozen Roses",
         "artist_name": "Shenandoah",
         "spotify_track_id": "0e05wFNr6zg1ULcp4NKs1p",
@@ -465,18 +477,6 @@
         "decade": "test",
         "tracklist": "TopSpot Autogen",
         "rank": 10,
-        "intro": null,
-        "intro_mp3_url": null,
-        "ranking_date": "2025-06-24"
-      },
-      {
-        "track_name": "All My Rowdy Friends (Have Settled Down)",
-        "artist_name": "Hank Williams, Jr.",
-        "spotify_track_id": "2F5lTjxNzxoVP0jRxLSN9Z",
-        "genre": "2",
-        "decade": "test",
-        "tracklist": "TopSpot Autogen",
-        "rank": 8,
         "intro": null,
         "intro_mp3_url": null,
         "ranking_date": "2025-06-24"

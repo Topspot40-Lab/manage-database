@@ -58,7 +58,7 @@
               "track_name": { "type": "string" },
               "artist_name": { "type": "string" },
               "year_released": { "type": "integer", "minimum": 1900, "maximum": 2100 },
-              "track_display_name": { "type": "string" },
+              "artist_display_name": { "type": "string" },
               "duration_ms": { "type": ["integer", "null"] },
               "mode_flag": { "type": "integer" },
               "album_artwork": { "type": ["string", "null"] },

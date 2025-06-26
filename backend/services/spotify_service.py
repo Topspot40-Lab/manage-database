@@ -69,7 +69,7 @@ class ModeFlag(Enum):
     FEATURED = 3
 
 # ✅ Format the track display name based on mode_flag
-def format_track_display_name(track_name: str, featured_artist_name: Optional[str], mode_flag: int) -> str:
+def format_artist_display_name(track_name: str, featured_artist_name: Optional[str], mode_flag: int) -> str:
     if mode_flag == 0 or not featured_artist_name:
         return track_name
     elif mode_flag == 2:  # DUET
@@ -370,7 +370,7 @@ def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
             # ✅ For track_table consistency
             "track_name": new_track_name,
             "artist_name": new_artist_name,
-            "track_display_name": format_track_display_name(
+            "artist_display_name": format_artist_display_name(
                 normalize_name(new_track_name),
                 None,
                 0  # ModeFlag.SOLO — adjust if you later re-evaluate mode
