@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Tuple, Optional
+from typing import Optional
 from enum import Enum
 from dotenv import load_dotenv
 import spotipy
@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import difflib
 from backend.utils.json_helpers import normalize_name
+from backend.utils.mode_utils import determine_mode_flag
 
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
@@ -93,27 +94,6 @@ def get_spotify_client():
             client_secret=client_secret
         )
     )
-
-# ✅ Determine mode_flag and featured artist
-def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[ModeFlag, Optional[str]]:
-    name_lower = artist_name.lower()
-
-    is_duet = " with " in name_lower
-    is_feature = " feat." in name_lower or " featuring " in name_lower
-
-    featured_artist_id = None
-
-    if is_feature and len(artist_list) > 1:
-        mode_flag = ModeFlag.FEATURED
-        featured_artist_id = artist_list[1]["id"]
-    elif is_duet and len(artist_list) > 1:
-        mode_flag = ModeFlag.DUET
-        featured_artist_id = artist_list[1]["id"]
-    else:
-        mode_flag = ModeFlag.SOLO
-
-    logger.info(f"[SPOTIFY] Detected mode_flag: {mode_flag.name} ({mode_flag.value})")
-    return mode_flag, featured_artist_id
 
 # ✅ Main data fetch function
 def get_spotify_data(track_name: str, artist_name: str):

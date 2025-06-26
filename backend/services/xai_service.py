@@ -11,7 +11,6 @@ from backend.services.xai_api_client import fetch_xai_tracks
 from backend.config import TEST_JSON_DIR, ENABLE_ARTIST_DESCRIPTION, ENABLE_TRACK_DESCRIPTION, ENABLE_RANK_INTRO
 from backend.utils.track_filters import validate_tracks
 
-
 # Load environment variables
 load_dotenv()
 
@@ -44,17 +43,29 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             logger.debug(f"[TEST] Loaded {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), total_requested, is_test_mode=True)
 
+            for t in tracks:
+                rank = t.get("rank", 0)
+                t["spotifyData"] = {
+                    "spotify_track_id": f"test_track_{rank}",
+                    "artist_id": f"test_artist_{rank}",
+                    "duration_ms": 180000,
+                    "popularity": 55,
+                    "album_artwork": None,
+                    "artist_artwork": None,
+                    "artist_description": None,
+                    "featured_artist_id": None,
+                    "featured_artist_name": None,
+                    "not_on_spotify": False
+                }
+
         except Exception as e:
             logger.error(f"[ERROR] Failed to load test file: {e}")
     else:
         content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
-        # logger.debug(f"[XAI] Response type: {type(content).__name__}")
-
         if isinstance(content, list):
             logger.debug(f"[XAI] Received {len(content)} tracks.")
             tracks = content
         elif isinstance(content, str):
-            # logger.debug("[XAI] Parsing string response...")
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
         elif isinstance(content, dict):
             logger.debug(f"[XAI] Dict keys: {list(content.keys())}")
@@ -79,9 +90,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     if not ENABLE_TRACK_DESCRIPTION and not ENABLE_RANK_INTRO:
-        # logger.debug("[SKIP] Track description and intro generation disabled.")
         logger.debug("🧮 Skipping description generation — no tokens used.")
-
         return {
             "language": language,
             "decade": decade,
@@ -108,7 +117,6 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             } for t in batch
         ]
 
-        # Build prompt dynamically based on enabled flags
         requested_fields = []
         instructions = []
 
@@ -166,11 +174,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         "tracks": tracks
     }
 
-
-
-
 def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:
-
     if not ENABLE_ARTIST_DESCRIPTION:
         logger.debug(f"[SKIP] Artist description disabled for {artist_name}.")
         return None

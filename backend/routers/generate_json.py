@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 from typing import Literal
 import json
 from backend.services.spotify_service import handle_missing_track, reassign_ranks
-from backend.services.track_generator import build_track_entry, build_final_json
+from backend.utils.track_builder import build_track_entry, build_final_json
+
 from backend.services.xai_service import (
     get_top_tracks_from_xai,
     get_track_descriptions_from_xai,
@@ -33,7 +34,7 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
     try:
         logger.debug("A. Start generate_track_json")
 
-        now = datetime.now().isoformat()
+        now = datetime.now()
 
         # Step 1: Get raw track list from XAI
         logger.debug("B. Calling get_top_tracks_from_xai")
