@@ -1,15 +1,16 @@
 🛠️  Logging Setup Summary
-├─ App Version: 1.0.1 (Last updated: 2025-06-11)
-├─ Startup Time: 2025-06-26 16:57:09
+├─ App Version: 1.0.2 (Last updated: 2025-06-27)
+├─ Startup Time: 2025-06-27 13:17:20
 ├─ Global Log Level: INFO
 ├─ Module Overrides:
-│   ├─ backend.services.xai_service: DEBUG (effective: DEBUG)
-│   ├─ backend.services.spotify_service: WARNING (effective: WARNING)
-│   ├─ backend.services.track_generator: DEBUG (effective: DEBUG)
-│   ├─ backend.services.utils: INFO (effective: INFO)
-│   ├─ backend.logging.track_logging: DEBUG (effective: DEBUG)
-│   ├─ backend.routers.validate_json: DEBUG (effective: DEBUG)
-│   ├─ spotipy: WARNING (effective: WARNING)
-│   ├─ urllib3: WARNING (effective: WARNING)
-│   ├─ requests: WARNING (effective: WARNING)
-│   ├─ httpx: WARNING (effective: WARNING)
+│   ├─ backend.services.xai_service: Configured=DEBUG, Set=DEBUG, Effective=DEBUG
+│   ├─ backend.services.spotify_service: Configured=WARNING, Set=WARNING, Effective=WARNING
+│   ├─ backend.services.track_generator: Configured=DEBUG, Set=DEBUG, Effective=DEBUG
+│   ├─ backend.services.utils: Configured=INFO, Set=INFO, Effective=INFO
+│   ├─ backend.logging.track_logging: Configured=DEBUG, Set=DEBUG, Effective=DEBUG
+│   ├─ backend.routers.validate_json: Configured=DEBUG, Set=DEBUG, Effective=DEBUG
+│   ├─ backend.utils.track_builder: Configured=DEBUG, Set=DEBUG, Effective=DEBUG
+│   ├─ spotipy: Configured=WARNING, Set=WARNING, Effective=WARNING
+│   ├─ urllib3: Configured=WARNING, Set=WARNING, Effective=WARNING
+│   ├─ requests: Configured=WARNING, Set=WARNING, Effective=WARNING
+│   ├─ httpx: Configured=WARNING, Set=WARNING, Effective=WARNING

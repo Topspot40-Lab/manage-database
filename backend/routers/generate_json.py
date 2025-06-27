@@ -13,7 +13,6 @@ from backend.services.xai_service import (
 )
 from shared.filepaths import get_json_path
 from pydantic import BaseModel
-from typing import Optional
 
 from backend.utils.log_helpers import log_generate_json_summary
 
@@ -28,8 +27,7 @@ class TrackRequest(BaseModel):
     decade: str
     language: str
     num_tracks: int
-    test_file_number: Optional[int] = None  # already exists?
-    test_mode: Optional[bool] = False       # 👈 Add this line
+
 
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
@@ -68,12 +66,12 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
         # Step 3: Build final JSON structure
-        # Step 3: Build final JSON structure
+        is_test_mode = test_file_number > 0
         final_json, track_entries, artist_entries = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
             now=now,
-            is_test_mode=request.test_mode  # ✅ Correct keyword
+            is_test_mode=is_test_mode  # 👈 Derived locally
         )
 
         # 🧹 Filter tracks from the final JSON data
@@ -99,7 +97,14 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
 
             # 🛠 Rebuild track_entry properly
             try:
-                rebuilt = build_track_entry(spare, request, spotify_data=None, now=now)
+                rebuilt = build_track_entry(
+                    spare,
+                    request,
+                    spotify_data=None,  # you can leave this as None for spares
+                    now=now,
+                    is_test_mode=is_test_mode  # ✅ pass it through
+                )
+
                 rebuilt["rank"] = len(tracks) + 1
                 tracks.append(rebuilt)
                 logging.info(f"✅ Added spare track: {rebuilt['artist_display_name']}")
@@ -129,21 +134,6 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             genre=request.genre,
             errors=[]
         )
-
-        # Mock stats — fill in from actual processing results
-        # summary_data = [
-        #     {"decade": "1950s", "total": 40, "good": 39, "missed": 1, "duets": "None"},
-        #     {"decade": "1960s", "total": 40, "good": 39, "missed": 1, "duets": "None"},
-        #     {"decade": "1970s", "total": 40, "good": 35, "missed": 5, "duets": 1},
-        #     {"decade": "1980s", "total": 40, "good": 36, "missed": 4, "duets": 2},
-        #     {"decade": "1990s", "total": 40, "good": 39, "missed": 1, "duets": 1},
-        #     {"decade": "2000s", "total": 40, "good": 39, "missed": 1, "duets": 3},
-        #     {"decade": "2010s", "total": 40, "good": 39, "missed": 1, "duets": 3},
-        #     {"decade": "2020s", "total": 40, "good": 37, "missed": 3, "duets": 3},
-        # ]
-
-        # This is not working properly
-        # log_summary_table(summary_data)
 
         logger.info("G. JSON creation complete")
 

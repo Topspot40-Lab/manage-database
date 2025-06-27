@@ -222,3 +222,963 @@
 🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
 🌟 Popularity: 49
 
+=========================================
+🕒 2025-06-26 17:21:43
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 17:21:45
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 17:21:47
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 17:21:48
+❌ Original Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🔗 Spotify URL: https://open.spotify.com/track/5qBqBdfTEIWJwAS0Jm2F5R
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-26 17:21:50
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 17:21:52
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 17:21:54
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 17:21:55
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 17:21:57
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 17:21:59
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 17:22:31
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 17:22:33
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 17:22:35
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 17:22:36
+❌ Original Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🔗 Spotify URL: https://open.spotify.com/track/5qBqBdfTEIWJwAS0Jm2F5R
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-26 17:22:38
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 17:22:40
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 17:22:41
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 17:22:43
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 17:22:44
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 17:22:46
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 17:54:30
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 17:54:31
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 17:54:33
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 17:54:35
+❌ Original Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🔗 Spotify URL: https://open.spotify.com/track/5qBqBdfTEIWJwAS0Jm2F5R
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-26 17:54:36
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 17:54:38
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 17:54:40
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 17:54:41
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 17:54:43
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 17:54:45
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:14:42
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 18:14:44
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 18:14:46
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:14:47
+❌ Original Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🔗 Spotify URL: https://open.spotify.com/track/5qBqBdfTEIWJwAS0Jm2F5R
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-26 18:14:49
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 18:14:51
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 18:14:52
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 18:14:54
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 18:14:56
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 18:14:57
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:23:02
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 18:23:03
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 18:23:05
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:23:07
+❌ Original Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🔗 Spotify URL: https://open.spotify.com/track/5qBqBdfTEIWJwAS0Jm2F5R
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-26 18:23:08
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 18:23:10
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 18:23:12
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 18:23:14
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 18:23:16
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 18:23:17
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:33:21
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 18:33:23
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 18:33:24
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:33:27
+❌ Original Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Turn! Turn! Turn! (To Everything There Is a Season) by The Byrds
+🔗 Spotify URL: https://open.spotify.com/track/5qBqBdfTEIWJwAS0Jm2F5R
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-26 18:33:28
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 18:33:30
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 18:33:31
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 18:33:34
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 18:33:35
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 18:33:37
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:46:53
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-26 18:46:55
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-26 18:46:57
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-26 18:46:59
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-26 18:47:00
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 61
+
+=========================================
+🕒 2025-06-26 18:47:02
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-26 18:47:03
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-26 18:47:05
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-26 18:47:07
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 78
+
+=========================================
+🕒 2025-06-26 18:47:09
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 09:13:06
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 09:13:08
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-27 09:13:09
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 09:13:11
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-27 09:13:12
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 09:13:14
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-27 09:13:16
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-27 09:13:17
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-27 09:13:19
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 09:13:20
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 09:24:21
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 09:24:22
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-27 09:24:24
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 09:24:26
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-27 09:24:28
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 09:24:30
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-27 09:24:31
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-27 09:24:33
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-27 09:24:35
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 09:24:36
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 09:31:19
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 09:31:20
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-27 09:31:22
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 09:31:23
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-27 09:31:25
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 09:31:26
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-27 09:31:28
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-27 09:31:30
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-27 09:31:31
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 09:31:34
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 12:08:12
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 12:08:13
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-27 12:08:15
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 12:08:17
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-27 12:08:18
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 12:08:20
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-27 12:08:21
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-27 12:08:23
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-27 12:08:25
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 12:08:27
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 13:15:01
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 13:15:02
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-27 13:15:04
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 13:15:06
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-27 13:15:08
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 13:15:09
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-27 13:15:11
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-27 13:15:13
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-27 13:15:15
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 13:15:16
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+

@@ -61,22 +61,32 @@ ARTIST_NAME_ALIASES = {
 
     # Add any you catch in log warnings
 }
-
 def normalize_name(name: str) -> str:
     """
     Normalize a name by:
-    - Stripping accents
-    - Removing extra whitespace
-    - Applying known alias corrections
+    - Applying alias corrections
+    - Lowercasing
+    - Removing accents and punctuation
+    - Collapsing whitespace
     """
-    name = unicodedata.normalize("NFKD", name)
-    name = "".join(c for c in name if not unicodedata.combining(c))
-    name = name.strip()
+    original = name.strip()
+    corrected = ARTIST_NAME_ALIASES.get(original, original)
 
-    corrected = ARTIST_NAME_ALIASES.get(name, name)
+    # Remove accents
+    corrected = unicodedata.normalize("NFKD", corrected)
+    corrected = "".join(c for c in corrected if not unicodedata.combining(c))
 
-    if name != corrected:
-        logger.info(f"🎭 Alias applied: '{name}' → '{corrected}'")
+    # Lowercase
+    corrected = corrected.lower()
+
+    # Remove punctuation
+    corrected = re.sub(r"[^\w\s]", "", corrected)
+
+    # Collapse multiple spaces
+    corrected = re.sub(r"\s+", " ", corrected).strip()
+
+    if original != corrected:
+        logger.info(f"🎭 Normalized: '{original}' → '{corrected}'")
 
     return corrected
 

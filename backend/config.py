@@ -10,8 +10,8 @@ load_dotenv()
 
 # config.py
 
-APP_VERSION = "1.0.1"
-LAST_UPDATED = "2025-06-11"
+APP_VERSION = "1.0.2"
+LAST_UPDATED = "2025-06-27"
 
 # -----------------------------------------------------------------------------
 # 📁 PATH SETTINGS
@@ -68,6 +68,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.utils": "INFO",
     "backend.logging.track_logging": "DEBUG",
     "backend.routers.validate_json": "DEBUG",
+    "backend.utils.track_builder": "DEBUG",
     "spotipy": "WARNING",           # 🔇 Suppress Spotipy's debug/info chatter
     "urllib3": "WARNING",           # 🔇 Suppress low-level HTTP logs
     "requests": "WARNING",          # 🔇 Optional, depending on if you use it

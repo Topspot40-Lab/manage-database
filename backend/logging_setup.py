@@ -137,15 +137,19 @@ def setup_logging():
 
         if LOG_LEVELS_BY_MODULE:
             summary_lines.append("├─ Module Overrides:")
-            for module_name in LOG_LEVELS_BY_MODULE:
+
+            for module_name, configured_level_str in LOG_LEVELS_BY_MODULE.items():
                 logger_obj = logging.getLogger(module_name)
-                configured_level = logger_obj.level
                 effective_level = logging.getLevelName(logger_obj.getEffectiveLevel())
-                if configured_level == 0:
-                    summary_lines.append(f"│   ├─ {module_name}: not set (effective: {effective_level})")
-                else:
-                    configured_level_name = logging.getLevelName(configured_level)
-                    summary_lines.append(f"│   ├─ {module_name}: {configured_level_name} (effective: {effective_level})")
+                configured_level = logging.getLevelName(logger_obj.level) if logger_obj.level else "NOT SET"
+
+                # Add test debug line to confirm it works
+                logger_obj.debug(f"✅ DEBUG ACTIVE for {module_name} — logger.name = {logger_obj.name}")
+
+                summary_lines.append(
+                    f"│   ├─ {module_name}: Configured={configured_level_str.upper()}, "
+                    f"Set={configured_level}, Effective={effective_level}"
+                )
         else:
             summary_lines.append("├─ No module-level overrides defined.")
 

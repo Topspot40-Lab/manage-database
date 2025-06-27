@@ -3,16 +3,52 @@ from backend.services.track_generator import format_track_display_name
 from backend.utils.json_helpers import parse_featured_artists, normalize_name
 
 import logging
+
 logger = logging.getLogger(__name__)
+
+print(f"logger.name = {logger.name}")
+
+
+print(f"Logger created: {logger.name}")  # TEMP debug
+logger.debug(f"[DEBUG TEST] Logger name: {logger.name}, effective level: {logger.getEffectiveLevel()}")
+
+
+def normalize_keys(base: dict) -> dict:
+    """Ensure consistent snake_case keys for downstream processing."""
+    return {
+        "track_name": base.get("track_name") or base.get("trackName"),
+        "artist_name": base.get("artist_name") or base.get("artistName"),
+        "year_released": base.get("year_released") or base.get("yearReleased"),
+        "rank": base.get("rank"),
+        "intro": base.get("intro"),
+        "detail": base.get("detail"),
+        **base  # Preserve any other existing fields
+    }
+
+
 def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
-    if is_test_mode:
-        artist_name_raw = base["artistName"]
-        track_name_raw = base["trackName"]
-        year_released = base["yearReleased"]
+
+    logger.debug(f"🐛 DEBUG in build_track_entry — logger.name = {logger.name}")
+    logger.debug(f"🐛 effective level = {logger.getEffectiveLevel()}")
+    logger.debug("🛠️ build_track_entry called")
+    logger.debug(f"🔍 Track = '{base.get('track_name')}', Artist = '{base.get('artist_name')}'")
+    logger.debug(f"🔍 spotify_data for '{base.get('track_name')}' → {spotify_data}")
+
+    if spotify_data:
+        logger.debug(f"🧪 spotify_data keys = {list(spotify_data.keys())}")
     else:
-        artist_name_raw = base["artist_name"]
-        track_name_raw = base["track_name"]
-        year_released = base["year_released"]
+        logger.debug("🧪 spotify_data is None (likely test mode)")
+
+    artist_name_raw = base.get("artist_name")
+    track_name_raw = base.get("track_name")
+    year_released = base.get("year_released")
+
+    if not artist_name_raw:
+        raise ValueError(f"❌ Missing 'artist_name' in base. Debug info: {base}")
+    if not track_name_raw:
+        raise ValueError(f"❌ Missing 'track_name' in base. Debug info: {base}")
+    if not year_released:
+        raise ValueError(f"❌ Missing 'year_released' in base. Debug info: {base}")
 
     # Parse and normalize names
     artist_name_clean, featured_artist_name = parse_featured_artists(artist_name_raw)
@@ -29,6 +65,7 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     )
 
     return {
+        "rank": base.get("rank"),
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
         "artist_display_name": artist_name_raw,  # 👍 Optional new field
@@ -63,24 +100,37 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
     artists = []
     tracks = []
     rankings = []
-
     for base in enriched_tracks:
+        base = normalize_keys(base)
+        logger.debug(f"🐍 Normalized base keys = {list(base.keys())}")
+        logger.debug(
+            f"🔍 Normalized artist_name = {base.get('artist_name')} — original artistName = {base.get('artistName')}")
+
         if is_test_mode:
             spotify_data = {}
-            logger.debug(f"[TEST MODE] Skipping spotify_data for: {base.get('trackName')} by {base.get('artistName')}")
+            logger.debug(f"[TEST MODE] Skipping spotify_data for: {base['track_name']} by {base['artist_name']}")
         else:
             spotify_data = base.get("spotify_data", {})
 
         track_entry = build_track_entry(base, request, spotify_data, now, is_test_mode)
 
+
         tracks.append(track_entry)
+
+        logger.debug(f"📦 Got track_entry keys: {list(track_entry.keys())}")
+        logger.debug(f"📦 artist_name = {track_entry.get('artist_name')}")
 
         rankings.append({
             "track_id": track_entry.get("spotify_track_id"),
+            "track_name": track_entry.get("track_name"),
+            "artist_name": track_entry.get("artist_name"),
             "rank": base.get("rank"),
             "genre": request.genre,
             "decade": request.decade,
-            "created_at": now,
+            "tracklist": "TopSpot Autogen",
+            "intro": track_entry.get("intro"),
+            "intro_mp3_url": track_entry.get("intro_mp3_url"),
+            "ranking_date": now.split("T")[0],
         })
 
         artist_id = track_entry.get("spotify_artist_id")
@@ -92,6 +142,8 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 "spotify_artist_id": artist_id,
                 "artist_artwork": spotify_data.get("artist_artwork"),
                 "artist_description": spotify_data.get("artist_description"),
+                "artist_mp3_url": None,
+                "not_on_spotify": False
             })
 
     final_json = {
@@ -100,14 +152,26 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         "genre": request.genre,
         "generated_at": now,
         "core_tables": {
+            "genre": [{"genre_name": request.genre}],
+            "decade": [{"decade_name": request.decade}],
             "artist": artists
         },
         "track_tables": {
-            "track": tracks
+            "track": tracks,
+            "tracklist": [{
+                "name": "TopSpot Autogen",
+                "curator": "Mr. Ed",
+                "is_official": True,
+                "language": request.language[:2],
+                "notes": f"Generated for {request.genre} - {request.decade}",
+                "created_at": now
+            }]
         },
         "ranking_tables": {
-            "ranking": rankings
+            "track_ranking": rankings
         }
     }
+
+    logger.debug(f"🎨 Artists in final JSON: {len(artists)}")
 
     return final_json, tracks, artists

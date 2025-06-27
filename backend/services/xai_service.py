@@ -45,7 +45,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
             for t in tracks:
                 rank = t.get("rank", 0)
-                t["spotifyData"] = {
+                t["spotify_data"] = {
                     "spotify_track_id": f"test_track_{rank}",
                     "artist_id": f"test_artist_{rank}",
                     "duration_ms": 180000,

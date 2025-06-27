@@ -101,77 +101,62 @@ def get_spotify_data(track_name: str, artist_name: str):
         sp = get_spotify_client()
 
         track_name_clean = clean_track_title(track_name)
+        expected_artist_norm = normalize_name(artist_name)
         query = f"track:{track_name_clean} artist:{artist_name}"
 
-        results = sp.search(q=query, type="track", limit=3)
-        track = None
+        logger.debug(f"[SPOTIFY] 🔍 Querying: {query}")
+        results = sp.search(q=query, type="track", limit=5)
 
-        if results["tracks"]["items"]:
-            for t in results["tracks"]["items"]:
-                artist_list = t["artists"]
-                artist_names = [a["name"].lower() for a in artist_list]
-                if artist_name.lower() in artist_names:
-                    track = t
-                    break
-
-        # 🛠️ Retry if no match
-        if not track:
-            track = fallback_spotify_search(sp, track_name, artist_name)
-
-        if not track:
-            logger.warning(f"[SPOTIFY] No acceptable match for: {track_name} by {artist_name}")
+        if not results["tracks"]["items"]:
+            logger.warning(f"[SPOTIFY] No results for: {track_name} by {artist_name}")
             return {}
 
-        for track in results["tracks"]["items"]:
-            artist_list = track["artists"]
-            expected_artist = artist_name.lower().strip()
+        for t in results["tracks"]["items"]:
+            artist_list = t["artists"]
+            for artist in artist_list:
+                candidate_name_norm = normalize_name(artist["name"])
+                logger.debug(f"[SPOTIFY] Comparing: '{expected_artist_norm}' vs '{candidate_name_norm}'")
 
-            matched_artist = next(
-                (artist for artist in artist_list if expected_artist in artist["name"].lower()), None
-            )
+                if expected_artist_norm == candidate_name_norm:
+                    artist_id = artist["id"]
+                    mode_flag_enum, _ = determine_mode_flag(artist_name, artist_list)
 
-            logger.debug(f"[SPOTIFY] expected_artist: '{expected_artist}'")
-            logger.debug(f"[SPOTIFY] artist_list: {[a['name'] for a in artist_list]}")
+                    artist_data = sp.artist(artist_id)
+                    artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
 
-            if matched_artist:
-                artist_id = matched_artist["id"]
-                mode_flag_enum, _ = determine_mode_flag(artist_name, artist_list)
+                    featured_artist = next((a for a in artist_list if a["id"] != artist_id), None)
+                    featured_artist_id = featured_artist["id"] if featured_artist else None
+                    featured_artist_name = featured_artist["name"] if featured_artist else None
 
-                artist_data = sp.artist(artist_id)
-                artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
+                    logger.info(f"[SPOTIFY] ✅ Matched: '{t['name']}' by '{artist['name']}'")
 
-                logger.info(f"[SPOTIFY] Matched track: {track['name']}")
+                    return {
+                        "spotify_track_id": t["id"],
+                        "artist_id": artist_id,
+                        "featured_artist_id": featured_artist_id,
+                        "featured_artist_name": featured_artist_name,
+                        "mode_flag": mode_flag_enum.value,
+                        "duration_ms": t["duration_ms"],
+                        "popularity": t["popularity"],
+                        "album_artwork": t["album"]["images"][0]["url"] if t["album"]["images"] else None,
+                        "artist_artwork": artist_image,
+                        "track_name": t["name"],  # ⬅️ changed
+                        "artist_name": artist["name"],  # ⬅️ changed
+                        "original_track_name": track_name,  # ⬅️ changed
+                        "original_artist_name": artist_name,  # ⬅️ changed
+                        "match_reason": "Normalized name match",
+                        "auto_matched": True,
+                        "artist_name_candidates": artist_list  # ⬅️ changed
+                    }
 
-                featured_artist = next(
-                    (artist for artist in artist_list if artist["id"] != artist_id),
-                    None
-                )
-
-                featured_artist_id = featured_artist["id"] if featured_artist else None
-                featured_artist_name = featured_artist["name"] if featured_artist else None
-
-                return {
-                    "spotify_track_id": track["id"],
-                    "artist_id": artist_id,
-                    "featured_artist_id": featured_artist_id,
-                    "featured_artist_name": featured_artist_name,
-                    "mode_flag": mode_flag_enum.value,
-                    "duration_ms": track["duration_ms"],
-                    "popularity": track["popularity"],
-                    "album_artwork": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
-                    "artist_artwork": artist_image,
-                    "artistNameCandidates": artist_list
-                }
-
-            else:
-                logger.warning(f"[SPOTIFY] Rejected: {[a['name'] for a in artist_list]} does not include '{artist_name}'")
-
-        logger.warning(f"[SPOTIFY] No acceptable match for: {track_name} by {artist_name}")
-        return {}
+        # 🚨 Fallback if no normalized match found
+        logger.warning(f"[SPOTIFY] ❌ No artist match for '{artist_name}', using fallback...")
+        return fallback_spotify_search(sp, track_name, artist_name)
 
     except Exception as e:
         logger.error(f"[SPOTIFY] Query error for {track_name} - {artist_name}: {e}")
         return {}
+
 
 def fallback_spotify_search(sp, track_name, artist_name):
     logger.info(f"[SPOTIFY][RETRY] Trying fallback search: '{track_name} {artist_name}'")
