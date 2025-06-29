@@ -94,16 +94,18 @@ def get_spotify_client():
             client_secret=client_secret
         )
     )
-
-# ✅ Main data fetch function
 def get_spotify_data(track_name: str, artist_name: str):
+    print("🚨 INSIDE get_spotify_data 🚨 — This is the NEW version")
+
+
     try:
         sp = get_spotify_client()
 
         track_name_clean = clean_track_title(track_name)
         expected_artist_norm = normalize_name(artist_name)
-        query = f"track:{track_name_clean} artist:{artist_name}"
 
+        # ✅ Use natural-language search query
+        query = f"{track_name_clean} {artist_name}"
         logger.debug(f"[SPOTIFY] 🔍 Querying: {query}")
         results = sp.search(q=query, type="track", limit=5)
 
@@ -140,23 +142,21 @@ def get_spotify_data(track_name: str, artist_name: str):
                         "popularity": t["popularity"],
                         "album_artwork": t["album"]["images"][0]["url"] if t["album"]["images"] else None,
                         "artist_artwork": artist_image,
-                        "track_name": t["name"],  # ⬅️ changed
-                        "artist_name": artist["name"],  # ⬅️ changed
-                        "original_track_name": track_name,  # ⬅️ changed
-                        "original_artist_name": artist_name,  # ⬅️ changed
+                        "track_name": t["name"],
+                        "artist_name": artist["name"],
+                        "original_track_name": track_name,
+                        "original_artist_name": artist_name,
                         "match_reason": "Normalized name match",
                         "auto_matched": True,
-                        "artist_name_candidates": artist_list  # ⬅️ changed
+                        "artist_name_candidates": artist_list
                     }
 
-        # 🚨 Fallback if no normalized match found
-        logger.warning(f"[SPOTIFY] ❌ No artist match for '{artist_name}', using fallback...")
-        return fallback_spotify_search(sp, track_name, artist_name)
+        logger.warning(f"[SPOTIFY] ❌ No artist match for '{artist_name}' on '{track_name}'. Returning empty to trigger fallback.")
+        return {}
 
     except Exception as e:
         logger.error(f"[SPOTIFY] Query error for {track_name} - {artist_name}: {e}")
         return {}
-
 
 def fallback_spotify_search(sp, track_name, artist_name):
     logger.info(f"[SPOTIFY][RETRY] Trying fallback search: '{track_name} {artist_name}'")
@@ -319,77 +319,86 @@ def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
 
     category = bad_track.get("decade", "unknown")
     genre = bad_track.get("genre", "unknown")
-
+    # ---------------------------------------------------------------------------
+    # Strict‑artist auto‑match logic
+    # ---------------------------------------------------------------------------
     if best_match:
-        print(f"✅ Auto-matched '{track_name}' → '{best_match.get('trackName')}' ({reason})")
-        extra = enrich_track_from_spotify(best_match["spotifyTrackId"])
+        new_track_name = best_match.get("trackName")
+        new_artist_name = best_match.get("artistName")
 
-        new_track_name = best_match["trackName"]
-        new_artist_name = best_match["artistName"]
+        # ✅ 1.  Compare normalised artist names
+        if normalize_name(new_artist_name) == normalize_name(artist_name):
+            logger.info(
+                f"✅ Auto‑match accepted: '{new_track_name}' by '{new_artist_name}'"
+            )
 
-        bad_track.update({
-            # ✅ For ranking_table and diagnostics
-            "trackName": new_track_name,
-            "artistName": new_artist_name,
+            # Grab extra metadata from Spotify
+            extra = enrich_track_from_spotify(best_match["spotifyTrackId"])
 
-            # ✅ For track_table consistency
-            "track_name": new_track_name,
-            "artist_name": new_artist_name,
-            "track_display_name": format_track_display_name(
-                normalize_name(new_track_name),
-                None,
-                0  # ModeFlag.SOLO — adjust if you later re-evaluate mode
-            ),
+            # ✅ 2.  Update the bad_track in place
+            bad_track.update({
+                # ----  canonical / camelCase ----
+                "trackName": new_track_name,
+                "artistName": new_artist_name,
+                "artist_display_name": new_artist_name,
+                "track_name": new_track_name,
+                "artist_name": new_artist_name,
+                "track_display_name": normalize_name(new_track_name),
 
-            "spotify_track_id": best_match["spotifyTrackId"],
-            "album_artwork": extra["album_artwork"],
-            "artist_id": extra["artist_id"],
-            "artist_artwork": extra["artist_artwork"],
-            "duration_ms": extra["duration_ms"],
-            "popularity": extra["popularity"],
-            "match_reason": reason,
-            "auto_matched": True
-        })
-        # ✅ Try to replace original track
-        original_rank = bad_track.get("rank")
-        replaced = False
+                "spotify_track_id": best_match["spotifyTrackId"],
+                "artist_id": extra.get("artist_id"),
+                "spotify_artist_id": extra.get("artist_id"),
+                "album_artwork": extra.get("album_artwork"),
+                "artist_artwork": extra.get("artist_artwork"),
+                "duration_ms": extra.get("duration_ms"),
+                "popularity": extra.get("popularity"),
+                "match_reason": reason,
+                "auto_matched": True,
+                "not_on_spotify": False
+            })
 
-        for i, t in enumerate(tracks):
-            t_rank = t.get("rank")
-            t_name = t.get("trackName") or t.get("track_name")
-            t_artist = t.get("artistName") or t.get("artist_name")
+            # ✅ 3.  Replace the old entry in the list (by rank or by original name)
+            original_rank = bad_track.get("rank")
+            replaced = False
+            for i, t in enumerate(tracks):
+                same_rank = original_rank is not None and t.get("rank") == original_rank
+                same_title = (t.get("trackName") or t.get("track_name")) == bad_track.get("original_track_name")
+                same_artist = (t.get("artistName") or t.get("artist_name")) == bad_track.get("original_artist_name")
+                if same_rank or (same_title and same_artist):
+                    tracks[i] = bad_track
+                    replaced = True
+                    logger.debug(f"🔁 Replaced original track at index {i} (rank {t.get('rank')})")
+                    break
 
-            if (
-                t_name == bad_track["original_track_name"]
-                and t_artist == bad_track["original_artist_name"]
-            ) or (original_rank is not None and t_rank == original_rank):
-                tracks[i] = bad_track
-                replaced = True
-                logger.debug(f"🔁 Replaced original track at index {i} (rank {t_rank})")
-                break
+            # Fallback insert if we couldn’t find the slot
+            if not replaced:
+                insert_at = (original_rank - 1) if original_rank else len(tracks)
+                tracks.insert(insert_at, bad_track)
 
-        # 🧩 Fallback: reinsert at index based on rank
-        if not replaced and original_rank is not None:
-            insert_index = original_rank - 1
-            if insert_index < len(tracks):
-                logger.warning(f"⚠️ Could not find match by name/rank — inserting at index {insert_index}")
-                tracks.insert(insert_index, bad_track)
-            else:
-                logger.warning(f"📌 Rank index too high ({insert_index}) — appending at end")
-                tracks.append(bad_track)
-        elif not replaced:
-            logger.warning(f"📌 No rank found — appending track to end")
-            tracks.append(bad_track)
+            log_missing_track_action(
+                bad_track,
+                "✅ Auto‑replaced with exact‑artist Spotify match",
+                best_match,
+                category,
+                genre
+            )
+            return True
 
+        # -----------------------------------------------------------------------
+        # ⚠️  Artist mismatch → skip auto‑match
+        # -----------------------------------------------------------------------
+        logger.warning(
+            f"❌ Auto‑match skipped — artist mismatch "
+            f"(requested '{artist_name}', got '{new_artist_name}')"
+        )
         log_missing_track_action(
             bad_track,
-            f"✅ Auto-replaced with Spotify suggestion ({reason})",
+            "❌ Skipped auto‑match due to artist mismatch",
             best_match,
             category,
             genre
         )
-
-        return True
+        return False
 
     # ❌ Auto-match failed, fallback will be triggered
     print(f"\n❌ Missing track ID for: '{track_name}' by '{artist_name}'")
@@ -406,3 +415,20 @@ def enrich_track_from_spotify(track_id: str) -> dict:
         "artist_artwork": sp.artist(data["artists"][0]["id"])["images"][0]["url"]
                          if sp.artist(data["artists"][0]["id"])["images"] else None,
     }
+
+
+def enrich_tracks_with_spotify(tracks: list[dict]) -> list[dict]:
+    """
+    Add 'spotify_data' to each XAI-generated track using get_spotify_data.
+    """
+    for t in tracks:
+        tn, an = t["trackName"], t["artistName"]
+        logger.debug(f"🔄 Enriching: {tn} by {an}")
+
+        spotify_data = get_spotify_data(tn, an)
+        if spotify_data:
+            t["spotify_data"] = spotify_data
+            logger.info(f"✅ Spotify enrich OK for '{tn}' by '{an}' — artist ID: {spotify_data.get('artist_id')}")
+        else:
+            logger.warning(f"❌ No Spotify data for '{tn}' by '{an}'")
+    return tracks

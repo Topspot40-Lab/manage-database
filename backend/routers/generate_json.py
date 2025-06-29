@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException
 import json
 from backend.services.spotify_service import handle_missing_track, reassign_ranks
 from backend.utils.track_builder import build_track_entry, build_final_json
+from backend.services.track_generator import enrich_tracks_with_spotify
+
 
 from backend.services.xai_service import (
     get_top_tracks_from_xai,
@@ -64,6 +66,13 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
 
         if not enriched or "tracks" not in enriched or len(enriched["tracks"]) != len(track_list):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
+
+        # Step 2½: Enrich with Spotify if not in test mode
+        if test_file_number == 0:
+            logger.debug("E. Enriching with Spotify data")
+            enriched["tracks"] = enrich_tracks_with_spotify(enriched["tracks"])
+        else:
+            logger.debug("E. Skipping Spotify enrichment (test mode)")
 
         # Step 3: Build final JSON structure
         is_test_mode = test_file_number > 0
@@ -135,7 +144,7 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             errors=[]
         )
 
-        logger.info("G. JSON creation complete")
+        logger.info("********    JSON creation complete  ********\n\n\n")
 
         return {
             "message": "JSON created successfully",

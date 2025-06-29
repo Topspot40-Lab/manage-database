@@ -24,9 +24,11 @@ with open(SCHEMA_PATH, "r") as f:
     TRACK_SCHEMA = json.load(f)
 
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
-    buffer_size = max(4, round(num_tracks * 0.25))
+    buffer_size = max(0, round(num_tracks * 0.25))
     total_requested = num_tracks + buffer_size
-    logger.info(f"[XAI] Requesting {total_requested} tracks (target={num_tracks}, buffer={buffer_size})")
+    logger.debug(f"[XAI] gws 2: test_file_number={test_file_number}, num_tracks={num_tracks}, buffer_size={buffer_size})")
+    logger.debug(f"[XAI] total_requested={total_requested})")
+    logger.debug(f"[XAI] Requesting {total_requested} tracks (target={num_tracks}, buffer={buffer_size})")
 
     prompt = build_track_prompt(decade, genre, total_requested, language, buffer_size)
 

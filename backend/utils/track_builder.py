@@ -58,11 +58,7 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
 
     mode_flag: ModeFlag = determine_mode_flag_basic(artist_name_raw)
 
-    track_display_name = format_track_display_name(
-        track_name_clean,
-        featured_artist_name,
-        mode_flag.value,
-    )
+    track_display_name = track_name_clean  # Keep title clean — display artist includes the extra info
 
     return {
         "rank": base.get("rank"),
@@ -75,7 +71,8 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
         "genre": request.genre,
         "decade": request.decade,
         "spotify_track_id": spotify_data.get("spotify_track_id"),
-        "spotify_artist_id": spotify_data.get("artist_id"),
+        "spotify_artist_id": spotify_data.get("artist_id") or base.get(
+            "artist_id") or f"test_{normalize_name(artist_name_raw)}",
         "mode_flag": mode_flag.value,
         "duration_ms": spotify_data.get("duration_ms"),
         "popularity": spotify_data.get("popularity"),
@@ -111,14 +108,28 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             logger.debug(f"[TEST MODE] Skipping spotify_data for: {base['track_name']} by {base['artist_name']}")
         else:
             spotify_data = base.get("spotify_data", {})
+            if spotify_data:
+                logger.debug(
+                    f"🎧 Enrich OK: '{base.get('trackName')}' by '{base.get('artistName')}' — "
+                    f"spotify_data keys: {list(spotify_data.keys())}"
+                )
+                if normalize_name(spotify_data.get("artistName", "")) != normalize_name(base.get("artistName", "")):
+                    logger.warning(
+                        f"⚠️ ARTIST MISMATCH: Input='{base.get('artistName')}', "
+                        f"Spotify='{spotify_data.get('artistName')}' — check for alternate versions or covers."
+                    )
+            else:
+                logger.warning(
+                    f"⚠️ Missing spotify_data for '{base.get('trackName')}' by '{base.get('artistName')}' — "
+                    f"falling back to raw input"
+                )
 
         track_entry = build_track_entry(base, request, spotify_data, now, is_test_mode)
-
-
         tracks.append(track_entry)
 
+        logger.debug(f"🧾 Final artist ID = {track_entry.get('spotify_artist_id')}")
         logger.debug(f"📦 Got track_entry keys: {list(track_entry.keys())}")
-        logger.debug(f"📦 artist_name = {track_entry.get('artist_name')}")
+        logger.debug(f"🎧 Track ID for '{track_entry.get('track_name')}' = {track_entry.get('spotify_track_id')}")
 
         rankings.append({
             "track_id": track_entry.get("spotify_track_id"),
@@ -132,19 +143,27 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             "intro_mp3_url": track_entry.get("intro_mp3_url"),
             "ranking_date": now.split("T")[0],
         })
+        artist_id = (
+            track_entry.get("spotify_artist_id")
+            or base.get("artist_id")  # fallback if not in track_entry
+            or f"test_{normalize_name(track_entry.get('artist_name', 'unknown'))}"
+        )
+        artist_name = track_entry.get("artist_name", "unknown")
 
-        artist_id = track_entry.get("spotify_artist_id")
-        artist_name = track_entry.get("artist_name")
+        logger.debug(f"🧾 Final artist ID = {artist_id}")
+
         if artist_id and artist_id not in seen_artists:
             seen_artists[artist_id] = artist_name
             artists.append({
                 "artist_name": artist_name,
                 "spotify_artist_id": artist_id,
-                "artist_artwork": spotify_data.get("artist_artwork"),
-                "artist_description": spotify_data.get("artist_description"),
+                "artist_artwork": track_entry.get("artist_artwork"),
+                "artist_description": track_entry.get("artist_description"),
                 "artist_mp3_url": None,
                 "not_on_spotify": False
             })
+
+
 
     final_json = {
         "language": request.language,

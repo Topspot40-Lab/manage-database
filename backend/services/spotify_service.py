@@ -10,6 +10,8 @@ import re
 import difflib
 from backend.utils.json_helpers import normalize_name
 
+print("📄 spotify_service.py loaded from:", os.path.abspath(__file__))
+
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -69,15 +71,16 @@ class ModeFlag(Enum):
     FEATURED = 3
 
 # ✅ Format the track display name based on mode_flag
-def format_artist_display_name(track_name: str, featured_artist_name: Optional[str], mode_flag: int) -> str:
-    if mode_flag == 0 or not featured_artist_name:
-        return track_name
-    elif mode_flag == 2:  # DUET
-        return f"{track_name} WITH {featured_artist_name}"
-    elif mode_flag == 3:  # FEATURED
-        return f"{track_name} ft. {featured_artist_name}"
-    else:
-        return track_name  # fallback or GROUP
+def format_artist_display_name(
+    main_artist_name: str,
+    featured_artist_name: Optional[str],
+    mode_flag: int
+) -> str:
+    if mode_flag == ModeFlag.DUET.value and featured_artist_name:
+        return f"{main_artist_name} WITH {featured_artist_name} (Duet)"
+    if mode_flag == ModeFlag.FEATURED.value and featured_artist_name:
+        return f"{main_artist_name} feat. {featured_artist_name}"
+    return main_artist_name  # SOLO or GROUP
 
 # ✅ Authenticate with Spotify
 def get_spotify_client():
@@ -127,6 +130,10 @@ def get_similar_tracks(track_name: str, limit=5):
             "yearReleased": item["album"].get("release_date", "")[:4]  # Gets the year only
         })
     return suggestions
+
+
+
+
 
 def prompt_user_for_replacement(track_name, artist_name, suggestions, spare_tracks=None):
     print(f"\n🎯 Missing track: '{track_name}' by {artist_name}")

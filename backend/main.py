@@ -2,6 +2,14 @@
 import sys
 from pathlib import Path
 import io
+import os
+import time
+
+print("This will disappear in 3 seconds...")
+time.sleep(3)
+os.system('cls')
+print("Screen cleared!")
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # ---------------------------------------------------------------------------
 # 1) Ensure the project root is at the front of sys.path
@@ -33,6 +41,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+print("🔄 main.py loaded (FastAPI starting up)")
+
 
 @app.get("/")
 def read_root():

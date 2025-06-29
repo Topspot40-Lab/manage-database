@@ -86,3 +86,1419 @@
 🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
 🌟 Popularity: 47
 
+=========================================
+🕒 2025-06-27 13:28:54
+❌ Original Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🔗 Spotify URL: https://open.spotify.com/track/4dYcNNaon8WMN2r3Szzcp9
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-27 13:28:55
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-27 13:28:57
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-27 13:28:59
+❌ Original Track: Singing the Blues by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Singing the Blues by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4vcHOxfV846dVjyToPFBRp
+🌟 Popularity: 50
+
+=========================================
+🕒 2025-06-27 13:29:00
+❌ Original Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/6IMvPtgfWvOdWPp0aGQZ0k
+🌟 Popularity: 13
+
+=========================================
+🕒 2025-06-27 13:29:02
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-27 13:29:04
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 55
+
+=========================================
+🕒 2025-06-27 13:29:05
+❌ Original Track: He'll Have to Go by Jim Reeves
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: He'll Have to Go by Jim Reeves
+🔗 Spotify URL: https://open.spotify.com/track/7DH5dXVuQaqcKf9oTy9oUN
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 13:29:07
+❌ Original Track: Don't Take Your Guns to Town by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Don't Take Your Guns to Town by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/0p7QF136UOOUHnyU8CuZra
+🌟 Popularity: 51
+
+=========================================
+🕒 2025-06-27 13:29:08
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-27 13:29:10
+❌ Original Track: Four Walls by Bas
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Four Walls by Bas
+🔗 Spotify URL: https://open.spotify.com/track/413Pc87SwoEUIui4hFyGOU
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-27 13:29:11
+❌ Original Track: Fraulein (feat. Tyler Childers) by Colter Wall
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Fraulein (feat. Tyler Childers) by Colter Wall
+🔗 Spotify URL: https://open.spotify.com/track/65UNQSH7RI4Lxw7VrXMp5y
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-27 13:29:13
+❌ Original Track: My Shoes Keep Walking Back to You - Single Version by Ray Price
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: My Shoes Keep Walking Back to You - Single Version by Ray Price
+🔗 Spotify URL: https://open.spotify.com/track/2hfPKLcg9exWeQZttbxrYq
+🌟 Popularity: 28
+
+=========================================
+🕒 2025-06-27 15:06:32
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-27 15:06:34
+❌ Original Track: Cold Heart by Nilüfer Yanya
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Cold Heart by Nilüfer Yanya
+🔗 Spotify URL: https://open.spotify.com/track/5WRdonm8caliL2JA6fT2fL
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 15:06:36
+❌ Original Track: Jambalaya (On The Bayou) by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Jambalaya (On The Bayou) by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/5gbm0aNo7eXNuOEkQi5m9B
+🌟 Popularity: 59
+
+=========================================
+🕒 2025-06-27 15:06:37
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-27 15:06:39
+❌ Original Track: i don't wanna be hurt anymore by subtle life enthusiast
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: i don't wanna be hurt anymore by subtle life enthusiast
+🔗 Spotify URL: https://open.spotify.com/track/52rs8uwnivuQTcKbDIodiS
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-27 15:06:40
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-27 15:06:42
+❌ Original Track: Heartbreak Hotel by Elvis Presley
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Heartbreak Hotel by Elvis Presley
+🔗 Spotify URL: https://open.spotify.com/track/6xNwKNYZcvgV3XTIwsgNio
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-27 15:06:44
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-27 15:06:46
+❌ Original Track: Singing the Blues by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Singing the Blues by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4vcHOxfV846dVjyToPFBRp
+🌟 Popularity: 50
+
+=========================================
+🕒 2025-06-27 15:06:47
+❌ Original Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/6IMvPtgfWvOdWPp0aGQZ0k
+🌟 Popularity: 13
+
+=========================================
+🕒 2025-06-27 15:06:49
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-27 15:06:51
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 55
+
+=========================================
+🕒 2025-06-27 15:06:52
+❌ Original Track: Smoke! Smoke! Smoke! (That Cigarette) by Tex Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Smoke! Smoke! Smoke! (That Cigarette) by Tex Williams
+🔗 Spotify URL: https://open.spotify.com/track/05HBDnASISMJN46VxzDafK
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 15:13:00
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-27 15:13:02
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-27 15:13:04
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-27 15:13:05
+❌ Original Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🔗 Spotify URL: https://open.spotify.com/track/4dYcNNaon8WMN2r3Szzcp9
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-27 15:13:07
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-27 15:13:14
+❌ Original Track: Singing the Blues by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Singing the Blues by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4vcHOxfV846dVjyToPFBRp
+🌟 Popularity: 50
+
+=========================================
+🕒 2025-06-27 15:13:15
+❌ Original Track: A Satisfied Mind by Jean Shepard
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: A Satisfied Mind by Jean Shepard
+🔗 Spotify URL: https://open.spotify.com/track/3EL0HtVljTy0kqgSNKe4cT
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-27 15:13:17
+❌ Original Track: Fraulein (feat. Tyler Childers) by Colter Wall
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Fraulein (feat. Tyler Childers) by Colter Wall
+🔗 Spotify URL: https://open.spotify.com/track/65UNQSH7RI4Lxw7VrXMp5y
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-27 15:13:19
+❌ Original Track: Four Walls by Bas
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Four Walls by Bas
+🔗 Spotify URL: https://open.spotify.com/track/413Pc87SwoEUIui4hFyGOU
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-27 15:13:20
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-27 15:13:22
+❌ Original Track: GONE, GONE / THANK YOU by Tyler, The Creator
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: GONE, GONE / THANK YOU by Tyler, The Creator
+🔗 Spotify URL: https://open.spotify.com/track/1hz7SRTGUNAtIQ46qiNv2p
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-27 15:13:24
+❌ Original Track: He'll Have to Go by Jim Reeves
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: He'll Have to Go by Jim Reeves
+🔗 Spotify URL: https://open.spotify.com/track/7DH5dXVuQaqcKf9oTy9oUN
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-27 15:13:25
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 55
+
+=========================================
+🕒 2025-06-27 15:23:33
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-27 15:23:36
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-28 09:09:06
+❌ Original Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🔗 Spotify URL: https://open.spotify.com/track/4dYcNNaon8WMN2r3Szzcp9
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:09:07
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:09:09
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:09:10
+❌ Original Track: Singing the Blues by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Singing the Blues by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4vcHOxfV846dVjyToPFBRp
+🌟 Popularity: 50
+
+=========================================
+🕒 2025-06-28 09:09:12
+❌ Original Track: A Satisfied Mind by Jean Shepard
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: A Satisfied Mind by Jean Shepard
+🔗 Spotify URL: https://open.spotify.com/track/3EL0HtVljTy0kqgSNKe4cT
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:09:13
+❌ Original Track: Fraulein (feat. Tyler Childers) by Colter Wall
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Fraulein (feat. Tyler Childers) by Colter Wall
+🔗 Spotify URL: https://open.spotify.com/track/65UNQSH7RI4Lxw7VrXMp5y
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-28 09:09:15
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-28 09:09:16
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:09:18
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-28 09:13:10
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:13:12
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-28 09:13:13
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:13:15
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:13:16
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:13:18
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-28 09:13:19
+❌ Original Track: He'll Have to Go by Jim Reeves
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: He'll Have to Go by Jim Reeves
+🔗 Spotify URL: https://open.spotify.com/track/7DH5dXVuQaqcKf9oTy9oUN
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-28 09:13:21
+❌ Original Track: A Satisfied Mind by Jean Shepard
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: A Satisfied Mind by Jean Shepard
+🔗 Spotify URL: https://open.spotify.com/track/3EL0HtVljTy0kqgSNKe4cT
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:13:23
+❌ Original Track: Four Walls by Bas
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Four Walls by Bas
+🔗 Spotify URL: https://open.spotify.com/track/413Pc87SwoEUIui4hFyGOU
+🌟 Popularity: 55
+
+=========================================
+🕒 2025-06-28 09:19:46
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:19:48
+❌ Original Track: Cold Heart by Nilüfer Yanya
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Cold Heart by Nilüfer Yanya
+🔗 Spotify URL: https://open.spotify.com/track/5WRdonm8caliL2JA6fT2fL
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:19:49
+❌ Original Track: Jambalaya (On The Bayou) by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Jambalaya (On The Bayou) by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/5gbm0aNo7eXNuOEkQi5m9B
+🌟 Popularity: 59
+
+=========================================
+🕒 2025-06-28 09:19:51
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:19:53
+❌ Original Track: i don't wanna be hurt anymore by subtle life enthusiast
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: i don't wanna be hurt anymore by subtle life enthusiast
+🔗 Spotify URL: https://open.spotify.com/track/52rs8uwnivuQTcKbDIodiS
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:19:54
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:19:56
+❌ Original Track: Heartbreak Hotel by Elvis Presley
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Heartbreak Hotel by Elvis Presley
+🔗 Spotify URL: https://open.spotify.com/track/6xNwKNYZcvgV3XTIwsgNio
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:19:57
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:19:59
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:23:22
+❌ Original Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Cattle Call (with Hugo Winterhalter and His Orchestra & Chorus) by Eddy Arnold
+🔗 Spotify URL: https://open.spotify.com/track/4dYcNNaon8WMN2r3Szzcp9
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:23:23
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:23:25
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:23:26
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-28 09:23:28
+❌ Original Track: He'll Have to Go by Jim Reeves
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: He'll Have to Go by Jim Reeves
+🔗 Spotify URL: https://open.spotify.com/track/7DH5dXVuQaqcKf9oTy9oUN
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-28 09:23:29
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:23:31
+❌ Original Track: A Satisfied Mind by Jean Shepard
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: A Satisfied Mind by Jean Shepard
+🔗 Spotify URL: https://open.spotify.com/track/3EL0HtVljTy0kqgSNKe4cT
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:23:33
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-28 09:23:34
+❌ Original Track: Four Walls by Bas
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Four Walls by Bas
+🔗 Spotify URL: https://open.spotify.com/track/413Pc87SwoEUIui4hFyGOU
+🌟 Popularity: 55
+
+=========================================
+🕒 2025-06-28 09:26:31
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:26:33
+❌ Original Track: Cold Heart by Nilüfer Yanya
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Cold Heart by Nilüfer Yanya
+🔗 Spotify URL: https://open.spotify.com/track/5WRdonm8caliL2JA6fT2fL
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:26:34
+❌ Original Track: Jambalaya (On The Bayou) by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Jambalaya (On The Bayou) by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/5gbm0aNo7eXNuOEkQi5m9B
+🌟 Popularity: 59
+
+=========================================
+🕒 2025-06-28 09:26:36
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:26:38
+❌ Original Track: i don't wanna be hurt anymore by subtle life enthusiast
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: i don't wanna be hurt anymore by subtle life enthusiast
+🔗 Spotify URL: https://open.spotify.com/track/52rs8uwnivuQTcKbDIodiS
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:26:39
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:26:41
+❌ Original Track: Heartbreak Hotel by Elvis Presley
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Heartbreak Hotel by Elvis Presley
+🔗 Spotify URL: https://open.spotify.com/track/6xNwKNYZcvgV3XTIwsgNio
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:26:42
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:26:44
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:29:20
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:29:21
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:29:23
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-28 09:29:24
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:29:26
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:29:27
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-28 09:29:29
+❌ Original Track: A Satisfied Mind by Jean Shepard
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: A Satisfied Mind by Jean Shepard
+🔗 Spotify URL: https://open.spotify.com/track/3EL0HtVljTy0kqgSNKe4cT
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:29:30
+❌ Original Track: He'll Have to Go by Jim Reeves
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: He'll Have to Go by Jim Reeves
+🔗 Spotify URL: https://open.spotify.com/track/7DH5dXVuQaqcKf9oTy9oUN
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-28 09:29:32
+❌ Original Track: Four Walls by Bas
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Four Walls by Bas
+🔗 Spotify URL: https://open.spotify.com/track/413Pc87SwoEUIui4hFyGOU
+🌟 Popularity: 55
+
+=========================================
+🕒 2025-06-28 09:31:02
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:31:04
+❌ Original Track: Cold Heart by Nilüfer Yanya
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Cold Heart by Nilüfer Yanya
+🔗 Spotify URL: https://open.spotify.com/track/5WRdonm8caliL2JA6fT2fL
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:31:05
+❌ Original Track: Jambalaya (On The Bayou) by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Jambalaya (On The Bayou) by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/5gbm0aNo7eXNuOEkQi5m9B
+🌟 Popularity: 59
+
+=========================================
+🕒 2025-06-28 09:31:07
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:31:09
+❌ Original Track: i don't wanna be hurt anymore by subtle life enthusiast
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: i don't wanna be hurt anymore by subtle life enthusiast
+🔗 Spotify URL: https://open.spotify.com/track/52rs8uwnivuQTcKbDIodiS
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:31:10
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:31:12
+❌ Original Track: Singing the Blues by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Singing the Blues by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4vcHOxfV846dVjyToPFBRp
+🌟 Popularity: 50
+
+=========================================
+🕒 2025-06-28 09:31:13
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:31:15
+❌ Original Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/6IMvPtgfWvOdWPp0aGQZ0k
+🌟 Popularity: 13
+
+=========================================
+🕒 2025-06-28 09:33:53
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:33:55
+❌ Original Track: Cold Heart by Nilüfer Yanya
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Cold Heart by Nilüfer Yanya
+🔗 Spotify URL: https://open.spotify.com/track/5WRdonm8caliL2JA6fT2fL
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:33:56
+❌ Original Track: Jambalaya (On The Bayou) by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Jambalaya (On The Bayou) by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/5gbm0aNo7eXNuOEkQi5m9B
+🌟 Popularity: 59
+
+=========================================
+🕒 2025-06-28 09:33:58
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:34:00
+❌ Original Track: i don't wanna be hurt anymore by subtle life enthusiast
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: i don't wanna be hurt anymore by subtle life enthusiast
+🔗 Spotify URL: https://open.spotify.com/track/52rs8uwnivuQTcKbDIodiS
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:34:01
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:34:03
+❌ Original Track: Singing the Blues by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Singing the Blues by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4vcHOxfV846dVjyToPFBRp
+🌟 Popularity: 50
+
+=========================================
+🕒 2025-06-28 09:34:04
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:34:06
+❌ Original Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: A White Sport Coat (And a Pink Carnation) by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/6IMvPtgfWvOdWPp0aGQZ0k
+🌟 Popularity: 13
+
+=========================================
+🕒 2025-06-28 09:37:01
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:37:03
+❌ Original Track: I Walk The Line - Single Version by Johnny Cash
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: I Walk The Line - Single Version by Johnny Cash
+🔗 Spotify URL: https://open.spotify.com/track/6uya0AiJA1Avd4DY2XFlVm
+🌟 Popularity: 71
+
+=========================================
+🕒 2025-06-28 09:37:04
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:37:06
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:37:08
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:37:09
+❌ Original Track: El Paso by Marty Robbins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: El Paso by Marty Robbins
+🔗 Spotify URL: https://open.spotify.com/track/4f8hBeMXMvssn6HtFAtblo
+🌟 Popularity: 68
+
+=========================================
+🕒 2025-06-28 09:37:11
+❌ Original Track: He'll Have to Go by Jim Reeves
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: He'll Have to Go by Jim Reeves
+🔗 Spotify URL: https://open.spotify.com/track/7DH5dXVuQaqcKf9oTy9oUN
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-28 09:37:13
+❌ Original Track: A Satisfied Mind by Jean Shepard
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: A Satisfied Mind by Jean Shepard
+🔗 Spotify URL: https://open.spotify.com/track/3EL0HtVljTy0kqgSNKe4cT
+🌟 Popularity: 36
+
+=========================================
+🕒 2025-06-28 09:37:15
+❌ Original Track: GONE, GONE / THANK YOU by Tyler, The Creator
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: GONE, GONE / THANK YOU by Tyler, The Creator
+🔗 Spotify URL: https://open.spotify.com/track/1hz7SRTGUNAtIQ46qiNv2p
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-28 09:38:02
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:38:04
+❌ Original Track: Cold Heart by Nilüfer Yanya
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Cold Heart by Nilüfer Yanya
+🔗 Spotify URL: https://open.spotify.com/track/5WRdonm8caliL2JA6fT2fL
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:38:05
+❌ Original Track: Jambalaya (On The Bayou) by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Jambalaya (On The Bayou) by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/5gbm0aNo7eXNuOEkQi5m9B
+🌟 Popularity: 59
+
+=========================================
+🕒 2025-06-28 09:38:07
+❌ Original Track: Your Cheatin' Heart by Hank Williams
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Your Cheatin' Heart by Hank Williams
+🔗 Spotify URL: https://open.spotify.com/track/0WwmFdGXe7Yky4T2J1oqLk
+🌟 Popularity: 54
+
+=========================================
+🕒 2025-06-28 09:38:09
+❌ Original Track: I Really Don't Want to Know by Elvis Presley
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: I Really Don't Want to Know by Elvis Presley
+🔗 Spotify URL: https://open.spotify.com/track/2MA3h5MsIglWsU5tVZ2jJD
+🌟 Popularity: 37
+
+=========================================
+🕒 2025-06-28 09:38:11
+❌ Original Track: Sixteen Tons by Tennessee Ernie Ford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Sixteen Tons by Tennessee Ernie Ford
+🔗 Spotify URL: https://open.spotify.com/track/4KM77RUl2IKdXGhtOBbKIS
+🌟 Popularity: 65
+
+=========================================
+🕒 2025-06-28 09:38:12
+❌ Original Track: Heartbreak Hotel by Elvis Presley
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Heartbreak Hotel by Elvis Presley
+🔗 Spotify URL: https://open.spotify.com/track/6xNwKNYZcvgV3XTIwsgNio
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 09:38:14
+❌ Original Track: Young Love & Saturday Nights by Chris Young
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Young Love & Saturday Nights by Chris Young
+🔗 Spotify URL: https://open.spotify.com/track/0G3fI2EvhLAtBKZ66Tow9V
+🌟 Popularity: 66
+
+=========================================
+🕒 2025-06-28 09:38:15
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 09:43:15
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:45:54
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:46:39
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 09:54:08
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 10:10:15
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 10:58:08
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:04:38
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:12:24
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:16:35
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:17:45
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:22:19
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-28 11:22:43
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:26:24
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:28:26
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:32:40
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:36:13
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:38:36
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:42:17
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-28 11:45:13
+❌ Original Track: The Sound of Silence by Disturbed
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Sound of Silence by Disturbed
+🔗 Spotify URL: https://open.spotify.com/track/1Cj2vqUwlJVG27gJrun92y
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-28 11:45:15
+❌ Original Track: Blowin' in the Wind by Bob Dylan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Blowin' in the Wind by Bob Dylan
+🔗 Spotify URL: https://open.spotify.com/track/18GiV1BaXzPVYpp9rmOg0E
+🌟 Popularity: 75
+
+=========================================
+🕒 2025-06-28 11:45:18
+❌ Original Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: If I Had a Hammer - 2004 Remaster by Peter, Paul and Mary
+🔗 Spotify URL: https://open.spotify.com/track/6R9LiK1WhfnTvFsVfusdQl
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-28 11:45:20
+❌ Original Track: Turn! Turn! Turn! by Dan Zanes
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match (difflib))
+✅ Replacement Track: Turn! Turn! Turn! by Dan Zanes
+🔗 Spotify URL: https://open.spotify.com/track/3eFNRykgZuPJPaqOrNO0kF
+🌟 Popularity: 32
+
+=========================================
+🕒 2025-06-28 11:45:22
+❌ Original Track: Early Morning Rain by Cleveland Francis
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Early Morning Rain by Cleveland Francis
+🔗 Spotify URL: https://open.spotify.com/track/7GQz5rXS4ArE1LTMIYjbWc
+🌟 Popularity: 62
+
+=========================================
+🕒 2025-06-28 11:45:23
+❌ Original Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Where Have All The Flowers Gone? - Remastered by The Kingston Trio
+🔗 Spotify URL: https://open.spotify.com/track/4C3jDWATqX5n4xaRO8wZOF
+🌟 Popularity: 48
+
+=========================================
+🕒 2025-06-28 11:45:25
+❌ Original Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match after simplification)
+✅ Replacement Track: Both Sides Now - BBC Proms At The Royal Albert Hall by Sam Smith
+🔗 Spotify URL: https://open.spotify.com/track/5OpFRNjk29ap0yT7JX0b0V
+🌟 Popularity: 44
+
+=========================================
+🕒 2025-06-28 11:45:27
+❌ Original Track: Catch the Wind by Donovan
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Catch the Wind by Donovan
+🔗 Spotify URL: https://open.spotify.com/track/505Pd7CPHoewIE3Io2EpWd
+🌟 Popularity: 58
+
+=========================================
+🕒 2025-06-28 11:45:29
+❌ Original Track: Suzanne by Mark Ronson
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: Suzanne by Mark Ronson
+🔗 Spotify URL: https://open.spotify.com/track/3EL4YcUAmGkfTKXhS49Y3w
+🌟 Popularity: 79
+
+=========================================
+🕒 2025-06-28 11:45:30
+❌ Original Track: There But For Fortune by Joan Baez
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: There But For Fortune by Joan Baez
+🔗 Spotify URL: https://open.spotify.com/track/0kQmH9SFtYjlvat2XzL5mx
+🌟 Popularity: 49
+
+=========================================
+🕒 2025-06-28 11:46:16
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:34:50
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:38:52
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:41:38
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:42:41
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:43:45
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:49:04
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:49:19
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:50:26
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:52:28
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:52:36
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 14:56:05
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-29 14:57:08
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 15:01:09
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 15:21:37
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 15:24:27
+❌ Original Track: The Battle Of New Orleans by Johnny Horton
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Battle Of New Orleans by Johnny Horton
+🔗 Spotify URL: https://open.spotify.com/track/66eFGhs8LXeBgrXk0YgRJK
+🌟 Popularity: 56
+
+=========================================
+🕒 2025-06-29 15:24:53
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 15:35:36
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
