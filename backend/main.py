@@ -44,9 +44,14 @@ app = FastAPI(
 
 print("🔄 main.py loaded (FastAPI starting up)")
 
-
+def log_step_test():
+    for name in ["STEP_1", "STEP_1.A", "STEP_1.B", "STEP_1.B.1", "STEP_1.C"]:
+        logger = logging.getLogger(name)
+        logger.debug(f"{name} — DEBUG test (should NOT appear at INFO level)")
+        logger.info(f"{name} — INFO test (should appear at INFO level)")
 @app.get("/")
 def read_root():
+    log_step_test()
     return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator🐴"}
 
 @app.get("/version", summary="Get TopSpot version info")

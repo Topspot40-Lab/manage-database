@@ -2,6 +2,7 @@ import logging
 import sys
 import os
 from datetime import datetime
+from backend.config import STEP_LOG_LEVELS
 
 from backend.config import (
     LOG_LEVEL,
@@ -32,6 +33,20 @@ LEVEL_TAGS = {
     "ERROR": "❌",
     "CRITICAL": "🔥"
 }
+
+
+
+def _configure_step_loggers():
+    """
+    Apply log levels defined in STEP_LOG_LEVELS, parent first, child second.
+    Logger hierarchy means STEP_1 sets the default for STEP_1.* unless overridden.
+    """
+    # Sort by length so 'STEP_1' is processed before 'STEP_1.A'
+    for step_id in sorted(STEP_LOG_LEVELS.keys(), key=len):
+        level_name = STEP_LOG_LEVELS[step_id]
+        level = getattr(logging, level_name.upper(), logging.INFO)
+        logging.getLogger(step_id).setLevel(level)
+
 
 def _get_color_code(color_name):
     color_map = {
@@ -125,6 +140,10 @@ def setup_logging():
             )
 
     logging.getLogger(__name__).info("✅ Logging setup complete.")
+
+    # Apply step‑wise / sub‑step log levels (e.g., STEP_1, STEP_1.A, STEP_1.B)
+    _configure_step_loggers()
+
 
     # Optional summary log
     if LOG_SUMMARY_ENABLED:

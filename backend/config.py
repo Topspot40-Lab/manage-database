@@ -54,42 +54,51 @@ GENERATE_JSON_LOGGING_ENABLED = True  # ✅ Toggle logging of generate-json summ
 GENERATE_JSON_LOG_PATH = "backend/logs/new_json_all_decades.log"
 
 
-
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # 📡 LOGGING CONFIGURATION
-# -----------------------------------------------------------------------------
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Global default (can override via .env)
+# ---------------------------------------------------------------------------
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Global fallback log level
 LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true"
 
+# ---------------------------------------------------------------------------
+# 🔍 STEP-WISE LOGGING CONFIGURATION
+# These loggers should be used like:
+#   logger = logging.getLogger("STEP_1.B.1")
+#
+# You can turn on just one sub-step to DEBUG and leave others at INFO
+# Inheritance applies (e.g., STEP_1 sets default for STEP_1.*, etc.)
+# ---------------------------------------------------------------------------
+STEP_LOG_LEVELS = {
+    "STEP_1": "INFO",         # Overall Step 1 logging
+    "STEP_1.A": "INFO",      # Prompt building
+    "STEP_1.B": "INFO",      # Markdown cleanup
+    "STEP_1.B.1": "INFO",    # JSON parsing
+    "STEP_1.C": "INFO",       # Validation + de-duping
+    # Add more steps/substeps here...
+}
+
+# ---------------------------------------------------------------------------
+# 🧩 MODULE-SPECIFIC LOG LEVEL OVERRIDES
+# You can still override individual modules by name.
+# These work independently of STEP loggers.
+# ---------------------------------------------------------------------------
 LOG_LEVELS_BY_MODULE = {
     "backend.services.xai_service": "INFO",
     "backend.services.spotify_service": "INFO",
-    "backend.services.track_generator": "DEBUG",
+    "backend.services.track_generator": "INFO",
     "backend.services.utils": "INFO",
     "backend.logging.track_logging": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.utils.track_builder": "INFO",
-    "spotipy": "WARNING",           # 🔇 Suppress Spotipy's debug/info chatter
-    "urllib3": "WARNING",           # 🔇 Suppress low-level HTTP logs
-    "requests": "WARNING",          # 🔇 Optional, depending on if you use it
-    "httpx": "WARNING",             # 🔇 If you ever use this HTTP lib
+    "spotipy": "WARNING",
+    "urllib3": "WARNING",
+    "requests": "WARNING",
+    "httpx": "WARNING",
 }
 
-# -----------------------------------------------------------------------------
-# 🎨 LOGGING OPTIONS — These values are controlled via your .env file
-#
-# LOG_FILE_ENABLED:
-#   - Set to "true" to enable logging to a file (default: true)
-#   - Set to "false" to disable file logging (terminal only)
-#
-# LOG_COLOR_ENABLED:
-#   - Set to "true" to enable ANSI color codes in console logs (default: true)
-#   - Set to "false" if your terminal doesn't support color
-#
-# LOG_FILE_PATH:
-#   - The name of the log file where logs will be written (if enabled)
-# -----------------------------------------------------------------------------
-
+# ---------------------------------------------------------------------------
+# 🎨 TERMINAL AND FILE LOGGING OPTIONS (controlled by .env)
+# ---------------------------------------------------------------------------
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").strip().lower() == "true"
 LOG_COLOR_ENABLED = os.getenv("LOG_COLOR_ENABLED", "true").strip().lower() == "true"
 LOG_FILE_PATH = "topspot.log"

@@ -14,7 +14,13 @@ from backend.utils.track_filters import validate_tracks
 # Load environment variables
 load_dotenv()
 
+# 🧩 Shared fallback logger for this module (e.g., get_artist_description)
 logger = logging.getLogger(__name__)
+
+# 🎯 STEP-SPECIFIC LOGGERS for Step 1 substeps
+logger_step1a = logging.getLogger("STEP_1.A")  # Prompt building
+logger_step1b = logging.getLogger("STEP_1.B")  # Markdown/JSON parsing
+logger_step1c = logging.getLogger("STEP_1.C")  # Validation + filtering
 
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
@@ -23,26 +29,28 @@ SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../schemas/track_schema.j
 with open(SCHEMA_PATH, "r") as f:
     TRACK_SCHEMA = json.load(f)
 
+
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
     buffer_size = max(0, round(num_tracks * 0.25))
     total_requested = num_tracks + buffer_size
-    logger.debug(f"[XAI] gws 2: test_file_number={test_file_number}, num_tracks={num_tracks}, buffer_size={buffer_size})")
-    logger.debug(f"[XAI] total_requested={total_requested})")
-    logger.debug(f"[XAI] Requesting {total_requested} tracks (target={num_tracks}, buffer={buffer_size})")
+
+    logger_step1a.debug(f"[STEP_1.A] test_file_number={test_file_number}, num_tracks={num_tracks}, buffer={buffer_size}")
+    logger_step1a.debug(f"[STEP_1.A] total_requested={total_requested}")
+    logger_step1a.debug(f"[STEP_1.A] Building prompt for decade={decade}, genre={genre}, language={language}")
 
     prompt = build_track_prompt(decade, genre, total_requested, language, buffer_size)
 
-    logger.debug("[XAI] Requesting top tracks...")
+    logger_step1b.debug("[STEP_1.B] Requesting top tracks from XAI...")
     tracks = []
 
     if test_file_number > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
-        logger.debug(f"[TEST] Using {test_file_path}")
+        logger_step1b.debug(f"[TEST] Using {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
-            logger.debug(f"[TEST] Loaded {len(raw_tracks)} tracks.")
+            logger_step1b.debug(f"[TEST] Loaded {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), total_requested, is_test_mode=True)
 
             for t in tracks:
@@ -61,27 +69,27 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
                 }
 
         except Exception as e:
-            logger.error(f"[ERROR] Failed to load test file: {e}")
+            logger_step1b.error(f"[ERROR] Failed to load test file: {e}")
     else:
         content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
         if isinstance(content, list):
-            logger.debug(f"[XAI] Received {len(content)} tracks.")
+            logger_step1b.debug(f"[XAI] Received {len(content)} tracks.")
             tracks = content
         elif isinstance(content, str):
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
         elif isinstance(content, dict):
-            logger.debug(f"[XAI] Dict keys: {list(content.keys())}")
+            logger_step1b.debug(f"[XAI] Dict keys: {list(content.keys())}")
             raw_tracks = content.get("tracks", [])
             if not isinstance(raw_tracks, list):
                 raise ValueError("Expected 'tracks' to be a list.")
-            logger.debug(f"[XAI] Extracted {len(raw_tracks)} tracks.")
+            logger_step1b.debug(f"[XAI] Extracted {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
         else:
             raise TypeError(f"Unexpected content type: {type(content)}")
 
     valid_tracks = validate_tracks(tracks)
-    logger.debug(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
-    logger.debug(f"[CLEANUP] Returning {len(valid_tracks)} cleaned tracks from {total_requested} requested.")
+    logger_step1c.debug(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
+    logger_step1c.debug(f"[CLEANUP] Returning {len(valid_tracks)} cleaned tracks from {total_requested} requested.")
 
     return {
         "language": language,
@@ -89,6 +97,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
         "genre": genre,
         "tracks": valid_tracks
     }
+
 
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     if not ENABLE_TRACK_DESCRIPTION and not ENABLE_RANK_INTRO:
@@ -103,11 +112,11 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
     tracks = track_data if isinstance(track_data, list) else track_data.get("tracks", [])
     batch_size = 10
     total = len(tracks)
-    logger.debug(f"[BATCH] Processing {total} tracks in batches of {batch_size}...")
+    logger_step1c.debug(f"[BATCH] Processing {total} tracks in batches of {batch_size}...")
 
     for batch_index in range(0, total, batch_size):
         batch = tracks[batch_index:batch_index + batch_size]
-        logger.debug(f"[BATCH] Processing batch {batch_index // batch_size + 1}")
+        logger_step1c.debug(f"[BATCH] Processing batch {batch_index // batch_size + 1}")
 
         formatted_input = [
             {
@@ -166,7 +175,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             for i, desc in enumerate(batch_descriptions):
                 tracks[batch_index + i].update(desc)
         except Exception as e:
-            logger.error(f"[XAI ERROR] Failed to fetch descriptions: {e}")
+            logger_step1c.error(f"[XAI ERROR] Failed to fetch descriptions: {e}")
             continue
 
     return {
@@ -175,6 +184,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         "genre": genre,
         "tracks": tracks
     }
+
 
 def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:
     if not ENABLE_ARTIST_DESCRIPTION:
