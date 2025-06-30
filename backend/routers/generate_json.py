@@ -30,12 +30,226 @@ class TrackRequest(BaseModel):
     language: str
     num_tracks: int
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 🧠 FUNCTION FLOW OVERVIEW: generate_track_json()
+#
+# This endpoint generates a complete TopSpot-style track listing by calling XAI,
+# enriching with Spotify metadata, and assembling a structured JSON file.
+#
+# ─ STEP 1: Get initial track list from XAI or test file
+#     backend/services/xai_service.py → get_top_tracks_from_xai()
+#         ├── xai_prompt_builder.build_track_prompt()
+#         ├── xai_service.fetch_xai_tracks()
+#         └── xai_response_handler.parse_and_filter_tracks()
+#
+# ─ STEP 2: Add descriptions (intro + detail) using XAI
+#     backend/services/xai_service.py → get_track_descriptions_from_xai()
+#         ├── xai_prompt_builder.build_description_prompt()
+#         ├── xai_service.fetch_xai_descriptions()
+#         └── xai_response_handler.attach_descriptions_to_tracks()
+#
+# ─ STEP 3: Enrich with Spotify metadata (skipped if test mode)
+#     backend/services/track_generator.py → enrich_tracks_with_spotify()
+#         ├── spotify_service.get_spotify_data()
+#         └── track_builder.build_track_entry()
+#
+# ─ STEP 4: Build structured JSON (core_tables, track_tables, ranking_tables)
+#     backend/utils/track_builder.py → build_final_json()
+#         └── internally calls build_track_entry() per track
+#
+# ─ STEP 5: Replace any missing Spotify tracks
+#     backend/services/spotify_service.py → handle_missing_track()
+#
+# ─ STEP 6: Remove tracks still missing Spotify data
+#     Inline filtering with list comprehension:
+#         [t for t in tracks if t.get("spotify_track_id")]
+#
+# ─ STEP 7: Add spare tracks if final count < 40
+#     backend/utils/track_builder.py → build_track_entry()
+#         (called again to rebuild spares and assign rank)
+#
+# ─ STEP 8: Reassign ranks after cleanup/replacement
+#     backend/services/spotify_service.py → reassign_ranks()
+#
+# ─ STEP 9: Rebuild artist table from enriched tracks
+#     Inline logic inside generate_track_json() using:
+#         track["spotify_artist_id"] → artist_lookup[aid]
+#
+# ─ STEP 10: Save final JSON to disk
+#     shared/filepaths.py → get_json_path()
+#     → standard open() and json.dump() to file
+#
+# ─ STEP 11: Print summary to terminal
+#     backend/utils/log_helpers.py → log_generate_json_summary()
+# OUTPUT (wrapped dict):
+#   {
+#     "language": "english",
+#     "category": "1960s",
+#     "genre": "rock",
+#     "generated_at": "ISO timestamp",
+#     "tracks": [
+#         { "rank": 1, "trackName": "Tennessee Waltz", "artistName": "Patti Page" },
+#         ...
+#     ]
+#   }
+#
+# STORED IN:
+#   The variable name for this structure is `wrapped`, returned by get_top_tracks_from_xai().
+#   The cleaned track list used in later steps is accessed via:
+#       track_list = wrapped["tracks"]
+#
+#   ✅ This is the canonical track list for enrichment, Spotify lookup, and final output.
+#
+# ✅ Final return includes:
+#     {
+#       "message": "JSON created successfully",
+#       "file": <saved path>,
+#       "version": "v3-official",
+#       "track_count": <original XAI count>
+#     }
+# ─────────────────────────────────────────────────────────────────────────────
+
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
     try:
         logger.info("🟡 STEP 0: Starting generate_track_json")
 
         now = datetime.now().isoformat()
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 🧠 STEP 1 — Get raw track list from XAI or test fixture
+        #
+        # PURPOSE:
+        #   Fetches a minimal, ordered list of top tracks from XAI or a local test file.
+        #   This list forms the foundation for all enrichment and metadata steps.
+        #
+        # BEHAVIOR:
+        #   • In normal mode (test_file_number == 0):
+        #       - Builds a prompt and calls XAI via chat completion
+        #       - Cleans and validates JSON response (see cleanup process)
+        #   • In test mode (test_file_number > 0):
+        #       - Loads static file: json_test_file_{n}.json
+        #       - Parses and filters using same logic as normal mode
+        #
+        # INPUT (from TrackRequest):
+        #   - genre (str)
+        #   - decade (str)
+        #   - language (str)
+        #   - num_tracks (int)
+        #
+        # OUTPUT (wrapped dict):
+        #   {
+        #     "language": "english",
+        #     "category": "1960s",
+        #     "genre": "rock",
+        #     "generated_at": "ISO timestamp",
+        #     "tracks": [
+        #         { "rank": 1, "trackName": "Tennessee Waltz", "artistName": "Patti Page" },
+        #         ...
+        #     ]
+        #   }
+        #
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 📥 XAI RAW INPUT FORMAT
+        #
+        # The XAI model returns its response inside a chat completion as Markdown-encoded JSON:
+        #
+        #   Example assistant message:
+        #   ```json
+        #   {
+        #     "tracks": [
+        #       { "rank": 1, "trackName": "Tennessee Waltz", "artistName": "Patti Page" },
+        #       { "rank": 2, "trackName": "Cold, Cold Heart", "artistName": "Hank Williams" }
+        #     ]
+        #   }
+        #   ```
+        #
+        # This string is extracted from:
+        #   response["choices"][0]["message"]["content"]
+        #
+        # ─────────────────────────────────────────────────────────────────────────────# 🧹 CLEANUP PROCESS: Raw XAI → Structured Track List
+        #
+        #   1.A Markdown formatting (```json ... ```) is stripped
+        #       📄 backend/services/xai_api_client.py
+        #          Function: fetch_xai_tracks(prompt: str, ...)
+        #          - Extracts assistant reply
+        #          - Inline logic removes Markdown fencing:
+        #              content = content.replace("```json", "").replace("```", "").strip()
+        #
+        #   1.B JSON string is parsed to Python object
+        #       📄 backend/services/xai_api_client.py
+        #          Function: fetch_xai_tracks()
+        #          - parsed = json.loads(cleaned_string)
+        #
+        #   1.C Track data is validated and cleaned
+        #       📄 backend/services/xai_response_handler.py
+        #          Function: parse_and_filter_tracks(data, num_tracks, is_test_mode)
+        #
+        #          This is the critical data sanitization step that ensures the incoming
+        #          track list is safe, consistent, and ready for enrichment.
+        #
+        #          - Accepts both input formats:
+        #              {"tracks": [...]}  ← wrapped object from XAI
+        #              [...]              ← raw list (used in test files or fallback cases)
+        #
+        #          - Normalizes track and artist names
+        #              normalize_name() [utils/track_filters.py]
+        #              → Converts to lowercase, trims spaces, replaces special characters
+        #              → Ensures that " Beyoncé " and "beyonce" are treated the same
+        #
+        #          - Filters out invalid entries using is_bad_track()
+        #              → Skips any item missing "trackName" or "artistName"
+        #              → Also removes empty strings, non-dict items, or blank values
+        #
+        #          - Deduplicates the list by (trackName, artistName) combination
+        #              → Uses a set of normalized (name, artist) pairs to ensure uniqueness
+        #              → Prevents accidental duplicates like:
+        #                   - "crazy" by "Patsy Cline"
+        #                   - "Crazy" by "Patsy Cline"
+        #
+        #          - Caps list to `num_tracks` unless in test mode
+        #              → In normal mode: only the first N valid, unique tracks are kept
+        #              → In test mode: returns the full list for debugging and diagnostics
+        #
+        #          ✅ After this step, the returned list is guaranteed to:
+        #              • Have valid fields
+        #              • Be normalized and deduplicated
+        #              • Contain no more than `num_tracks` items (unless testing)
+
+        # ✅ Final cleaned format is identical in both normal and test mode:
+        #   {
+        #     "language": "english",
+        #     "category": "1960s",
+        #     "genre": "country",
+        #     "generated_at": "...",
+        #     "tracks": [ { "rank": 1, "trackName": "...", "artistName": "..." }, ... ]
+        #   }
+        #
+        # NOTE:
+        # - Test files must conform to this structure
+        # - Downstream steps assume track names/artists are already cleaned
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 🔄 FUNCTION CALL FLOW: Step 1 Normal vs Test Mode
+        #
+        # ─ Normal Mode (test_file_number == 0):
+        #
+        #   backend/routers/generate_json.py
+        #     → generate_track_json()
+        #         → backend/services/xai_service.py → get_top_tracks_from_xai()
+        #             ├── xai_prompt_builder.py → build_track_prompt()
+        #             ├── xai_api_client.py → fetch_xai_tracks(prompt)
+        #             └── xai_response_handler.py → parse_and_filter_tracks()
+        #
+        # ─ Test Mode (test_file_number > 0):
+        #
+        #   backend/services/xai_service.py → get_top_tracks_from_xai()
+        #       ├── Loads: backend/tests/json_tests/xai/json_test_file_{n}.json
+        #       └── Passes it to:
+        #            xai_response_handler.py → parse_and_filter_tracks(data, ...)
+        #
+        # 🔗 The result of STEP 1 is the canonical input for:
+        #     STEP 2 (XAI descriptions), STEP 3 (Spotify enrichment), and beyond.
+        # ─────────────────────────────────────────────────────────────────────────────
 
         # 🧠 STEP 1: Get initial track list from XAI
         logger.info("🧠 STEP 1: Requesting raw track list from XAI")

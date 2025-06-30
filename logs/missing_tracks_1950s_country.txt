@@ -1502,3 +1502,19 @@
 🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
 🌟 Popularity: 27
 
+=========================================
+🕒 2025-06-29 21:24:07
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
+=========================================
+🕒 2025-06-29 21:25:06
+❌ Original Track: The Tennessee Waltz by Jo Stafford
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact match after simplification)
+✅ Replacement Track: The Tennessee Waltz by Jo Stafford
+🔗 Spotify URL: https://open.spotify.com/track/4etRc4Nbn7RzPbYeEfkj7d
+🌟 Popularity: 27
+
