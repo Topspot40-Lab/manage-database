@@ -30,17 +30,15 @@ class TrackRequest(BaseModel):
     language: str
     num_tracks: int
 
-
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
-
     try:
-        logger.debug("A. Start generate_track_json")
+        logger.info("🟡 STEP 0: Starting generate_track_json")
 
         now = datetime.now().isoformat()
 
-        # Step 1: Get raw track list from XAI
-        logger.debug("B. Calling get_top_tracks_from_xai")
+        # 🧠 STEP 1: Get initial track list from XAI
+        logger.info("🧠 STEP 1: Requesting raw track list from XAI")
         wrapped = get_top_tracks_from_xai(
             decade=request.decade,
             genre=request.genre,
@@ -48,93 +46,105 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             language=request.language,
             test_file_number=test_file_number
         )
-
         if not wrapped or "tracks" not in wrapped:
             raise HTTPException(status_code=500, detail="Failed to retrieve track list from XAI")
-
         track_list = wrapped["tracks"]
-        logger.debug(f"C. Retrieved {len(track_list)} tracks from XAI")
 
-        # Step 2: Enrich descriptions
-        logger.debug("D. Enriching with get_track_descriptions_from_xai")
+        # ✍️ STEP 2: Add descriptions (intro and detail) to tracks
+        logger.info("✍️ STEP 2: Enriching tracks with XAI descriptions")
         enriched = get_track_descriptions_from_xai(
             track_data=wrapped,
             language=request.language,
             decade=request.decade,
             genre=request.genre
         )
-
         if not enriched or "tracks" not in enriched or len(enriched["tracks"]) != len(track_list):
             raise HTTPException(status_code=500, detail="Mismatch or failure in track descriptions")
 
-        # Step 2½: Enrich with Spotify if not in test mode
+        # 🎧 STEP 3: Add Spotify metadata if not in test mode
         if test_file_number == 0:
-            logger.debug("E. Enriching with Spotify data")
+            logger.info("🎧 STEP 3: Enriching tracks with Spotify metadata")
             enriched["tracks"] = enrich_tracks_with_spotify(enriched["tracks"])
         else:
-            logger.debug("E. Skipping Spotify enrichment (test mode)")
+            logger.info("🎧 STEP 3: Skipping Spotify enrichment (test mode)")
 
-        # Step 3: Build final JSON structure
+        # 🧱 STEP 4: Build full JSON structure (core_tables, track_tables, ranking_tables)
         is_test_mode = test_file_number > 0
+        logger.info("🧱 STEP 4: Building full JSON structure from enriched data")
         final_json, track_entries, artist_entries = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
             now=now,
-            is_test_mode=is_test_mode  # 👈 Derived locally
+            is_test_mode=is_test_mode
         )
 
-        # 🧹 Filter tracks from the final JSON data
+        # 🧹 STEP 5: Clean up bad/missing tracks
+        logger.info("🧹 STEP 5: Handling tracks with missing Spotify IDs")
         tracks = final_json["track_tables"]["track"]
-        spare_tracks = final_json.get("spares", [])  # Optional: Add support for spare pool
+        spare_tracks = final_json.get("spares", [])
 
-        # 🛠 Fix or replace broken tracks
-        for track in tracks[:]:  # Iterate over a copy so you can safely remove
+        for track in tracks[:]:
             if not track.get("spotify_track_id"):
                 handle_missing_track(track, tracks, spare_tracks)
 
-        # 🚮 Remove any still-invalid tracks
+        # 🗑 STEP 6: Remove any still-invalid tracks
+        logger.info("🗑 STEP 6: Removing tracks still missing Spotify IDs after replacement")
         tracks = [t for t in tracks if t.get("spotify_track_id")]
-        # 🎒 Refill to ensure 40 total tracks
+
+        # ➕ STEP 7: Fill in with spare tracks if fewer than 40
+        logger.info("➕ STEP 7: Filling in with spare tracks to ensure 40 total")
         while len(tracks) < 40 and spare_tracks:
             spare = spare_tracks.pop(0)
-
-            # 🔎 Validate required fields
             missing_keys = [key for key in ("trackName", "artistName") if key not in spare]
             if missing_keys:
                 logging.warning(f"⚠️ Skipping spare track due to missing keys: {missing_keys} — {spare}")
                 continue
-
-            # 🛠 Rebuild track_entry properly
             try:
                 rebuilt = build_track_entry(
                     spare,
                     request,
-                    spotify_data=None,  # you can leave this as None for spares
+                    spotify_data=None,
                     now=now,
-                    is_test_mode=is_test_mode  # ✅ pass it through
+                    is_test_mode=is_test_mode
                 )
-
                 rebuilt["rank"] = len(tracks) + 1
                 tracks.append(rebuilt)
-                logging.info(f"✅ Added spare track: {rebuilt['artist_display_name']}")
-
+                logging.info(f"✅ Spare track added: {rebuilt['artist_display_name']}")
             except Exception as e:
                 logging.warning(f"❌ Failed to rebuild spare track: {e}")
                 continue
 
-        # 🔁 Update final JSON and ranks
+        # 🔢 STEP 8: Update ranks and finalize track list
+        logger.info("🔢 STEP 8: Reassigning ranks and finalizing track table")
         reassign_ranks(tracks)
         final_json["track_tables"]["track"] = tracks
 
-        # Step 4: Save to file
+        # 👨‍🎤 STEP 9: Rebuild artist table (deduplicated by artist_id)
+        logger.info("👨‍🎤 STEP 9: Rebuilding artist table from track data")
+        artist_lookup = {}
+        for t in tracks:
+            aid = t.get("spotify_artist_id")
+            if not aid:
+                continue
+            if aid not in artist_lookup:
+                artist_lookup[aid] = {
+                    "artist_name": t.get("artist_name"),
+                    "spotify_artist_id": aid,
+                    "artist_artwork": t.get("artist_artwork"),
+                    "artist_description": None,
+                    "artist_mp3_url": None,
+                    "not_on_spotify": t.get("not_on_spotify", False)
+                }
+        final_json["core_tables"]["artist"] = list(artist_lookup.values())
+
+        # 💾 STEP 10: Save final JSON to disk
         filepath = get_json_path(request.decade, request.genre, request.language[:2])
-        logger.debug(f"F. Saving file to: {filepath}")
+        logger.info(f"💾 STEP 10: Saving final JSON to file: {filepath}")
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2)
 
-
-
-        # ✅ Step 5: Log the summary
+        # 📊 STEP 11: Print summary to terminal
+        logger.info("📊 STEP 11: Logging summary report")
         log_generate_json_summary(
             tracks=track_entries,
             artists=artist_entries,
@@ -144,7 +154,7 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
             errors=[]
         )
 
-        logger.info("********    JSON creation complete  ********\n\n\n")
+        logger.info("✅ JSON creation complete")
 
         return {
             "message": "JSON created successfully",
@@ -154,5 +164,5 @@ async def generate_track_json(request: TrackRequest, test_file_number: int = 0):
         }
 
     except Exception as e:
-        logger.exception("Unexpected error in generate_track_json")
+        logger.exception("❌ Unexpected error in generate_track_json")
         raise HTTPException(status_code=500, detail=f"Internal error: {e}")

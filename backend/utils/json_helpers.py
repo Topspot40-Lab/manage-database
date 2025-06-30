@@ -86,7 +86,7 @@ def normalize_name(name: str) -> str:
     corrected = re.sub(r"\s+", " ", corrected).strip()
 
     if original != corrected:
-        logger.info(f"🎭 Normalized: '{original}' → '{corrected}'")
+        logger.debug(f"🎭 Normalized: '{original}' → '{corrected}'")
 
     return corrected
 

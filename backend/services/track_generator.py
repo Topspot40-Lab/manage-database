@@ -130,7 +130,7 @@ def get_spotify_data(track_name: str, artist_name: str):
                     featured_artist_id = featured_artist["id"] if featured_artist else None
                     featured_artist_name = featured_artist["name"] if featured_artist else None
 
-                    logger.info(f"[SPOTIFY] ✅ Matched: '{t['name']}' by '{artist['name']}'")
+                    logger.debug(f"[SPOTIFY] ✅ Matched: '{t['name']}' by '{artist['name']}'")
 
                     return {
                         "spotify_track_id": t["id"],
@@ -328,7 +328,7 @@ def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
 
         # ✅ 1.  Compare normalised artist names
         if normalize_name(new_artist_name) == normalize_name(artist_name):
-            logger.info(
+            logger.debug(
                 f"✅ Auto‑match accepted: '{new_track_name}' by '{new_artist_name}'"
             )
 
@@ -407,14 +407,22 @@ def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
 def enrich_track_from_spotify(track_id: str) -> dict:
     sp = get_spotify_client()
     data = sp.track(track_id)
+
+    artist_id = data["artists"][0]["id"]
+    artist_data = sp.artist(artist_id)
+
+    logger.debug(f"🎨 Fetched artist artwork: {artist_data.get('images')}")
+
     return {
         "duration_ms": data["duration_ms"],
         "popularity": data["popularity"],
-        "album_artwork": data["album"]["images"][0]["url"] if data["album"]["images"] else None,
-        "artist_id": data["artists"][0]["id"],
-        "artist_artwork": sp.artist(data["artists"][0]["id"])["images"][0]["url"]
-                         if sp.artist(data["artists"][0]["id"])["images"] else None,
+        "album_artwork": data["album"]["images"][0]["url"]
+            if data["album"]["images"] else None,
+        "artist_id": artist_id,
+        "artist_artwork": artist_data["images"][0]["url"]
+            if artist_data.get("images") else None,
     }
+
 
 
 def enrich_tracks_with_spotify(tracks: list[dict]) -> list[dict]:
@@ -428,7 +436,7 @@ def enrich_tracks_with_spotify(tracks: list[dict]) -> list[dict]:
         spotify_data = get_spotify_data(tn, an)
         if spotify_data:
             t["spotify_data"] = spotify_data
-            logger.info(f"✅ Spotify enrich OK for '{tn}' by '{an}' — artist ID: {spotify_data.get('artist_id')}")
+            logger.debug(f"✅ Spotify enrich OK for '{tn}' by '{an}' — artist ID: {spotify_data.get('artist_id')}")
         else:
             logger.warning(f"❌ No Spotify data for '{tn}' by '{an}'")
     return tracks

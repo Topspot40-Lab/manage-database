@@ -2,7 +2,7 @@
   "language": "english",
   "category": "1950s",
   "genre": "country",
-  "generated_at": "2025-06-29T16:05:36.067345",
+  "generated_at": "2025-06-29T19:36:32.987447",
   "core_tables": {
     "genre": [
       {
@@ -45,7 +45,7 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2734a0c2b34f2e8aa9cd76bb5e3",
         "year_released": 1950,
         "is_explicit": false,
-        "created_at": "2025-06-29T16:05:36.067345",
+        "created_at": "2025-06-29T19:36:32.987447",
         "intro": null,
         "detail": null,
         "detail_mp3_url": null,
@@ -59,7 +59,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for country - 1950s",
-        "created_at": "2025-06-29T16:05:36.067345"
+        "created_at": "2025-06-29T19:36:32.987447"
       }
     ]
   },

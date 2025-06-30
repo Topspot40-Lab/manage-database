@@ -340,11 +340,16 @@ def handle_missing_track(bad_track, tracks, spare_tracks) -> bool:
 def enrich_track_from_spotify(track_id: str) -> dict:
     sp = get_spotify_client()
     data = sp.track(track_id)
+    artist_id = data["artists"][0]["id"]
+    artist_info = sp.artist(artist_id)
+
+    logger.debug(
+        f"🎨 Retrieved artist_artwork for {artist_info.get('name')}: {artist_info['images'][0]['url'] if artist_info.get('images') else '❌ None'}")
+
     return {
         "duration_ms": data["duration_ms"],
         "popularity": data["popularity"],
         "album_artwork": data["album"]["images"][0]["url"] if data["album"]["images"] else None,
-        "artist_id": data["artists"][0]["id"],
-        "artist_artwork": sp.artist(data["artists"][0]["id"])["images"][0]["url"]
-                         if sp.artist(data["artists"][0]["id"])["images"] else None,
+        "artist_id": artist_id,
+        "artist_artwork": artist_info["images"][0]["url"] if artist_info.get("images") else None,
     }

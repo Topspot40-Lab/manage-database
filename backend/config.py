@@ -64,11 +64,11 @@ LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true
 LOG_LEVELS_BY_MODULE = {
     "backend.services.xai_service": "INFO",
     "backend.services.spotify_service": "INFO",
-    "backend.services.track_generator": "INFO",
+    "backend.services.track_generator": "DEBUG",
     "backend.services.utils": "INFO",
     "backend.logging.track_logging": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.utils.track_builder": "DEBUG",
+    "backend.utils.track_builder": "INFO",
     "spotipy": "WARNING",           # 🔇 Suppress Spotipy's debug/info chatter
     "urllib3": "WARNING",           # 🔇 Suppress low-level HTTP logs
     "requests": "WARNING",          # 🔇 Optional, depending on if you use it
