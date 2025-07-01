@@ -5,11 +5,8 @@ from backend.utils.json_helpers import parse_featured_artists, normalize_name
 import logging
 
 logger = logging.getLogger(__name__)
-
-print(f"logger.name = {logger.name}")
-
-
-print(f"Logger created: {logger.name}")  # TEMP debug
+logger.debug(f"[INIT] Logger created: {logger.name}")
+logger.debug(f"[DEBUG] Effective log level: {logger.getEffectiveLevel()}")
 logger.debug(f"[DEBUG TEST] Logger name: {logger.name}, effective level: {logger.getEffectiveLevel()}")
 
 

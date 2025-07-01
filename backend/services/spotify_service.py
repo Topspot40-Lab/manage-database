@@ -36,11 +36,11 @@ def auto_select_best_spotify_match(track_name: str, suggestions: list[dict]) -> 
         simplified_name = name.split("(")[0].strip()
 
         if simplified_input == simplified_name:
-            logger.info(f"🎯 Exact simplified match: '{simplified_input}' == '{simplified_name}'")
+            logger.debug(f"🎯 Exact simplified match: '{simplified_input}' == '{simplified_name}'")
             return suggestion, "Exact match after simplification"
 
         if simplified_input in simplified_name:
-            logger.info(f"🧠 Partial simplified match: '{simplified_input}' in '{simplified_name}'")
+            logger.debug(f"🧠 Partial simplified match: '{simplified_input}' in '{simplified_name}'")
             return suggestion, "Partial match after simplification"
 
     suggestion_names = [s.get("trackName") for s in suggestions if "trackName" in s]
@@ -49,7 +49,7 @@ def auto_select_best_spotify_match(track_name: str, suggestions: list[dict]) -> 
     if closest_matches:
         selected = next((s for s in suggestions if s.get("trackName") == closest_matches[0]), None)
         if selected:
-            logger.info(f"🌀 Fuzzy match selected: '{closest_matches[0]}' for '{track_name}'")
+            logger.debug(f"🌀 Fuzzy match selected: '{closest_matches[0]}' for '{track_name}'")
             return selected, "Fuzzy match (difflib)"
 
     fallback = suggestions[0]
