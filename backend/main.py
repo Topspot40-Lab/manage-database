@@ -2,13 +2,14 @@
 import sys
 from pathlib import Path
 import io
-import os
-import time
 
-print("This will disappear in 3 seconds...")
-time.sleep(3)
-os.system('cls')
-print("Screen cleared!")
+
+# print("This will disappear in 3 seconds...")
+# import os
+# import time
+# time.sleep(3)
+# os.system('cls')
+# print("Screen cleared!")
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # ---------------------------------------------------------------------------
@@ -45,10 +46,11 @@ app = FastAPI(
 print("🔄 main.py loaded (FastAPI starting up)")
 
 def log_step_test():
-    for name in ["STEP_1", "STEP_1.A", "STEP_1.B", "STEP_1.B.1", "STEP_1.C"]:
-        logger = logging.getLogger(name)
-        logger.debug(f"{name} — DEBUG test (should NOT appear at INFO level)")
-        logger.info(f"{name} — INFO test (should appear at INFO level)")
+    list(map(lambda name: (logging.getLogger(name).debug(f"{name} — DEBUG test (should NOT appear at INFO level)"),
+                           logging.getLogger(name).info(f"{name} — INFO test (should appear at INFO level)")),
+             ["STEP_1", "STEP_1.A", "STEP_1.B", "STEP_1.B.1", "STEP_1.C"]))
+
+
 @app.get("/")
 def read_root():
     log_step_test()

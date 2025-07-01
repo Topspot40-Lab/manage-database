@@ -4,6 +4,8 @@ import logging
 import requests
 from typing import Optional
 from dotenv import load_dotenv
+from pprint import pformat
+
 
 from backend.services.xai_prompt_builder import build_track_prompt
 from backend.services.xai_response_handler import parse_and_filter_tracks
@@ -16,11 +18,44 @@ load_dotenv()
 
 # 🧩 Shared fallback logger for this module (e.g., get_artist_description)
 logger = logging.getLogger(__name__)
+def format_track_list(tracks, fields=("rank", "trackName", "artistName")) -> str:
+    """
+    Return a formatted string with aligned columns for selected track fields.
+    """
+    if not tracks:
+        return "⚠️ No tracks to display."
 
-# 🎯 STEP-SPECIFIC LOGGERS for Step 1 substeps
-logger_step1a = logging.getLogger("STEP_1.A")  # Prompt building
-logger_step1b = logging.getLogger("STEP_1.B")  # Markdown/JSON parsing
-logger_step1c = logging.getLogger("STEP_1.C")  # Validation + filtering
+    # Custom field widths (adjust as needed)
+    field_widths = {
+        "rank": 4,
+        "trackName": 30,
+        "artistName": 25,
+    }
+
+    # Header line
+    header = " | ".join(f"{field:<{field_widths[field]}}" for field in fields)
+    separator = "-" * len(header)
+    lines = ["🎧 Track summary:", header, separator]
+
+    # Data rows
+    for track in tracks:
+        row = " | ".join(f"{str(track.get(field, '')).ljust(field_widths[field])[:field_widths[field]]}" for field in fields)
+        lines.append(row)
+
+    return "\n".join(lines)
+
+
+def get_step_logger(name: str, fallback: str = "STEP_1") -> logging.Logger:
+    logger = logging.getLogger(name)
+    if logger.level == logging.NOTSET:
+        # fallback only if no level explicitly set
+        return logging.getLogger(fallback)
+    return logger
+
+# 🎯 STEP-SPECIFIC LOGGERS for Step 1 sub-steps (with fallback to STEP_1)
+logger_step1a = get_step_logger("STEP_1.A")
+logger_step1b = get_step_logger("STEP_1.B")
+logger_step1c = get_step_logger("STEP_1.C")
 
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
@@ -31,12 +66,17 @@ with open(SCHEMA_PATH, "r") as f:
 
 
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
-    buffer_size = max(0, round(num_tracks * 0.25))
+    if test_file_number > 0:
+        buffer_size = 0
+    else:
+       buffer_size = max(0, round(num_tracks * 0.25))
+
     total_requested = num_tracks + buffer_size
 
-    logger_step1a.debug(f"[STEP_1.A] test_file_number={test_file_number}, num_tracks={num_tracks}, buffer={buffer_size}")
-    logger_step1a.debug(f"[STEP_1.A] total_requested={total_requested}")
-    logger_step1a.debug(f"[STEP_1.A] Building prompt for decade={decade}, genre={genre}, language={language}")
+    logger_step1a.debug(
+        f"[STEP_1.A] test_file_number={test_file_number}, num_tracks={num_tracks}, buffer={buffer_size}, "
+        f"total_requested={total_requested}, decade={decade}, genre={genre}, language={language}"
+    )
 
     prompt = build_track_prompt(decade, genre, total_requested, language, buffer_size)
 
@@ -72,11 +112,14 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             logger_step1b.error(f"[ERROR] Failed to load test file: {e}")
     else:
         content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
+
         if isinstance(content, list):
             logger_step1b.debug(f"[XAI] Received {len(content)} tracks.")
             tracks = content
+
         elif isinstance(content, str):
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
+
         elif isinstance(content, dict):
             logger_step1b.debug(f"[XAI] Dict keys: {list(content.keys())}")
             raw_tracks = content.get("tracks", [])
@@ -84,8 +127,15 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
                 raise ValueError("Expected 'tracks' to be a list.")
             logger_step1b.debug(f"[XAI] Extracted {len(raw_tracks)} tracks.")
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
+
         else:
             raise TypeError(f"Unexpected content type: {type(content)}")
+
+        # ✅ Log tracks AFTER the isinstance tree
+        if tracks:
+            logger_step1b.debug("🎧 Track summary:\n" + format_track_list(tracks))
+        else:
+            logger_step1b.debug("⚠️ No tracks returned.")
 
     valid_tracks = validate_tracks(tracks)
     logger_step1c.debug(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")

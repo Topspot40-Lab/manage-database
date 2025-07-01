@@ -68,7 +68,9 @@ class TrackRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────# 🧹 CLEANUP PROCESS: Raw XAI → Structured Track List
 #
 #   1.A Markdown formatting (```json ... ```) is stripped
-#       📄 backend/services/xai_api_client.py
+#
+#       📄 backend/services.xai_service.get_top_tracks_from_xai
+#       📄 backend/services/xai_service.get_top_tracks_from_xai.xai_api_client.py
 #          Function: fetch_xai_tracks(prompt: str, ...)
 #          - Extracts assistant reply
 #          - Inline logic removes Markdown fencing:
@@ -151,7 +153,7 @@ class TrackRequest(BaseModel):
 
 
 def run(request: TrackRequest, *, test_file_number: int = 0) -> dict:
-    """STEP 1 – fetch & clean the raw XAI track list (or test file)."""
+    """STEP 1 – fetch & clean the raw XAI track list (or test file)."""
     logger.info("🧠 STEP 1: Requesting raw track list from XAI")
 
     wrapped = get_top_tracks_from_xai(

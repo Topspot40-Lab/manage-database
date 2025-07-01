@@ -37,14 +37,12 @@ LEVEL_TAGS = {
 
 
 def _configure_step_loggers():
-    """
-    Apply log levels defined in STEP_LOG_LEVELS, parent first, child second.
-    Logger hierarchy means STEP_1 sets the default for STEP_1.* unless overridden.
-    """
-    # Sort by length so 'STEP_1' is processed before 'STEP_1.A'
-    for step_id in sorted(STEP_LOG_LEVELS.keys(), key=len):
+    for step_id in sorted(STEP_LOG_LEVELS.keys(), key=lambda k: len(str(k))):
+        if not isinstance(step_id, str):
+            continue  # 🔕 silently ignore non-string keys
+
         level_name = STEP_LOG_LEVELS[step_id]
-        level = getattr(logging, level_name.upper(), logging.INFO)
+        level = getattr(logging, str(level_name).upper(), logging.INFO)
         logging.getLogger(step_id).setLevel(level)
 
 

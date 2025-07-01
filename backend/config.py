@@ -71,7 +71,7 @@ LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true
 STEP_LOG_LEVELS = {
     "STEP_1": "INFO",         # Overall Step 1 logging
     "STEP_1.A": "INFO",      # Prompt building
-    "STEP_1.B": "INFO",      # Markdown cleanup
+    "STEP_1.B": "DEBUG",      # Markdown cleanup
     "STEP_1.B.1": "INFO",    # JSON parsing
     "STEP_1.C": "INFO",       # Validation + de-duping
     # Add more steps/substeps here...

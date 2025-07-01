@@ -1,6 +1,10 @@
+import logging
+logger = logging.getLogger("STEP_1.A" or "STEP_1")
+
+
 def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
     prompted_num = num_tracks + buffer_size
-    return (
+    prompt = (
         f"Generate a JSON array with exactly {prompted_num} top tracks strictly from the {genre} genre "
         f"during the {decade} decade, as officially recognized at the time. "
         f"Only include artists who were actively releasing original music during the actual {decade}. "
@@ -37,3 +41,9 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
 
         "Return ONLY a valid JSON array. No extra commentary, no headings, no explanations."
     )
+
+    # 🧠 Only log in STEP 1 context (DEBUG mode)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("📝 [STEP 1 PROMPT]\n\n%s\n", prompt)
+
+    return prompt
