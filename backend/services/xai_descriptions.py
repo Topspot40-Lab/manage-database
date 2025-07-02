@@ -28,7 +28,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
     total = len(tracks)
     batch_size = 10
 
-    logger_step2.info(f"✍️ STEP 2: Enriching {total} tracks with XAI descriptions (batch={batch_size})")
+    logger_step2.info(f"✍️ [STEP_2]: Enriching {total} tracks with XAI descriptions (batch={batch_size})")
 
     for batch_start in range(0, total, batch_size):
         batch_end = min(batch_start + batch_size, total)
@@ -48,15 +48,30 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         ]
 
         requested_fields, instructions = [], []
+        # --------------------------------------------------------------
+        # Build the “instructions” list more descriptively
+        # --------------------------------------------------------------
+        requested_fields, instructions = [], []
+
         if ENABLE_RANK_INTRO:
             requested_fields.append("intro")
             instructions.append(
-                "Each 'intro' should be a short one-liner with rank, decade, genre, track name, and artist name."
+                # Short, punchy opener
+                "• 'intro' must be ONE lively sentence (max 25 words). "
+                "Include rank, decade, genre, track name, and artist name. "
+                "Vary the tone: sometimes playful, sometimes dramatic, sometimes trivia‑style. "
+                "Avoid starting more than two intros in a row with the same word."
             )
+
         if ENABLE_TRACK_DESCRIPTION:
             requested_fields.append("detail")
             instructions.append(
-                "Each 'detail' should be a narrative in Casey Kasem's style, avoiding repetition from the intro."
+                # Rich Casey‑Kasem‑style narrative
+                "• 'detail' must be 2‑4 sentences (≈80‑120 words) in a warm Casey Kasem style. "
+                "⚠️ Do NOT repeat the rank, decade, genre, track name or artist name already stated in 'intro'. "
+                "Focus on songwriting history, chart performance, producer/session tidbits, cultural impact, or a light humorous anecdote. "
+                "Feel free to mention the songwriter(s), recording studio, or a quirky behind‑the‑scenes fact. "
+                "End with a radio‑DJ‑flair tagline (e.g., '…and that’s the magic that still spins on turntables today!')."
             )
 
         prompt = (
@@ -89,9 +104,21 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             batch_descriptions = json.loads(content)
             for i, desc in enumerate(batch_descriptions):
                 tracks[batch_start + i].update(desc)
+                rank = tracks[batch_start + i].get("rank")
+                intro = desc.get("intro")
+                detail = desc.get("detail")
+
                 logger_step2.debug(
-                    f"✅ Rank {tracks[batch_start + i].get('rank')}: intro={'intro' in desc}, detail={'detail' in desc}"
+                    f"✅ [Step_2] Rank {rank}: "
+                    f"intro={'✔️' if intro else '❌'}, "
+                    f"detail={'✔️' if detail else '❌'}"
                 )
+
+                if intro:
+                    logger_step2.debug(f"   └ intro: {intro.strip()}")
+                if detail:
+                    logger_step2.debug(f"   └ detail: {detail.strip()}")
+
 
         except Exception as e:
             logger_step2.error(f"[XAI ERROR] Batch {batch_num}: {e}")
