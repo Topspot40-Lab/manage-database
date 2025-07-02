@@ -9,9 +9,9 @@ from backend.utils.track_builder import build_track_entry, build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
 
-from backend.services.xai_service import (
-    get_track_descriptions_from_xai,
-)
+# New
+from backend.services.xai_descriptions import get_track_descriptions_from_xai
+
 from shared.filepaths import get_json_path
 from pydantic import BaseModel
 
@@ -24,8 +24,8 @@ router = APIRouter()
 
 
 class TrackRequest(BaseModel):
-    decade: str = "country"
-    genre: str = "1950s"
+    decade: str = "1950s"
+    genre: str = "country"
     language: str  = "english"
     num_tracks: int = 1
 
@@ -120,7 +120,8 @@ async def generate_track_json(
                                 detail="max_step must be between 1 and 11")
 
         logger.info("🟡 STEP 0: Starting generate_track_json")
-        now = datetime.now().isoformat()
+        now_dt = datetime.now()
+        now = now_dt.isoformat()
 
         # ───────────────── STEP 1 ─────────────────
         wrapped = step01_get_tracks(request, test_file_number=test_file_number)
@@ -265,6 +266,13 @@ async def generate_track_json(
         )
 
         logger.info("✅ JSON creation complete")
+
+        return {
+            "message": "JSON created successfully",
+            "file": str(filepath),
+            "version": "v3-official",
+            "track_count": len(tracks)
+        }
 
 
     except Exception as e:
