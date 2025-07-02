@@ -19,20 +19,33 @@ load_dotenv()
 # 🧩 Shared fallback logger for this module (e.g., get_artist_description)
 logger = logging.getLogger(__name__)
 def format_track_list(tracks, fields=("rank", "trackName", "artistName", "mode_flag")) -> str:
-
     """
     Return a formatted string with aligned columns for selected track fields.
+    Adds visual spacing or prefix to non-'solo' mode_flag values for better scanning.
     """
     if not tracks:
         return "⚠️ No tracks to display."
 
-    # Custom field widths (adjust as needed)
+    # Column widths
     field_widths = {
         "rank": 4,
         "trackName": 40,
         "artistName": 45,
-        "mode_flag": 10,
+        "mode_flag": 12,  # Make a bit wider for prefix
     }
+
+    # Helper to format mode_flag visually
+    def format_mode_flag(flag: str) -> str:
+        if flag == "solo":
+            return " solo"
+        elif flag == "duet":
+            return "→ duet"
+        elif flag == "featured":
+            return "  feat"
+        elif flag == "group":
+            return " group"
+        else:
+            return f"  {flag[:field_widths['mode_flag']].strip()}"
 
     # Header line
     header = " | ".join(f"{field:<{field_widths[field]}}" for field in fields)
@@ -41,8 +54,13 @@ def format_track_list(tracks, fields=("rank", "trackName", "artistName", "mode_f
 
     # Data rows
     for track in tracks:
-        row = " | ".join(f"{str(track.get(field, '')).ljust(field_widths[field])[:field_widths[field]]}" for field in fields)
-        lines.append(row)
+        row = []
+        for field in fields:
+            value = track.get(field, "")
+            if field == "mode_flag":
+                value = format_mode_flag(value)
+            row.append(str(value).ljust(field_widths[field])[:field_widths[field]])
+        lines.append(" | ".join(row))
 
     return "\n".join(lines)
 
@@ -72,7 +90,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
     if test_file_number > 0:
         buffer_size = 0
     else:
-       buffer_size = max(0, round(num_tracks * 0.25))
+       buffer_size = max(0, round(num_tracks * 0.10))
 
     total_requested = num_tracks + buffer_size
 
@@ -107,10 +125,10 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             )
 
             # 🧩 NEW: summary only if STEP_1.B OR STEP_1 is at DEBUG
-            if logger_step1b.isEnabledFor(logging.DEBUG) or logger_step1.isEnabledFor(logging.DEBUG):
+            if logger_step1b.isEnabledFor(logging.INFO) or logger_step1.isEnabledFor(logging.INFO):
                 if tracks:
                     summary_header = "🎧 [STEP_1.B] [TEST] Tracks loaded from fixture:\n🎧 Track summary:"
-                    logger_step1b.debug(summary_header + "\n" + format_track_list(tracks))
+                    logger_step1b.info(summary_header + "\n" + format_track_list(tracks))
                 else:
                     logger_step1b.warning("⚠️ [TEST] No tracks loaded from fixture.")
 
@@ -185,7 +203,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
         # ✅ Log tracks AFTER the isinstance tree
         if tracks:
-            logger_step1b.debug("🎧 [STEP_1.B] XAI Track summary:\n" + format_track_list(tracks))
+            logger_step1b.info("🎧 [STEP_1.B] XAI Track summary:\n" + format_track_list(tracks))
         else:
             logger_step1b.debug("⚠️ No tracks returned.")
 

@@ -1,5 +1,5 @@
 # backend/services/xai_response_handler.py
-from backend.utils.track_filters import analyze_artist_mode  # make sure this exists
+from backend.utils.json_helpers import get_mode_flag  # make sure this exists
 import json
 import logging
 
@@ -71,6 +71,6 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
     # 🎭 Assign mode_flag to each track: solo / duet / featured
     for t in tracks:
         artist_name = t.get("artistName", "")
-        t["mode_flag"] = analyze_artist_mode(artist_name)
+        t["mode_flag"] = get_mode_flag(artist_name)
 
     return tracks

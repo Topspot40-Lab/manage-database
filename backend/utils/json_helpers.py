@@ -1,11 +1,15 @@
 import os, json
 import re
 import unicodedata
-from typing import Dict
-import logging
+from typing import Dict, Tuple, Optional
 
-logger = logging.getLogger(__name__)
+from backend.utils.logger_factory import get_step_logger  # ✅ Use your centralized logger
 
+logger = get_step_logger("STEP_1.B")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 📁 JSON Path Constants
+# ─────────────────────────────────────────────────────────────────────────────
 JSON_BASE = "data/json_files/genredecade"
 
 REQUIRED_FIELDS = [
@@ -19,32 +23,24 @@ REQUIRED_FIELDS = [
     "year_released"
 ]
 
-
-# Add alias mappings for renamed artists or known edge cases
+# ─────────────────────────────────────────────────────────────────────────────
+# 🎭 Artist Aliases
+# ─────────────────────────────────────────────────────────────────────────────
 ARTIST_NAME_ALIASES = {
-    # ✅ Legacy group name → modern Spotify name
     "Dixie Chicks": "The Chicks",
-
-    # ✅ Artist aliases or rebrands
     "The Artist Formerly Known as Prince": "Prince",
 
-    # ✅ Duets often filed under solo artist
     "Garth Brooks & Trisha Yearwood": "Garth Brooks",
     "Tim McGraw with Faith Hill": "Tim McGraw",
     "George Jones and Tammy Wynette": "George Jones",
     "Paul Simon and Art Garfunkel": "Simon and Garfunkel",
-    "Simon and Garfunkel": "Simon and Garfunkel",  # for completeness
+    "Simon and Garfunkel": "Simon and Garfunkel",
 
-    # ✅ Avoid group misinterpretation
     "Elton John & Dua Lipa": "Elton John",
-    "Brooks & Dunn": "Brooks & Dunn",  # don't change this one
+    "Brooks & Dunn": "Brooks & Dunn",
     "Huey Lewis and the News": "Huey Lewis & The News",
 
-
-    # ✅ Latin music edge case
     "Selena y Los Dinos": "Selena",
-
-    # ✅ Just in case "The Chicks" are the name used already
     "The Chicks": "The Chicks",
 
     "Dave & Sugar": "Dave and Sugar",
@@ -52,67 +48,118 @@ ARTIST_NAME_ALIASES = {
     "Kenny Rogers & Dottie West": "Kenny Rogers and Dottie West",
     "Porter Wagoner & Dolly Parton": "Porter Wagoner and Dolly Parton",
     "James Taylor & Carly Simon": "James Taylor and Carly Simon",
-    "George Jones & Tammy Wynette": "George Jones and Tammy Wynette",  # Consistency
+    "George Jones & Tammy Wynette": "George Jones and Tammy Wynette",
 
-    # For Spotify's preferences
     "Captain & Tennille": "Captain and Tennille",
     "Ike & Tina Turner": "Ike and Tina Turner",
     "Peter, Paul & Mary": "Peter, Paul and Mary",
-
-    # Add any you catch in log warnings
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 👥 Group + Duet Name Lists (normalized)
+# ─────────────────────────────────────────────────────────────────────────────
+KNOWN_GROUPS = {
+    "simon and garfunkel",
+    "peter paul and mary",
+    "brooks and dunn",
+    "the byrds",
+    "the beatles",
+    "three dog night",
+    "huey lewis and the news",
+    "crosby stills nash",
+    "crosby stills nash and young",
+    "creedence clearwater revival",
+}
+
+KNOWN_DUET_PAIRS = {
+    "ella fitzgerald louis armstrong",
+    "tony bennett lady gaga",
+    "johnny cash june carter",
+    "george jones tammy wynette",
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 🔧 Utilities
+# ─────────────────────────────────────────────────────────────────────────────
 def normalize_name(name: str) -> str:
-    """
-    Normalize a name by:
-    - Applying alias corrections
-    - Lowercasing
-    - Removing accents and punctuation
-    - Collapsing whitespace
-    """
     original = name.strip()
     corrected = ARTIST_NAME_ALIASES.get(original, original)
 
-    # Remove accents
     corrected = unicodedata.normalize("NFKD", corrected)
     corrected = "".join(c for c in corrected if not unicodedata.combining(c))
-
-    # Lowercase
     corrected = corrected.lower()
-
-    # Remove punctuation
     corrected = re.sub(r"[^\w\s]", "", corrected)
-
-    # Collapse multiple spaces
     corrected = re.sub(r"\s+", " ", corrected).strip()
 
     if original != corrected:
-        logger.debug(f"🎭 Normalized: '{original}' → '{corrected}'")
+        logger.debug(f"[STEP_1.B] normalize_name('{original}') → '{corrected}'")
 
     return corrected
 
-def parse_featured_artists(raw_artist_name: str):
-    """
-    Extracts the main artist and featured artist from a name like:
-    - 'Beyoncé feat. Jay-Z' → ('Beyoncé', 'Jay-Z')
-    - 'Tim McGraw with Faith Hill' → ('Tim McGraw', 'Faith Hill')
-    - 'Elton John & Dua Lipa' → ('Elton John', 'Dua Lipa')
-    - 'Queen and David Bowie' → ('Queen', 'David Bowie')
-    If no featured/collab is found, returns (raw_artist_name, None)
-    """
-    # Took out the "&" symbol for group names like "Brooks & Dunn".
-    # pattern = r"(.*?)\s+(?:ft\.|feat\.|featuring|with|&|and)\s+(.*)"
 
-    # Removed "&" because of conflict with 'Brooks & Dunn' and 'Elton John & Dua Lipa'
-    pattern = r"(.*?)\s+(?:ft\.|feat\.|featuring|with)\s+(.*)"
-
+def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Optional[str]]:
+    """
+    Extract main and featured artist and the keyword used:
+    e.g., 'Tim McGraw with Faith Hill' → ('Tim McGraw', 'Faith Hill', 'with')
+    """
+    pattern = r"(.*?)\s+(ft\.|feat\.|featuring|with)\s+(.*)"
     match = re.search(pattern, raw_artist_name, re.IGNORECASE)
+
     if match:
-        main_artist = match.group(1).strip()
-        featured_artist = match.group(2).strip()
-        return main_artist, featured_artist
-    return raw_artist_name.strip(), None
+        main = match.group(1).strip()
+        keyword = match.group(2).lower().strip()
+        feat = match.group(3).strip()
+        logger.debug(
+            f"[STEP_1.B] parse_featured_artists('{raw_artist_name}') → main: '{main}', featured: '{feat}', keyword: '{keyword}'"
+        )
+        return main, feat, keyword
 
+    logger.debug(f"[STEP_1.B] parse_featured_artists('{raw_artist_name}') → no featured artist found")
+    return raw_artist_name.strip(), None, None
+def get_mode_flag(artist_name: str) -> str:
+    main, featured, keyword = parse_featured_artists(artist_name)
+    normalized_main = normalize_name(main)
 
+    # 🎤 Check if it's a known group
+    if normalized_main in KNOWN_GROUPS:
+        logger.debug(
+            f"[STEP_1.B] get_mode_flag('{artist_name}') → 'group' "
+            f"(matched KNOWN_GROUPS as '{normalized_main}')"
+        )
+        return "group"
+
+    # 🎤 Handle duet or featured
+    if featured:
+        combined = normalize_name(f"{main} {featured}")
+        if combined in KNOWN_DUET_PAIRS:
+            logger.debug(
+                f"[STEP_1.B] get_mode_flag('{artist_name}') → 'duet' "
+                f"(matched KNOWN_DUET_PAIRS as '{combined}')"
+            )
+            return "duet"
+        if keyword == "with":
+            logger.debug(
+                f"[STEP_1.B] get_mode_flag('{artist_name}') → 'duet' "
+                f"(keyword='with')"
+            )
+            return "duet"
+        logger.debug(
+            f"[STEP_1.B] get_mode_flag('{artist_name}') → 'featured' "
+            f"(keyword='{keyword}')"
+        )
+        return "featured"
+
+    # 🎤 Default solo
+    logger.debug(
+        f"[STEP_1.B] get_mode_flag('{artist_name}') → 'solo' "
+        "(no feature, no group match)"
+    )
+    return "solo"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 📁 File Loaders
+# ─────────────────────────────────────────────────────────────────────────────
 def load_json(decade: str, filename: str) -> Dict:
     path = os.path.join(JSON_BASE, decade, filename)
     if not os.path.exists(path):
@@ -124,5 +171,4 @@ def save_json(payload: Dict, decade: str, filename: str):
     path = os.path.join(JSON_BASE, decade)
     os.makedirs(path, exist_ok=True)
     with open(os.path.join(path, filename), "w", encoding="utf-8") as f:
-        # noinspection PyTypeChecker
         json.dump(payload, f, indent=2)

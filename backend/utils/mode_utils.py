@@ -5,11 +5,17 @@ class ModeFlag(Enum):
     SOLO = 0
     FEATURED = 1
     DUET = 2
+    GROUP = 3
+
+# NOTE: Only used during Spotify enrichment when determining featured artist ID
+# DO NOT use in general track processing — use get_mode_flag() instead
 
 def determine_mode_flag(artist_name: str, artist_list: List[dict]) -> Tuple[ModeFlag, Optional[str]]:
+    print("Entering determine_mode_flag")
     name_lower = artist_name.lower()
 
-    is_duet = " with " in name_lower or " and " in name_lower
+    # is_duet = " with " in name_lower or " and " in name_lower
+    is_duet = " with " in name_lower
     is_feature = " feat." in name_lower or " featuring " in name_lower
 
     featured_artist_id = None
