@@ -1,7 +1,7 @@
 import logging
+from backend.config import ENABLE_TRACK_DESCRIPTION
 
 logger = logging.getLogger(__name__)
-
 
 # 🎙️ Whitelist of known duets to avoid misclassifying as groups
 KNOWN_DUET_PAIRS = {
@@ -13,10 +13,11 @@ KNOWN_DUET_PAIRS = {
 
 def is_known_duet(artist_name: str) -> bool:
     normalized = artist_name.strip().lower().replace(" ", "")
-    return normalized in {a.lower().replace(" ", "") for a in KNOWN_DUET_PAIRS}
+    result = normalized in {a.lower().replace(" ", "") for a in KNOWN_DUET_PAIRS}
+    logger.debug(f"[STEP_1.B] is_known_duet('{artist_name}') → {result}")
+    return result
 
 
-# 🧠 Check if the artist is modern and should be excluded (even if they sound retro)
 def is_modern_artist(artist_name: str) -> bool:
     known_modern = {
         "Zooey Deschanel",
@@ -29,12 +30,12 @@ def is_modern_artist(artist_name: str) -> bool:
         "Lake Street Dive"
     }
     result = artist_name.strip().lower() in {a.lower() for a in known_modern}
+    logger.debug(f"[STEP_1.B] is_modern_artist('{artist_name}') → {result}")
     if result:
-        logging.info(f" Rejected modern artist: '{artist_name}'")
+        logger.debug(f"[STEP_1.B] Rejected modern artist: '{artist_name}'")
     return result
 
 
-# 🧪 Detect if the track is a known fake, remix, or hallucinated combo
 def is_fake_mashup(track_name: str, artist_name: str) -> bool:
     title = track_name.lower()
     artist = artist_name.lower()
@@ -53,67 +54,61 @@ def is_fake_mashup(track_name: str, artist_name: str) -> bool:
 
     for part1, part2, bad_artist in known_bad:
         if part1 in title and part2 in title and bad_artist in artist:
-            logging.info(f" Rejected mashup/fake combo: '{track_name}' by '{artist_name}'")
+            logger.debug(f"[STEP_1.B] Rejected mashup/fake combo: '{track_name}' by '{artist_name}'")
             return True
+    logger.debug(f"[STEP_1.B] is_fake_mashup('{track_name}', '{artist_name}') → False")
     return False
 
 
-# 🎯 Classify artist collaboration type based on formatting and genre context
 def classify_artist_type(artist_name: str, genre: str) -> str:
     name = artist_name.lower()
 
     if is_known_duet(artist_name):
-        return "DUET"
-    if " with " in name:
-        return "DUET"
-    if " feat." in name or " featuring " in name:
-        return "FEATURED"
+        classification = "DUET"
+    elif " with " in name:
+        classification = "DUET"
+    elif " feat." in name or " featuring " in name:
+        classification = "FEATURED"
+    else:
+        classification = "SOLO"
 
-    return "SOLO"
+    logger.debug(f"[STEP_1.B] classify_artist_type('{artist_name}', '{genre}') → {classification}")
+    return classification
 
-
-# ✅ Master filter: Exclude tracks that are empty, modern imposters, or fake mashups
-from backend.config import ENABLE_TRACK_DESCRIPTION
-import logging
 
 def is_bad_track(track: dict) -> bool:
     artist = track.get("artistName") or track.get("artist_name", "")
     title = track.get("trackName") or track.get("track_name", "")
 
-    # Check for required fields
     if not artist or not title:
-        logging.warning(f"[INVALID] Missing artist or title in track: {track}")
+        logger.debug(f"[STEP_1.B] [INVALID] Missing artist or title in track: {track}")
         return True
 
-    # Warn if description is missing — don't reject
     if ENABLE_TRACK_DESCRIPTION and not track.get("detail"):
-        logging.warning(f"[WARN] Missing track description: '{title}' by '{artist}' — Will enrich later.")
+        logger.debug(f"[STEP_1.B] [WARN] Missing track description: '{title}' by '{artist}' — Will enrich later.")
 
-    # Block modern artists
     if is_modern_artist(artist):
         return True
 
-    # Block known hallucinated/fake combos
     if is_fake_mashup(title, artist):
         return True
 
-    # Block obvious placeholders
     placeholder_titles = {"unknown", "track name", "song title"}
     title_lower = title.strip().lower()
     if title_lower in placeholder_titles or "example" in title_lower or "placeholder" in title_lower:
-        logging.warning(f"[REJECTED] Placeholder title: '{title}'")
+        logger.debug(f"[STEP_1.B] [REJECTED] Placeholder title: '{title}'")
         return True
 
+    logger.debug(f"[STEP_1.B] Track passed filtering: '{title}' by '{artist}'")
     return False
 
 
-
-# ✅ Validates an entire track list (assumes each entry is a dict)
 def validate_tracks(tracks: list) -> list:
     valid_tracks = []
     for track in tracks:
         if not is_bad_track(track):
             valid_tracks.append(track)
         else:
-            logging.warning(f" Invalid track skipped: {track}")
+            logger.debug(f"[STEP_1.B] Invalid track skipped: {track}")
+    logger.debug(f"[STEP_1.B] validate_tracks: {len(valid_tracks)} out of {len(tracks)} passed")
     return valid_tracks

@@ -72,7 +72,6 @@ STEP_LOG_LEVELS = {
     "STEP_1": "INFO",         # Overall Step 1 logging
     "STEP_1.A": "INFO",      # Prompt building
     "STEP_1.B": "DEBUG",      # Markdown cleanup
-    "STEP_1.B.1": "INFO",    # JSON parsing
     "STEP_1.C": "INFO",       # Validation + de-duping
     # Add more steps/substeps here...
 }
@@ -101,4 +100,5 @@ LOG_LEVELS_BY_MODULE = {
 # ---------------------------------------------------------------------------
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").strip().lower() == "true"
 LOG_COLOR_ENABLED = os.getenv("LOG_COLOR_ENABLED", "true").strip().lower() == "true"
-LOG_FILE_PATH = "topspot.log"
+LOG_FILE_PATH = "backend/logs/topspot.log"
+

@@ -56,6 +56,7 @@ def get_step_logger(name: str, fallback: str = "STEP_1") -> logging.Logger:
 logger_step1a = get_step_logger("STEP_1.A")
 logger_step1b = get_step_logger("STEP_1.B")
 logger_step1c = get_step_logger("STEP_1.C")
+logger_step1  = get_step_logger("STEP_1")   # 🔄 Fallback logger for all of Step 1
 
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
@@ -73,6 +74,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
     total_requested = num_tracks + buffer_size
 
+
     logger_step1a.debug(
         f"[STEP_1.A] test_file_number={test_file_number}, num_tracks={num_tracks}, buffer={buffer_size}, "
         f"total_requested={total_requested}, decade={decade}, genre={genre}, language={language}"
@@ -82,17 +84,36 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
     logger_step1b.debug("[STEP_1.B] Requesting top tracks from XAI...")
     tracks = []
+    # ---------------------------------------------------------------------------
+    # Add this near the other logger defs, right after logger_step1b/c declarations
+    logger_step1 = get_step_logger("STEP_1")  # fallback for the whole step
+    # ---------------------------------------------------------------------------
+
 
     if test_file_number > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
-        logger_step1b.debug(f"[TEST] Using {test_file_path}")
+        logger_step1b.debug(f"[STEP_1.B] [TEST] Using {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
-            logger_step1b.debug(f"[TEST] Loaded {len(raw_tracks)} tracks.")
-            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), total_requested, is_test_mode=True)
+            logger_step1b.debug(f"[STEP_1.B] [TEST] Loaded {len(raw_tracks)} tracks.")
 
+            # Parse + filter
+            tracks = parse_and_filter_tracks(
+                json.dumps(raw_tracks), total_requested, is_test_mode=True
+            )
+
+            # 🧩 NEW: summary only if STEP_1.B OR STEP_1 is at DEBUG
+            if logger_step1b.isEnabledFor(logging.DEBUG) or logger_step1.isEnabledFor(logging.DEBUG):
+                if tracks:
+                    logger_step1b.debug(
+                        "🎧 [STEP_1.B] [TEST] Tracks loaded from fixture:\n" + format_track_list(tracks)
+                    )
+                else:
+                    logger_step1b.warning("⚠️ [TEST] No tracks loaded from fixture.")
+
+            # Stub Spotify data so later steps don’t crash
             for t in tracks:
                 rank = t.get("rank", 0)
                 t["spotify_data"] = {
@@ -105,35 +126,65 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
                     "artist_description": None,
                     "featured_artist_id": None,
                     "featured_artist_name": None,
-                    "not_on_spotify": False
+                    "not_on_spotify": False,
                 }
 
         except Exception as e:
             logger_step1b.error(f"[ERROR] Failed to load test file: {e}")
+
     else:
+        # … (unchanged XAI call & isinstance tree)
         content = fetch_xai_tracks(prompt, test_file_number=test_file_number)
 
+        # 🧠 STEP_1.B — Handling the raw response returned from XAI
+        # The format of `content` may vary, so we branch based on its type.
+
         if isinstance(content, list):
+            # ✅ Case 1: Already a parsed list of tracks (e.g. from test mode or perfect XAI response)
+            logger_step1b.debug("[STEP_1.B] ➤ content is a list — using as-is")
             logger_step1b.debug(f"[XAI] Received {len(content)} tracks.")
             tracks = content
 
         elif isinstance(content, str):
+            # 🧾 Case 2: content is a raw JSON string (most common XAI format)
+            # Needs parsing — this will be handled in STEP_1.B.1 by parse_and_filter_tracks()
+            logger_step1b.debug("[STEP_1.B] ➤ content is a str — attempting to parse JSON string")
             tracks = parse_and_filter_tracks(content, num_tracks, is_test_mode=False)
 
         elif isinstance(content, dict):
+            # 📦 Case 3: content is a dict — maybe from test JSON or postprocessed response
+            logger_step1b.debug("[STEP_1.B] ➤ content is a dict — extracting 'tracks' key")
             logger_step1b.debug(f"[XAI] Dict keys: {list(content.keys())}")
+
             raw_tracks = content.get("tracks", [])
+
+            # 🔍 Defensive check: make sure tracks field is actually a list
             if not isinstance(raw_tracks, list):
                 raise ValueError("Expected 'tracks' to be a list.")
+
             logger_step1b.debug(f"[XAI] Extracted {len(raw_tracks)} tracks.")
+
+            # Convert the list back into a string so it can go through the same cleanup pipeline
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
 
+            # Log track summary if STEP_1.B or fallback STEP_1 logger is enabled
+            if logger_step1b.isEnabledFor(logging.DEBUG) or logger.isEnabledFor(logging.DEBUG):
+                if tracks:
+                    logger_step1b.debug(
+                        "🎧 [TEST] Tracks loaded from fixture:\n" + format_track_list(tracks)
+                    )
+                else:
+                    logger_step1b.warning("⚠️ [TEST] No tracks loaded from fixture.")
+
+
         else:
+            # ❌ Case 4: Unexpected format — raise an error
+            logger_step1b.error(f"[STEP_1.B] ❌ content is unexpected type: {type(content)}")
             raise TypeError(f"Unexpected content type: {type(content)}")
 
         # ✅ Log tracks AFTER the isinstance tree
         if tracks:
-            logger_step1b.debug("🎧 Track summary:\n" + format_track_list(tracks))
+            logger_step1b.debug("🎧 [STEP_1.B] XAI Track summary:\n" + format_track_list(tracks))
         else:
             logger_step1b.debug("⚠️ No tracks returned.")
 
