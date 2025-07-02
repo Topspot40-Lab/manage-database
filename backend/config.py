@@ -72,7 +72,7 @@ STEP_LOG_LEVELS = {
     "STEP_1": "INFO",         # Overall Step 1 logging
     "STEP_1.A": "INFO",      # Prompt building
     "STEP_1.B": "DEBUG",      # Markdown cleanup
-    "STEP_1.C": "INFO",       # Validation + de-duping
+    "STEP_1.C": "DEBUG",       # Validation + de-duping
     # Add more steps/substeps here...
 }
 

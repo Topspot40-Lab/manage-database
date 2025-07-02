@@ -11,6 +11,16 @@ KNOWN_DUET_PAIRS = {
     "Johnny Cash & June Carter"
 }
 
+def analyze_artist_mode(artist_name: str) -> str:
+    name = artist_name.lower()
+    if "feat." in name or "ft." in name:
+        return "featured"
+    elif " with " in name or " and " in name:
+        return "duet"
+    else:
+        return "solo"
+
+
 def is_known_duet(artist_name: str) -> bool:
     normalized = artist_name.strip().lower().replace(" ", "")
     result = normalized in {a.lower().replace(" ", "") for a in KNOWN_DUET_PAIRS}

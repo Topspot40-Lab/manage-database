@@ -18,7 +18,8 @@ load_dotenv()
 
 # 🧩 Shared fallback logger for this module (e.g., get_artist_description)
 logger = logging.getLogger(__name__)
-def format_track_list(tracks, fields=("rank", "trackName", "artistName")) -> str:
+def format_track_list(tracks, fields=("rank", "trackName", "artistName", "mode_flag")) -> str:
+
     """
     Return a formatted string with aligned columns for selected track fields.
     """
@@ -28,8 +29,9 @@ def format_track_list(tracks, fields=("rank", "trackName", "artistName")) -> str
     # Custom field widths (adjust as needed)
     field_widths = {
         "rank": 4,
-        "trackName": 30,
-        "artistName": 25,
+        "trackName": 40,
+        "artistName": 45,
+        "mode_flag": 10,
     }
 
     # Header line
@@ -107,9 +109,8 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             # 🧩 NEW: summary only if STEP_1.B OR STEP_1 is at DEBUG
             if logger_step1b.isEnabledFor(logging.DEBUG) or logger_step1.isEnabledFor(logging.DEBUG):
                 if tracks:
-                    logger_step1b.debug(
-                        "🎧 [STEP_1.B] [TEST] Tracks loaded from fixture:\n" + format_track_list(tracks)
-                    )
+                    summary_header = "🎧 [STEP_1.B] [TEST] Tracks loaded from fixture:\n🎧 Track summary:"
+                    logger_step1b.debug(summary_header + "\n" + format_track_list(tracks))
                 else:
                     logger_step1b.warning("⚠️ [TEST] No tracks loaded from fixture.")
 
@@ -189,8 +190,10 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             logger_step1b.debug("⚠️ No tracks returned.")
 
     valid_tracks = validate_tracks(tracks)
-    logger_step1c.debug(f"[CLEANUP] {len(valid_tracks)} valid tracks after filtering (from {len(tracks)} total)")
-    logger_step1c.debug(f"[CLEANUP] Returning {len(valid_tracks)} cleaned tracks from {total_requested} requested.")
+    if logger_step1c.isEnabledFor(logging.DEBUG):
+        logger_step1c.debug("🎧 [STEP_1.C] Final validated track summary:\n" + format_track_list(valid_tracks))
+
+    logger_step1c.debug(f"[STEP_1.C] [CLEANUP] {len(valid_tracks)} valid tracks from {len(tracks)} total, returning {len(valid_tracks)} cleaned from {total_requested} requested.")
 
     return {
         "language": language,

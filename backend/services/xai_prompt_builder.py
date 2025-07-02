@@ -44,6 +44,6 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
 
     # 🧠 Only log in STEP 1 context (DEBUG mode)
     if logger.isEnabledFor(logging.DEBUG):
-        logger.debug("📝 [STEP 1 PROMPT]\n\n%s\n", prompt)
+        logger.debug("📝 [STEP_1.A] PROMPT]\n\n%s\n", prompt)
 
     return prompt

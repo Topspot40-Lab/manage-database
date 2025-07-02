@@ -1,5 +1,5 @@
 # backend/services/xai_response_handler.py
-
+from backend.utils.track_filters import analyze_artist_mode  # make sure this exists
 import json
 import logging
 
@@ -37,6 +37,7 @@ Returns:
 """
 
 
+
 def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
     """
     Parses the raw track data (as JSON string), filters out invalid entries,
@@ -46,7 +47,7 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
 
     try:
         tracks = json.loads(json_input)
-        logger_step1b.info(f"✅  [STEP_1.B] Parsed {len(tracks)} raw tracks.")
+        logger_step1b.debug(f"✅  [STEP_1.B] Parsed {len(tracks)} raw tracks.")
     except json.JSONDecodeError as e:
         logger_step1b.error(f"❌ JSON parsing failed: {e}")
         raise
@@ -61,15 +62,15 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
     filtered_out = original_count - len(tracks)
     log_filtered_out(filtered_out)
 
-    logger_step1b.info(f"🧼  [STEP_1.B] Cleaned down to {len(tracks)} valid tracks.")
+    logger_step1b.debug(f"🧼  [STEP_1.B] Cleaned down to {len(tracks)} valid tracks.")
 
     # 🕵️ Log duet/feature info if in test mode
     if is_test_mode:
         log_duet_feature_info(tracks)
 
-    # 🛑 Optional: Keep trim logic commented for now
-    # if not is_test_mode and len(tracks) > num_tracks:
-    #     logger_step1b.info(f"[TRIM] Reducing track count from {len(tracks)} to {num_tracks}")
-    #     tracks = tracks[:num_tracks]
+    # 🎭 Assign mode_flag to each track: solo / duet / featured
+    for t in tracks:
+        artist_name = t.get("artistName", "")
+        t["mode_flag"] = analyze_artist_mode(artist_name)
 
     return tracks
