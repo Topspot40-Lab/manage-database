@@ -45,7 +45,7 @@ TEST_FILE_NUMBER = 1
 # -----------------------------------------------------------------------------
 # 📋 FEATURE FLAGS (Text Generation)
 # -----------------------------------------------------------------------------
-ENABLE_ARTIST_DESCRIPTION = False
+ENABLE_ARTIST_DESCRIPTION = True
 ENABLE_TRACK_DESCRIPTION = True
 ENABLE_RANK_INTRO = True
 
@@ -70,14 +70,14 @@ LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true
 # ---------------------------------------------------------------------------
 STEP_LOG_LEVELS = {
     "STEP_1": "INFO",         # Overall Step 1 logging
-    "STEP_1.A": "DEBUG",      # Prompt building
-    "STEP_1.B": "DEBUG",      # Markdown cleanup
-    "STEP_1.C": "DEBUG",       # Validation + de-duping
+    "STEP_1.A": "INFO",      # Prompt building
+    "STEP_1.B": "INFO",      # Markdown cleanup
+    "STEP_1.C": "INFO",       # Validation + de-duping
 
-    "STEP_2": "DEBUG",  # Overall Step 2 logging
-    "STEP_2.A": "DEBUG",  # Prompt formatting + batching
-    "STEP_2.B": "DEBUG",  # API request/response
-    "STEP_2.C": "DEBUG",  # Description post-processing
+    "STEP_2": "INFO",  # Enrich with Descriptions
+    "STEP_2.A": "INFO",  # Ranking Intro Text
+    "STEP_2.B": "INFO",  # Track Detail Text
+    "STEP_2.C": "DEBUG",  # Artist Detail Text
     # Add more steps/sub-steps here...
 }
 

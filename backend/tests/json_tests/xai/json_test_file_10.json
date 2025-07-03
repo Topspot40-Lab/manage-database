@@ -1,0 +1,17 @@
+{
+  "expected": {
+    "numValidTracks": 1
+  },
+  "expectedLogs": [],
+  "language": "English",
+  "decade": "1960s",
+  "genre": "Folk",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "The Sound of Silence",
+      "artistName": "Simon and Garfunkel",
+      "yearReleased": 1965
+    }
+  ]
+}

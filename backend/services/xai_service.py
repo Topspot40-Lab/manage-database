@@ -37,13 +37,13 @@ def format_track_list(tracks, fields=("rank", "trackName", "artistName", "mode_f
         if flag == "solo":
             return " solo"
         elif flag == "duet":
-            return "→ duet"
+            return "→→  duet"
         elif flag == "featured":
-            return "  feat"
+            return "→→→ feat"
         elif flag == "group":
-            return " group"
+            return "→→→→ group"
         else:
-            return f"  {flag[:field_widths['mode_flag']].strip()}"
+            return f" {flag[:10].strip()}"
 
     # Header line
     header = " | ".join(f"{field:<{field_widths[field]}}" for field in fields)
@@ -126,7 +126,8 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             if logger_step1b.isEnabledFor(logging.INFO) or logger_step1.isEnabledFor(logging.INFO):
                 if tracks:
                     summary_header = "🎧 [STEP_1.B] [TEST] Tracks loaded from fixture:\n🎧 Track summary:"
-                    logger_step1b.info(summary_header + "\n" + format_track_list(tracks))
+                    # logger_step1b.info(summary_header + "\n" + format_track_list(tracks))
+                    logger_step1b.info(format_track_list(tracks))
                 else:
                     logger_step1b.warning("⚠️ [TEST] No tracks loaded from fixture.")
 
