@@ -77,7 +77,27 @@ STEP_LOG_LEVELS = {
     "STEP_2": "INFO",  # Enrich with Descriptions
     "STEP_2.A": "INFO",  # Ranking Intro Text
     "STEP_2.B": "INFO",  # Track Detail Text
-    "STEP_2.C": "DEBUG",  # Artist Detail Text
+    "STEP_2.C": "INFO",  # Artist Detail Text
+
+    "STEP_3": "INFO",
+    "STEP_3.A": "INFO",  # Spotify data matching
+    "STEP_3.B": "INFO",  # Track entry building
+
+    "STEP_4": "DEBUG",     # Build structured JSON
+    "STEP_4.A": "DEBUG",
+    "STEP_4.B": "DEBUG",
+    "STEP_4.C": "DEBUG",
+    "STEP_4.D": "DEBUG",
+    "STEP_4.E": "DEBUG",
+
+    "STEP_5": "INFO",      # Replace missing Spotify tracks
+    "STEP_6": "INFO",      # Remove tracks still missing Spotify data
+    "STEP_7": "INFO",      # Add spare tracks
+    "STEP_8": "INFO",      # Reassign ranks
+    "STEP_9": "INFO",     # Rebuild artist table
+    "STEP_10": "INFO",     # Save final JSON to disk
+    "STEP_11": "INFO"      # Print summary to terminal
+
     # Add more steps/sub-steps here...
 }
 

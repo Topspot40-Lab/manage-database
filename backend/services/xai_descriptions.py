@@ -214,10 +214,10 @@ def enrich_tracks_with_artist_descriptions(tracks: list[dict], language: str) ->
     }
 
     if not unique_artists:
-        logger_step2.info("🎤 [STEP_2D] No missing artist descriptions. Skipping.")
+        logger_step2.debug("🎤 [STEP_2] No missing artist descriptions. Skipping.")
         return
 
-    logger_step2.info(f"🎤 [STEP_2D] Fetching bios for {len(unique_artists)} artists…")
+    logger_step2.debug(f"🎤 [STEP_2] Fetching bios for {len(unique_artists)} artists…")
 
     # 2️⃣ Fetch bios with per‑artist caching to avoid duplicates
     bio_cache: dict[str, str] = {}

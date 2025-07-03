@@ -10,6 +10,12 @@ import re
 import difflib
 from backend.utils.json_helpers import normalize_name
 from backend.utils.mode_utils import determine_mode_flag
+from backend.utils.logger_factory import get_step_logger
+
+
+logger_step3 = get_step_logger("STEP_3")         # General Step 3
+logger_spotify = get_step_logger("STEP_3.A")     # Spotify data matching
+logger_builder = get_step_logger("STEP_3.B")     # Track entry building
 
 # Load .env from the project root
 env_path = Path(__file__).resolve().parents[2] / ".env"
@@ -95,8 +101,6 @@ def get_spotify_client():
         )
     )
 def get_spotify_data(track_name: str, artist_name: str):
-    print("🚨 INSIDE get_spotify_data 🚨 — This is the NEW version")
-
 
     try:
         sp = get_spotify_client()
@@ -121,7 +125,8 @@ def get_spotify_data(track_name: str, artist_name: str):
 
                 if expected_artist_norm == candidate_name_norm:
                     artist_id = artist["id"]
-                    mode_flag_enum, _ = determine_mode_flag(artist_name, artist_list)
+                    # Do not recalculate mode_flag here — it is already set earlier in the pipeline
+                    mode_flag_enum = None
 
                     artist_data = sp.artist(artist_id)
                     artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
@@ -137,7 +142,7 @@ def get_spotify_data(track_name: str, artist_name: str):
                         "artist_id": artist_id,
                         "featured_artist_id": featured_artist_id,
                         "featured_artist_name": featured_artist_name,
-                        "mode_flag": mode_flag_enum.value,
+                        "mode_flag": None,  # Let build_track_entry use base['mode_flag']
                         "duration_ms": t["duration_ms"],
                         "popularity": t["popularity"],
                         "album_artwork": t["album"]["images"][0]["url"] if t["album"]["images"] else None,
@@ -425,18 +430,46 @@ def enrich_track_from_spotify(track_id: str) -> dict:
 
 
 
+
 def enrich_tracks_with_spotify(tracks: list[dict]) -> list[dict]:
     """
-    Add 'spotify_data' to each XAI-generated track using get_spotify_data.
+    Enrich each XAI-generated track with Spotify metadata using get_spotify_data.
+    Adds a 'spotify_data' field to each track dict.
     """
-    for t in tracks:
-        tn, an = t["trackName"], t["artistName"]
-        logger.debug(f"🔄 Enriching: {tn} by {an}")
+    if not tracks:
+        logger_step3.warning("⚠️ [STEP_3] No tracks to enrich.")
+        return []
 
-        spotify_data = get_spotify_data(tn, an)
-        if spotify_data:
-            t["spotify_data"] = spotify_data
-            logger.debug(f"✅ Spotify enrich OK for '{tn}' by '{an}' — artist ID: {spotify_data.get('artist_id')}")
-        else:
-            logger.warning(f"❌ No Spotify data for '{tn}' by '{an}'")
+    logger_step3.debug(f"🎧 [STEP_3] Enriching {len(tracks)} track(s) with Spotify metadata…")
+
+    for i, t in enumerate(tracks):
+        tn = t.get("trackName") or t.get("track_name")
+        an = t.get("artistName") or t.get("artist_name")
+        rank = t.get("rank")
+
+        logger_spotify.debug(f"🔄 [STEP_3.A] Rank {rank}: Looking up in Spotify '{tn}' by '{an}'")
+
+        try:
+            spotify_data = get_spotify_data(tn, an)
+
+            if spotify_data:
+                t["spotify_data"] = spotify_data
+                logger_spotify.debug(
+                    f"✅ [STEP_3.A] Rank {rank}: Match found → "
+                    f"Track ID: {spotify_data.get('spotify_track_id')}, "
+                    f"Artist ID: {spotify_data.get('artist_id')}, "
+                    f"Duration: {spotify_data.get('duration_ms')}ms, "
+                    f"Popularity: {spotify_data.get('popularity')}"
+                )
+            else:
+                logger_spotify.warning(
+                    f"❌ [STEP_3.A] Rank {rank}: No match found for '{tn}' by '{an}'"
+                )
+
+        except Exception as e:
+            logger_step3.error(f"💥 [STEP_3] Rank {rank}: Spotify enrichment failed → {e}")
+
+    match_count = sum(1 for t in tracks if "spotify_data" in t)
+    logger_step3.debug(f"🔢 [STEP_3] {match_count} of {len(tracks)} tracks successfully matched with Spotify.")
+
     return tracks

@@ -1,11 +1,13 @@
 from enum import Enum
 from typing import List, Optional, Tuple
 
-class ModeFlag(Enum):
-    SOLO = 0
-    FEATURED = 1
-    DUET = 2
-    GROUP = 3
+
+class ModeFlag(str, Enum):
+    SOLO = "solo"
+    DUET = "duet"
+    FEATURED = "featured"
+    GROUP = "group"
+    UNKNOWN = "unknown"  # ✅ Add this if missing
 
 # NOTE: Only used during Spotify enrichment when determining featured artist ID
 # DO NOT use in general track processing — use get_mode_flag() instead
