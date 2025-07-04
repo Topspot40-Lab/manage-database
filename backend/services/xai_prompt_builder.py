@@ -1,6 +1,5 @@
 import logging
 logger = logging.getLogger("STEP_1.A" or "STEP_1")
-
 def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
     prompted_num = num_tracks + buffer_size
     prompt = (
@@ -31,17 +30,19 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
         "- Use **'feat.'** for featured artists. Example: 'Ray Charles feat. The Raelettes'.\n"
         "- Use **'&' or 'and'** only for branded groups/duos: 'Simon & Garfunkel', 'Peter, Paul and Mary'.\n"
         "- Do not use slashes (/) or commas. Stick to clear formatting.\n\n"
+    )
 
-        "✅ Include at least 2–3 duets using 'with'. Include at least 1 track using 'feat.'.\n"
-        "❌ Avoid:\n"
-        "- 'Waylon Jennings & Willie Nelson' → Use 'Waylon Jennings with Willie Nelson'\n"
-        "- Inventing artist combinations or ambiguous formatting.\n\n"
+    if num_tracks >= 5:
+        prompt += (
+            "✅ Include at least 2–3 duets using 'with'. Include at least 1 track using 'feat.'.\n"
+            "❌ Avoid:\n"
+            "- 'Waylon Jennings & Willie Nelson' → Use 'Waylon Jennings with Willie Nelson'\n"
+            "- Inventing artist combinations or ambiguous formatting.\n\n"
+        )
 
+    prompt += (
         "🎯 Your goal is to recreate a realistic and accurate list that could appear in a retrospective music documentary.\n"
         "Return ONLY a valid JSON array — no headings, explanations, or markdown."
     )
-
-    if logger.isEnabledFor(logging.DEBUG):
-        logger.debug("📝 [STEP_1.A] PROMPT]\n\n%s\n", prompt)
 
     return prompt

@@ -7,9 +7,9 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pathlib import Path
 import re
+import json
 import difflib
 from backend.utils.json_helpers import normalize_name
-from backend.utils.mode_utils import determine_mode_flag
 from backend.utils.logger_factory import get_step_logger
 
 
@@ -94,40 +94,79 @@ def get_spotify_client():
     if not client_id or not client_secret:
         raise Exception("Spotify credentials are not set in the environment.")
 
+    logger_spotify.debug("🎧 [STEP_3.A] Spotify client authenticated successfully.")
     return spotipy.Spotify(
         auth_manager=SpotifyClientCredentials(
             client_id=client_id,
             client_secret=client_secret
         )
     )
-def get_spotify_data(track_name: str, artist_name: str):
 
+def get_spotify_data(track_name: str, artist_name: str):
+    logger_spotify.debug("🎧 [STEP_3.A] Calling get_spotify_data")
     try:
         sp = get_spotify_client()
 
         track_name_clean = clean_track_title(track_name)
         expected_artist_norm = normalize_name(artist_name)
 
-        # ✅ Use natural-language search query
         query = f"{track_name_clean} {artist_name}"
-        logger.debug(f"[SPOTIFY] 🔍 Querying: {query}")
+        logger_spotify.debug(f"🔍 [STEP_3.A] Querying Spotify with: '{query}'")
+
         results = sp.search(q=query, type="track", limit=5)
 
+        # 🧾 Pretty-print full result if DEBUG is enabled
+        if logger_spotify.isEnabledFor(logging.DEBUG):
+            simplified_items = []
+
+            for item in results["tracks"]["items"]:
+                item_copy = item.copy()
+
+                # Remove known top-level noisy fields
+                item_copy.pop("available_markets", None)
+                item_copy.pop("external_urls", None)
+                item_copy.pop("href", None)
+                item_copy.pop("uri", None)
+
+                # Trim album fields
+                album = item_copy.get("album", {})
+                if isinstance(album, dict):
+                    album.pop("available_markets", None)
+                    album.pop("external_urls", None)
+                    album.pop("href", None)
+                    album.pop("uri", None)
+
+                # Trim artist fields
+                if "artists" in item_copy:
+                    for artist in item_copy["artists"]:
+                        artist.pop("external_urls", None)
+                        artist.pop("href", None)
+                        artist.pop("uri", None)
+
+                # Trim album.artist fields
+                if "album" in item_copy and isinstance(item_copy["album"], dict):
+                    for album_artist in item_copy["album"].get("artists", []):
+                        album_artist.pop("external_urls", None)
+                        album_artist.pop("href", None)
+                        album_artist.pop("uri", None)
+
+                simplified_items.append(item_copy)
+
+            logger_spotify.debug("📦 [STEP_3.A] Raw Spotify results (trimmed):\n" +
+                                 json.dumps(simplified_items, indent=2))
+
         if not results["tracks"]["items"]:
-            logger.warning(f"[SPOTIFY] No results for: {track_name} by {artist_name}")
+            logger_spotify.warning(f"❌ [STEP_3.A] No results for: '{track_name}' by '{artist_name}'")
             return {}
 
         for t in results["tracks"]["items"]:
             artist_list = t["artists"]
             for artist in artist_list:
                 candidate_name_norm = normalize_name(artist["name"])
-                logger.debug(f"[SPOTIFY] Comparing: '{expected_artist_norm}' vs '{candidate_name_norm}'")
+                logger_spotify.debug(f"🧪 Comparing: '{expected_artist_norm}' vs '{candidate_name_norm}'")
 
                 if expected_artist_norm == candidate_name_norm:
                     artist_id = artist["id"]
-                    # Do not recalculate mode_flag here — it is already set earlier in the pipeline
-                    mode_flag_enum = None
-
                     artist_data = sp.artist(artist_id)
                     artist_image = artist_data["images"][0]["url"] if artist_data["images"] else None
 
@@ -135,14 +174,17 @@ def get_spotify_data(track_name: str, artist_name: str):
                     featured_artist_id = featured_artist["id"] if featured_artist else None
                     featured_artist_name = featured_artist["name"] if featured_artist else None
 
-                    logger.debug(f"[SPOTIFY] ✅ Matched: '{t['name']}' by '{artist['name']}'")
+                    logger_spotify.debug(
+                        f"✅ [STEP_3.A] Match found: '{t['name']}' by '{artist['name']}' → "
+                        f"Track ID: {t['id']}, Duration: {round(t['duration_ms'] / 1000)}s, Popularity: {t['popularity']}"
+                    )
 
                     return {
                         "spotify_track_id": t["id"],
                         "artist_id": artist_id,
                         "featured_artist_id": featured_artist_id,
                         "featured_artist_name": featured_artist_name,
-                        "mode_flag": None,  # Let build_track_entry use base['mode_flag']
+                        "mode_flag": None,
                         "duration_ms": t["duration_ms"],
                         "popularity": t["popularity"],
                         "album_artwork": t["album"]["images"][0]["url"] if t["album"]["images"] else None,
@@ -156,11 +198,11 @@ def get_spotify_data(track_name: str, artist_name: str):
                         "artist_name_candidates": artist_list
                     }
 
-        logger.warning(f"[SPOTIFY] ❌ No artist match for '{artist_name}' on '{track_name}'. Returning empty to trigger fallback.")
+        logger.warning(f"⚠️ [STEP_3.A] No artist match for '{artist_name}' on '{track_name}'. Returning empty.")
         return {}
 
     except Exception as e:
-        logger.error(f"[SPOTIFY] Query error for {track_name} - {artist_name}: {e}")
+        logger.error(f"❌ [STEP_3.A] Spotify query error for '{track_name}' by '{artist_name}': {e}")
         return {}
 
 def fallback_spotify_search(sp, track_name, artist_name):

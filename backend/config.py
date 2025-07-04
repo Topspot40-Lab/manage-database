@@ -10,8 +10,8 @@ load_dotenv()
 
 # config.py
 
-APP_VERSION = "1.0.4"
-LAST_UPDATED = "2025-06-28: 11:00 am"
+APP_VERSION = "1.0.5"
+LAST_UPDATED = "2025-07-04: 11:00 am"
 
 # -----------------------------------------------------------------------------
 # 📁 PATH SETTINGS
@@ -50,7 +50,7 @@ ENABLE_TRACK_DESCRIPTION = True
 ENABLE_RANK_INTRO = True
 
 # config.py
-GENERATE_JSON_LOGGING_ENABLED = True  # ✅ Toggle logging of generate-json summary
+GENERATE_JSON_LOGGING_ENABLED = False  # ✅ Toggle logging of generate-json summary
 GENERATE_JSON_LOG_PATH = "backend/logs/new_json_all_decades.log"
 
 
@@ -68,38 +68,96 @@ LOG_SUMMARY_ENABLED = os.getenv("LOG_SUMMARY_ENABLED", "false").lower() == "true
 # You can turn on just one sub-step to DEBUG and leave others at INFO
 # Inheritance applies (e.g., STEP_1 sets default for STEP_1.*, etc.)
 # ---------------------------------------------------------------------------
-STEP_LOG_LEVELS = {
-    "STEP_1": "INFO",         # Overall Step 1 logging
-    "STEP_1.A": "INFO",      # Prompt building
-    "STEP_1.B": "INFO",      # Markdown cleanup
-    "STEP_1.C": "INFO",       # Validation + de-duping
 
-    "STEP_2": "INFO",  # Enrich with Descriptions
-    "STEP_2.A": "INFO",  # Ranking Intro Text
-    "STEP_2.B": "INFO",  # Track Detail Text
-    "STEP_2.C": "INFO",  # Artist Detail Text
+LOG_LEVEL_OVERRIDES = {
 
-    "STEP_3": "INFO",
-    "STEP_3.A": "INFO",  # Spotify data matching
-    "STEP_3.B": "INFO",  # Track entry building
+    # ────────────────────────────── STEP 1 ──────────────────────────────
+    # 🧠 Track Generation via XAI — fetch initial track list from AI or test file
 
-    "STEP_4": "DEBUG",     # Build structured JSON
-    "STEP_4.A": "DEBUG",
-    "STEP_4.B": "DEBUG",
-    "STEP_4.C": "DEBUG",
-    "STEP_4.D": "DEBUG",
-    "STEP_4.E": "DEBUG",
+    "STEP_1": "INFO",  # Top-level orchestration for AI track generation
+
+    "STEP_1.A": "INFO",  # 🧠 STEP 1.A — Request Track List from XAI
+    # Function: get_top_tracks_from_xai(prompt, ...)
+    # - Sends structured prompt to XAI
+    # - Receives raw list of track/artist results
+
+    "STEP_1.B": "INFO",  # 🧹 STEP 1.B — Parse + Filter AI Response
+    # Function: parse_and_filter_tracks(json_input, num_tracks, is_test_mode)
+    # - Parses JSON from XAI
+    # - Filters out invalid or duplicate entries
+    # - Trims down to `num_tracks` unless in test mode
+
+    # ────────────────────────────── STEP 2 ──────────────────────────────
+    # ✍️ Description Generation — generates intros and details for each track
+
+    "STEP_2": "INFO",  # High-level orchestration for description generation
+
+    "STEP_2.A": "INFO",  # ✍️ STEP 2.A — Generate Descriptions via XAI
+    # Function: get_track_descriptions_from_xai(tracks, ...)
+    # - Uses XAI to generate `intro` and `detail` fields
+    # - May skip if already provided or disabled by flags
+
+    "STEP_2.B": "INFO",  # 🧪 STEP 2.B — Validate or Patch Description Fields
+    # Function: validate_descriptions(tracks)
+    # - Ensures `intro` and `detail` are present and well-formed
+    # - Logs missing fields or uses fallback templates
+
+    # ────────────────────────────── STEP 3 ──────────────────────────────
+    # 🎧 Spotify Enrichment Pipeline — enhances basic track data with Spotify metadata
+
+    "STEP_3": "INFO",       # Top-level orchestration (called from generate_track_json)
+
+    "STEP_3.A": "DEBUG",     # 🔍 STEP 3.A — Spotify Track Matching
+                            # Function: get_spotify_data(base)
+                            # - Calls Spotipy to search for matching track and artist
+                            # - Applies fallback logic and filtering
+
+    "STEP_3.B": "DEBUG",     # 🧱 STEP 3.B — Build Enriched Track Entry
+                            # Function: enrich_track(base, spotify_match)
+                            # - Merges XAI data with Spotify metadata into unified structure
+
+
+    # ────────────────────────────── STEP 4 ──────────────────────────────
+    # 📦 Final JSON Builder — assembles full TopSpot data structure (track, artist, ranking)
+
+    "STEP_4": "DEBUG",      # Orchestrator: build_final_json(enriched_tracks, request, now)
+
+    "STEP_4.A": "DEBUG",    # 🧹 STEP 4.A — Normalize & Verify Fields
+                            # Function: normalize_keys(base)
+                            # - Ensures consistent field names (snake_case)
+                            # - Validates presence of spotify_data and logs enrichment status
+
+    "STEP_4.B": "DEBUG",    # 🧪 STEP 4.B — Build Track Table Entries
+                            # Function: build_track_entry(base, request, spotify_data, now)
+                            # - Converts one enriched track into a row for the track table
+                            # - Logs duration, artwork, and ID fields
+
+    "STEP_4.C": "DEBUG",    # 🎙️ STEP 4.C — Build Artist Table Entries
+                            # Function: build_artist_entry(...) — likely inside build_final_json
+                            # - Deduplicates artists and creates a record for each
+                            # - Optionally includes Spotify ID, description, and artwork
+
+    "STEP_4.D": "DEBUG",    # 🏆 STEP 4.D — Build Ranking Table Entries
+                            # Function: build_ranking_entry(base, track_entry, request, now)
+                            # - Builds rank entry including track_id, genre, decade, and intro/detail
+
+    "STEP_4.E": "DEBUG",    # 📦 STEP 4.E — Final JSON Assembly
+                            # Function: build_final_json(...) — final return step
+                            # - Combines all tables: core_tables, track_tables, ranking_tables
+                            # - Outputs full JSON object and summary log
+
 
     "STEP_5": "INFO",      # Replace missing Spotify tracks
     "STEP_6": "INFO",      # Remove tracks still missing Spotify data
     "STEP_7": "INFO",      # Add spare tracks
     "STEP_8": "INFO",      # Reassign ranks
-    "STEP_9": "INFO",     # Rebuild artist table
+    "STEP_9": "INFO",      # Rebuild artist table
     "STEP_10": "INFO",     # Save final JSON to disk
     "STEP_11": "INFO"      # Print summary to terminal
 
     # Add more steps/sub-steps here...
 }
+STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
 
 # ---------------------------------------------------------------------------
 # 🧩 MODULE-SPECIFIC LOG LEVEL OVERRIDES

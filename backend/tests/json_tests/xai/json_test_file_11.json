@@ -1,0 +1,19 @@
+{
+  "expected": {
+    "numValidTracks": 1
+  },
+  "expectedLogs": [
+    "👥 DUET detected: Kenny Rogers with Dolly Parton"
+  ],
+  "language": "English",
+  "decade": "1980s",
+  "genre": "Country",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Islands in the Stream",
+      "artistName": "Kenny Rogers with Dolly Parton",
+      "yearReleased": 1983
+    }
+  ]
+}

@@ -27,11 +27,24 @@ def normalize_keys(base: dict) -> dict:
 
 def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     print("🐛 ENTERED build_track_entry")
+    import json
 
-    logger_step4b.debug(f"🔧 [STEP_4.B] Starting build_track_entry for Rank {base.get('rank')}")
-    logger_step4b.debug(f"🐛 Logger: {logger_step4b.name}, Level: {logger_step4b.getEffectiveLevel()}")
-    logger_step4b.debug(f"🎼 Track: '{base.get('track_name')}', Artist: '{base.get('artist_name')}'")
-    logger_step4b.debug(f"📆 Spotify data: {spotify_data}")
+    if is_test_mode:
+        logger_step4b.debug(
+            "\n🧪 [STEP_4.B] TEST MODE — build_track_entry\n"
+            f"   🏅 Rank: {base.get('rank')}\n"
+            f"   🎼 Track: '{base.get('track_name')}', Artist: '{base.get('artist_name')}'\n"
+            f"   🐛 Logger: {logger_step4b.name}, Level: {logger_step4b.getEffectiveLevel()}\n"
+            "   📆 Spotify data: <SKIPPED in test mode>"
+        )
+    else:
+        logger_step4b.debug(
+            "\n🔧 [STEP_4.B] Starting build_track_entry\n"
+            f"   🏅 Rank: {base.get('rank')}\n"
+            f"   🎼 Track: '{base.get('track_name')}', Artist: '{base.get('artist_name')}'\n"
+            f"   🐛 Logger: {logger_step4b.name}, Level: {logger_step4b.getEffectiveLevel()}\n"
+            f"   📆 Spotify data:\n{json.dumps(spotify_data, indent=4)}"
+        )
 
     if not base.get("artist_name"):
         raise ValueError(f"❌ Missing 'artist_name' in base: {base}")
@@ -97,19 +110,24 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
     tracks = []
     rankings = []
 
+    # Loop through each track entry in the list of enriched tracks
     for base in enriched_tracks:
-        logger_step4a.debug("⟳ [STEP_4.A] Normalizing keys...")
+        # Log that we’re about to normalize the key names of this track dictionary
+        logger_step4a.debug("⟳ [STEP_4.A] Normalizing keys to assure snake_case")
+
+        # Convert all known camelCase keys (e.g., 'trackName') to snake_case (e.g., 'track_name')
+        # This ensures uniform field access in the rest of the pipeline
         base = normalize_keys(base)
 
         if is_test_mode:
             spotify_data = {}
-            logger_step4a.debug(f"[TEST MODE] Skipping spotify_data for: {base['track_name']} by {base['artist_name']}")
+            logger_step4a.debug(f"[STEP_4.A] [TEST MODE] Skipping spotify_data for: {base['track_name']} by {base['artist_name']}")
         else:
             spotify_data = base.get("spotify_data", {})
             if spotify_data:
-                logger_step4a.debug(f"🎷 Enrich OK: '{base.get('track_name')}' by '{base.get('artist_name')}'")
+                logger_step4a.debug(f"🎷 [STEP_4.A] Enrich OK: '{base.get('track_name')}' by '{base.get('artist_name')}'")
             else:
-                logger_step4a.warning(f"⚠️ Missing spotify_data for '{base.get('track_name')}'")
+                logger_step4a.warning(f"⚠️ [STEP_4.A] Missing spotify_data for '{base.get('track_name')}'")
 
         track_entry = build_track_entry(base, request, spotify_data, now, is_test_mode)
         tracks.append(track_entry)
