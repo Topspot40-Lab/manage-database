@@ -155,11 +155,9 @@ async def generate_track_json(
             }
 
         # ───────────────── STEP 3 ─────────────────
-        if test_file_number == 0:
-            logger.info("🎧 STEP 3: Enriching tracks with Spotify metadata")
-            enriched["tracks"] = enrich_tracks_with_spotify(enriched["tracks"])
-        else:
-            logger.info("🎧 STEP 3: Skipping Spotify enrichment (test mode)")
+        enriched["tracks"] = enrich_tracks_with_spotify(
+            enriched["tracks"], is_test_mode=(test_file_number > 0)
+        )
 
         if max_step == 3:
             logger.info("🛑 Stopping after STEP 3 as requested")

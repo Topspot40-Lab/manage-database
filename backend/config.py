@@ -76,12 +76,12 @@ LOG_LEVEL_OVERRIDES = {
 
     "STEP_1": "INFO",  # Top-level orchestration for AI track generation
 
-    "STEP_1.A": "INFO",  # 🧠 STEP 1.A — Request Track List from XAI
+    "STEP_1.A": "DEBUG",  # 🧠 STEP 1.A — Request Track List from XAI
     # Function: get_top_tracks_from_xai(prompt, ...)
     # - Sends structured prompt to XAI
     # - Receives raw list of track/artist results
 
-    "STEP_1.B": "INFO",  # 🧹 STEP 1.B — Parse + Filter AI Response
+    "STEP_1.B": "DEBUG",  # 🧹 STEP 1.B — Parse + Filter AI Response
     # Function: parse_and_filter_tracks(json_input, num_tracks, is_test_mode)
     # - Parses JSON from XAI
     # - Filters out invalid or duplicate entries
@@ -107,7 +107,7 @@ LOG_LEVEL_OVERRIDES = {
 
     "STEP_3": "INFO",       # Top-level orchestration (called from generate_track_json)
 
-    "STEP_3.A": "DEBUG",     # 🔍 STEP 3.A — Spotify Track Matching
+    "STEP_3.A": "INFO",     # 🔍 STEP 3.A — Spotify Track Matching
                             # Function: get_spotify_data(base)
                             # - Calls Spotipy to search for matching track and artist
                             # - Applies fallback logic and filtering
@@ -172,6 +172,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.logging.track_logging": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.utils.track_builder": "INFO",
+    "backend.utils.normalize": "DEBUG",
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",

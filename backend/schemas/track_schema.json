@@ -44,35 +44,43 @@
         }
       }
     },
-    "track_tables": {
-      "type": "object",
-      "required": ["track", "tracklist"],
-      "properties": {
-        "track": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["rank", "track_name", "artist_name", "year_released"],
-            "properties": {
-              "rank": { "type": "integer", "minimum": 1 },
-              "track_name": { "type": "string" },
-              "artist_name": { "type": "string" },
-              "year_released": { "type": "integer", "minimum": 1900, "maximum": 2100 },
-              "artist_display_name": { "type": "string" },
-              "duration_ms": { "type": ["integer", "null"] },
-              "mode_flag": { "type": "integer" },
-              "album_artwork": { "type": ["string", "null"] },
-              "popularity": { "type": ["integer", "null"] },
-              "spotify_track_id": { "type": ["string", "null"] },
-              "spotify_artist_id": { "type": ["string", "null"] },
-              "is_explicit": { "type": "boolean" },
-              "detail": { "type": ["string", "null"] },
-              "detail_mp3_url": { "type": ["string", "null"] },
-              "not_on_spotify": { "type": "boolean" },
-              "created_at": { "type": "string", "format": "date-time" }
-            }
-          }
-        },
+"track_tables": {
+  "type": "object",
+  "required": ["track", "tracklist"],
+  "properties": {
+    "track": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rank", "track_name", "artist_name", "year_released"],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "track_name": { "type": "string" },
+          "artist_name": { "type": "string" },
+          "main_artist_name": { "type": "string" },
+          "featured_artist_name": { "type": ["string", "null"] },
+          "artist_display_name": { "type": "string" },
+          "year_released": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+
+          "mode_flag": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "mode_flag_detail": { "type": ["string", "null"] },
+
+          "duration_ms": { "type": ["integer", "null"] },
+          "is_explicit": { "type": "boolean" },
+
+          "spotify_track_id": { "type": ["string", "null"] },
+          "spotify_artist_id": { "type": ["string", "null"] },
+          "album_artwork": { "type": ["string", "null"] },
+          "popularity": { "type": ["integer", "null"] },
+          "not_on_spotify": { "type": "boolean" },
+
+          "detail": { "type": ["string", "null"] },
+          "detail_mp3_url": { "type": ["string", "null"] },
+
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
         "tracklist": {
           "type": "array",
           "items": {

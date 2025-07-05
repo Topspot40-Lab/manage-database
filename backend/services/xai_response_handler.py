@@ -1,7 +1,8 @@
 # backend/services/xai_response_handler.py
-from backend.utils.json_helpers import get_mode_flag  # make sure this exists
+from backend.utils.track_helpers import set_mode_fields
 import json
 import logging
+from backend.utils.track_helpers import normalize_track_keys
 
 from backend.utils.track_filters import is_bad_track
 from backend.logging.track_logging import (
@@ -68,9 +69,14 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
     if is_test_mode:
         log_duet_feature_info(tracks)
 
-    # 🎭 Assign mode_flag to each track: solo / duet / featured
-    for t in tracks:
-        artist_name = t.get("artistName", "")
-        t["mode_flag"] = get_mode_flag(artist_name)
+    # 🎭 Analyze artist structure and assign mode fields
+    for i, t in enumerate(tracks):
+        if not isinstance(t, dict):
+            logger_step1b.error(f"❌ Track[{i}] is not a dict: {t} (type: {type(t)})")
+            raise TypeError(f"Track[{i}] must be a dict, got {type(t)}")
+
+        t = normalize_track_keys(t)  # 🐍 Normalize to snake_case
+        set_mode_fields(t, logger_step1b)  # 🧠 Safe to access artist_name
+        tracks[i] = t  # ✅ Save back to the list
 
     return tracks

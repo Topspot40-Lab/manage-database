@@ -473,7 +473,8 @@ def enrich_track_from_spotify(track_id: str) -> dict:
 
 
 
-def enrich_tracks_with_spotify(tracks: list[dict]) -> list[dict]:
+def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -> list[dict]:
+
     """
     Enrich each XAI-generated track with Spotify metadata using get_spotify_data.
     Adds a 'spotify_data' field to each track dict.
@@ -489,7 +490,10 @@ def enrich_tracks_with_spotify(tracks: list[dict]) -> list[dict]:
         an = t.get("artistName") or t.get("artist_name")
         rank = t.get("rank")
 
-        logger_spotify.debug(f"🔄 [STEP_3.A] Rank {rank}: Looking up in Spotify '{tn}' by '{an}'")
+        if is_test_mode:
+            logger_spotify.debug(f"🧪 [STEP_3.A] TEST MODE → Enriching Rank {rank}: '{tn}' by '{an}'")
+        else:
+            logger_spotify.debug(f"🔄 [STEP_3.A] Enriching Rank {rank}: '{tn}' by '{an}'")
 
         try:
             spotify_data = get_spotify_data(tn, an)

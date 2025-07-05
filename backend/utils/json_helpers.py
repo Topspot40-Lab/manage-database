@@ -1,11 +1,16 @@
 import os, json
-import re
-import unicodedata
 from typing import Dict, Tuple, Optional
 
 from backend.utils.logger_factory import get_step_logger  # ✅ Use your centralized logger
 
-logger = get_step_logger("STEP_1.B")
+import traceback
+import logging
+import unicodedata
+import re
+
+logger = logging.getLogger(__name__)
+
+# logger = get_step_logger("STEP_1.B")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 📁 JSON Path Constants
@@ -82,13 +87,23 @@ KNOWN_DUET_PAIRS = {
 # ─────────────────────────────────────────────────────────────────────────────
 # 🔧 Utilities
 # ─────────────────────────────────────────────────────────────────────────────
+
 def normalize_name(name: str) -> str:
+    print(f"🔍 Calling normalize_name('{name}')")
+    logger.debug(f"🔍 Calling normalize_name('{name}')")
+
+    # Get the caller info (1 frame up the stack)
+    stack = traceback.extract_stack()
+    caller = stack[-2]  # -1 is this line, -2 is the caller
+    print(f"   ↪️ Called from {caller.filename}:{caller.lineno} in {caller.name}")
+
     original = name.strip()
     corrected = ARTIST_NAME_ALIASES.get(original, original)
 
     corrected = unicodedata.normalize("NFKD", corrected)
     corrected = "".join(c for c in corrected if not unicodedata.combining(c))
     corrected = corrected.lower()
+    corrected = corrected.replace(" and ", " ").replace("&", " ")
     corrected = re.sub(r"[^\w\s]", "", corrected)
     corrected = re.sub(r"\s+", " ", corrected).strip()
 
@@ -96,6 +111,7 @@ def normalize_name(name: str) -> str:
         logger.debug(f"[STEP_1.B] normalize_name('{original}') → '{corrected}'")
 
     return corrected
+
 
 
 def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Optional[str]]:
@@ -117,6 +133,7 @@ def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Op
 
     logger.debug(f"[STEP_1.B] parse_featured_artists('{raw_artist_name}') → no featured artist found")
     return raw_artist_name.strip(), None, None
+
 def get_mode_flag(artist_name: str) -> str:
     main, featured, keyword = parse_featured_artists(artist_name)
     normalized_main = normalize_name(main)
