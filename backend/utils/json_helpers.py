@@ -2,13 +2,13 @@ import os, json
 from typing import Dict, Tuple, Optional
 
 import traceback
-import logging
 import unicodedata
 import re
 
-logger = logging.getLogger(__name__)
+from backend.utils.logger_factory import get_step_logger
 
-# logger = get_step_logger("STEP_1.B")
+# Use centralized step logger
+logger_step1b = get_step_logger("STEP_1.B")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 📁 JSON Path Constants
@@ -81,14 +81,12 @@ KNOWN_DUET_PAIRS = {
     "george jones tammy wynette",
 }
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 🔧 Utilities
 # ─────────────────────────────────────────────────────────────────────────────
-
 def normalize_name(name: str) -> str:
     print(f"🔍 Calling normalize_name('{name}')")
-    logger.debug(f"🔍 Calling normalize_name('{name}')")
+    logger_step1b.debug(f"🔍 Calling normalize_name('{name}')")
 
     # Get the caller info (1 frame up the stack)
     stack = traceback.extract_stack()
@@ -101,12 +99,12 @@ def normalize_name(name: str) -> str:
     corrected = unicodedata.normalize("NFKD", corrected)
     corrected = "".join(c for c in corrected if not unicodedata.combining(c))
     corrected = corrected.lower()
-    corrected = corrected.replace(" and ", " ").replace("&", " ")
+    corrected = corrected.replace("&", " and")  # ✅ Normalize '&' but keep 'and'
     corrected = re.sub(r"[^\w\s]", "", corrected)
     corrected = re.sub(r"\s+", " ", corrected).strip()
 
     if original != corrected:
-        logger.debug(f"[STEP_1.B] normalize_name('{original}') → '{corrected}'")
+        logger_step1b.debug(f"normalize_name('{original}') → '{corrected}'")
 
     return corrected
 
@@ -124,43 +122,36 @@ def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Op
         main = match.group(1).strip()
         keyword = match.group(2).lower().strip()
         feat = match.group(3).strip()
-        logger.debug(
-            f"[STEP_1.B] parse_featured_artists('{raw_artist_name}') → main: '{main}', featured: '{feat}', keyword: '{keyword}'"
-        )
+        logger_step1b.debug(f"parse_featured_artists('{raw_artist_name}') → main: '{main}', featured: '{feat}', keyword: '{keyword}'")
         return main, feat, keyword
 
-    logger.debug(f"[STEP_1.B] parse_featured_artists('{raw_artist_name}') → no featured artist found")
+    logger_step1b.debug(f"parse_featured_artists('{raw_artist_name}') → no featured artist found")
     return raw_artist_name.strip(), None, None
+
+
 def get_mode_flag(main: str, feat: Optional[str], keyword: Optional[str]) -> str:
     """
     Determine mode_flag type based on normalized artist parts.
     Assumes 'main' and 'feat' are already normalized.
     """
 
+    logger_step1b.debug(f" [STEP_1.B] get_mode_flag → 'group' (matched KNOWN_GROUPS as '{main}')")
     if main in KNOWN_GROUPS:
-        logger.debug(
-            f"[STEP_1.B] get_mode_flag → 'group' (matched KNOWN_GROUPS as '{main}')"
-        )
+        logger_step1b.debug(f" [STEP_1.B] get_mode_flag → 'group' (matched KNOWN_GROUPS as '{main}')")
         return "group"
 
     if feat:
         combined = f"{main} {feat}"
         if combined in KNOWN_DUET_PAIRS:
-            logger.debug(
-                f"[STEP_1.B] get_mode_flag → 'duet' (matched KNOWN_DUET_PAIRS as '{combined}')"
-            )
+            logger_step1b.debug(f"get_mode_flag → 'duet' (matched KNOWN_DUET_PAIRS as '{combined}')")
             return "duet"
         if keyword == "with":
-            logger.debug(
-                f"[STEP_1.B] get_mode_flag → 'duet' (keyword='with')"
-            )
+            logger_step1b.debug(f"get_mode_flag → 'duet' (keyword='with')")
             return "duet"
-        logger.debug(
-            f"[STEP_1.B] get_mode_flag → 'featured' (keyword='{keyword}')"
-        )
+        logger_step1b.debug(f"get_mode_flag → 'featured' (keyword='{keyword}')")
         return "featured"
 
-    logger.debug(f"[STEP_1.B] get_mode_flag → 'solo' (default)")
+    logger_step1b.debug("get_mode_flag → 'solo' (default)")
     return "solo"
 
 # ─────────────────────────────────────────────────────────────────────────────

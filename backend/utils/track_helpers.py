@@ -36,7 +36,7 @@ def normalize_track_keys(base: dict, logger) -> dict:
         else:
             logger.debug(f"🧹 [normalize_track_keys] Skipping unrecognized key: '{key}'")
 
-    logger.debug(f"✅ [normalize_track_keys] Normalized keys: {list(result.keys())}")
+    logger.debug(f"✅ [STEP_1.B] [normalize_track_keys] Normalized keys: {list(result.keys())}")
 
     # Check for missing required keys
     missing = [k for k in REQUIRED_KEYS if k not in result]
@@ -56,7 +56,7 @@ from backend.utils.mode_utils import ModeFlag
 
 def set_mode_fields(track: dict, logger) -> dict:
     artist_name_raw = track.get("artist_name", "").strip()
-    logger.debug(f"🎭 [set_mode_fields] Parsing artist_name: '{artist_name_raw}'")
+    logger.debug(f"🎭 [STEP_1.B] [set_mode_fields] Parsing artist_name: '{artist_name_raw}'")
 
     # Extract parts from original (raw) name
     main_raw, feat_raw, keyword = parse_featured_artists(artist_name_raw)
@@ -66,7 +66,7 @@ def set_mode_fields(track: dict, logger) -> dict:
     feat = normalize_name(feat_raw) if feat_raw else None
 
     # Get mode using normalized parts
-    logger.debug(f"🔍 Checking mode_flag for main='{main}', feat='{feat}', keyword='{keyword}'")
+    logger.debug(f"🔍 [STEP_1.B] Checking mode_flag for main='{main}', feat='{feat}', keyword='{keyword}'")
     mode_str = get_mode_flag(main, feat, keyword)
 
     # Build display name
@@ -90,5 +90,5 @@ def set_mode_fields(track: dict, logger) -> dict:
     track["mode_flag"] = mode_enum.value
     track["mode_label"] = mode_enum.name
 
-    logger.debug(f"✅ mode_flag: {mode_enum.name}, display: '{display}'")
+    logger.debug(f"✅ [STEP_1.B] mode_flag: {mode_enum.name}, display: '{display}'")
     return track
