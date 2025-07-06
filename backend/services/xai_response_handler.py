@@ -75,7 +75,8 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
             logger_step1b.error(f"❌ Track[{i}] is not a dict: {t} (type: {type(t)})")
             raise TypeError(f"Track[{i}] must be a dict, got {type(t)}")
 
-        t = normalize_track_keys(t)  # 🐍 Normalize to snake_case
+        t = normalize_track_keys(t, logger_step1b)
+
         set_mode_fields(t, logger_step1b)  # 🧠 Safe to access artist_name
         tracks[i] = t  # ✅ Save back to the list
 

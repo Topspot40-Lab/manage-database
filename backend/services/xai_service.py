@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from dotenv import load_dotenv
-
+from backend.utils.mode_utils import ModeFlag
 
 from backend.services.xai_prompt_builder import build_track_prompt
 from backend.services.xai_response_handler import parse_and_filter_tracks
@@ -16,7 +16,7 @@ load_dotenv()
 # 🧩 Shared fallback logger for this module (e.g., get_artist_description)
 logger = logging.getLogger(__name__)
 
-def format_track_list(tracks, fields=("rank", "trackName", "artistName", "mode_flag")) -> str:
+def format_track_list(tracks, fields=("rank", "track_name", "artist_name", "mode_flag")) -> str:
     """
     Return a formatted string with aligned columns for selected track fields.
     Adds visual spacing or prefix to non-'solo' mode_flag values for better scanning.
@@ -27,23 +27,29 @@ def format_track_list(tracks, fields=("rank", "trackName", "artistName", "mode_f
     # Column widths
     field_widths = {
         "rank": 4,
-        "trackName": 40,
-        "artistName": 45,
+        "track_name": 40,
+        "artist_name": 45,
         "mode_flag": 12,  # Make a bit wider for prefix
     }
 
     # Helper to format mode_flag visually
-    def format_mode_flag(flag: str) -> str:
-        if flag == "solo":
+    def format_mode_flag(flag):  # ✅ no shadowing
+        ...
+        try:
+            name = ModeFlag(flag).name.lower()
+        except (ValueError, AttributeError):
+            name = str(flag).lower()
+
+        if name == "solo":
             return " solo"
-        elif flag == "duet":
+        elif name == "duet":
             return "→→  duet"
-        elif flag == "featured":
+        elif name == "featured":
             return "→→→ feat"
-        elif flag == "group":
+        elif name == "group":
             return "→→→→ group"
         else:
-            return f" {flag[:10].strip()}"
+            return f" {name[:10].strip()}"
 
     # Header line
     header = " | ".join(f"{field:<{field_widths[field]}}" for field in fields)

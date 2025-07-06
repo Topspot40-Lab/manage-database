@@ -1,8 +1,6 @@
 import os, json
 from typing import Dict, Tuple, Optional
 
-from backend.utils.logger_factory import get_step_logger  # ✅ Use your centralized logger
-
 import traceback
 import logging
 import unicodedata
@@ -133,45 +131,36 @@ def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Op
 
     logger.debug(f"[STEP_1.B] parse_featured_artists('{raw_artist_name}') → no featured artist found")
     return raw_artist_name.strip(), None, None
+def get_mode_flag(main: str, feat: Optional[str], keyword: Optional[str]) -> str:
+    """
+    Determine mode_flag type based on normalized artist parts.
+    Assumes 'main' and 'feat' are already normalized.
+    """
 
-def get_mode_flag(artist_name: str) -> str:
-    main, featured, keyword = parse_featured_artists(artist_name)
-    normalized_main = normalize_name(main)
-
-    # 🎤 Check if it's a known group
-    if normalized_main in KNOWN_GROUPS:
+    if main in KNOWN_GROUPS:
         logger.debug(
-            f"[STEP_1.B] get_mode_flag('{artist_name}') → 'group' "
-            f"(matched KNOWN_GROUPS as '{normalized_main}')"
+            f"[STEP_1.B] get_mode_flag → 'group' (matched KNOWN_GROUPS as '{main}')"
         )
         return "group"
 
-    # 🎤 Handle duet or featured
-    if featured:
-        combined = normalize_name(f"{main} {featured}")
+    if feat:
+        combined = f"{main} {feat}"
         if combined in KNOWN_DUET_PAIRS:
             logger.debug(
-                f"[STEP_1.B] get_mode_flag('{artist_name}') → 'duet' "
-                f"(matched KNOWN_DUET_PAIRS as '{combined}')"
+                f"[STEP_1.B] get_mode_flag → 'duet' (matched KNOWN_DUET_PAIRS as '{combined}')"
             )
             return "duet"
         if keyword == "with":
             logger.debug(
-                f"[STEP_1.B] get_mode_flag('{artist_name}') → 'duet' "
-                f"(keyword='with')"
+                f"[STEP_1.B] get_mode_flag → 'duet' (keyword='with')"
             )
             return "duet"
         logger.debug(
-            f"[STEP_1.B] get_mode_flag('{artist_name}') → 'featured' "
-            f"(keyword='{keyword}')"
+            f"[STEP_1.B] get_mode_flag → 'featured' (keyword='{keyword}')"
         )
         return "featured"
 
-    # 🎤 Default solo
-    logger.debug(
-        f"[STEP_1.B] get_mode_flag('{artist_name}') → 'solo' "
-        "(no feature, no group match)"
-    )
+    logger.debug(f"[STEP_1.B] get_mode_flag → 'solo' (default)")
     return "solo"
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,9 +1,6 @@
-import re
 from enum import IntEnum
+from backend.utils.json_helpers import parse_featured_artists, normalize_name, get_mode_flag
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 # Mapping of acceptable key aliases (camelCase → snake_case)
 TRACK_KEY_MAP = {
@@ -17,24 +14,34 @@ TRACK_KEY_MAP = {
     "intro": "intro",
     "detail": "detail"
 }
+REQUIRED_KEYS = [
+    "track_name",
+    "artist_name",
+    "year_released",
+    "rank"
+]
 
-# test files have camel case to match xai query, but need snake case later
-def normalize_track_keys(base: dict) -> dict:
+def normalize_track_keys(base: dict, logger) -> dict:
     """
     Normalize a raw track dictionary by converting key names to consistent snake_case.
-    Removes unrecognized fields and logs them for visibility.
+    Logs skipped keys and warns about any missing required keys.
     """
     result = {}
-    used_keys = set()
 
     for key, value in base.items():
         normalized_key = TRACK_KEY_MAP.get(key)
         if normalized_key:
             if normalized_key not in result:
                 result[normalized_key] = value
-            used_keys.add(key)
         else:
             logger.debug(f"🧹 [normalize_track_keys] Skipping unrecognized key: '{key}'")
+
+    logger.debug(f"✅ [normalize_track_keys] Normalized keys: {list(result.keys())}")
+
+    # Check for missing required keys
+    missing = [k for k in REQUIRED_KEYS if k not in result]
+    if missing:
+        logger.warning(f"⚠️ [normalize_track_keys] Missing required keys: {missing}")
 
     return result
 
@@ -45,46 +52,43 @@ class ModeFlag(IntEnum):
     FEATURED = 3
     GROUP = 4
 
+from backend.utils.mode_utils import ModeFlag
 
 def set_mode_fields(track: dict, logger) -> dict:
-    """
-    Analyzes the artist_name and sets:
-    - main_artist_name
-    - featured_artist_name
-    - mode_flag (as integer)
-    - artist_display_name
-    Logs decisions using the provided logger.
-    """
-    artist_name = track.get("artist_name", "").strip()
-    logger.debug(f"🎭 [set_mode_fields] Parsing artist_name: '{artist_name}'")
+    artist_name_raw = track.get("artist_name", "").strip()
+    logger.debug(f"🎭 [set_mode_fields] Parsing artist_name: '{artist_name_raw}'")
 
-    # Default values
-    main = artist_name
-    feat = None
-    display = artist_name
-    mode = ModeFlag.SOLO
+    # Extract parts from original (raw) name
+    main_raw, feat_raw, keyword = parse_featured_artists(artist_name_raw)
 
-    # DUET: "Artist A with Artist B"
-    if " with " in artist_name:
-        main, feat = [s.strip() for s in artist_name.split(" with ", 1)]
-        display = f"{main} and {feat}"
-        mode = ModeFlag.DUET
-        logger.debug(f"🎶 Detected DUET → Main: '{main}', Duet: '{feat}'")
+    # Normalize names for comparison
+    main = normalize_name(main_raw)
+    feat = normalize_name(feat_raw) if feat_raw else None
 
-    # FEATURED: "Artist A feat. Artist B"
-    elif re.search(r"\bfeat\.?\b", artist_name, re.IGNORECASE):
-        main, feat = [s.strip() for s in re.split(r"\bfeat\.?\b", artist_name, 1, flags=re.IGNORECASE)]
-        display = f"{main} feat. {feat}"
-        mode = ModeFlag.FEATURED
-        logger.debug(f"🎤 Detected FEATURED → Main: '{main}', Feature: '{feat}'")
+    # Get mode using normalized parts
+    logger.debug(f"🔍 Checking mode_flag for main='{main}', feat='{feat}', keyword='{keyword}'")
+    mode_str = get_mode_flag(main, feat, keyword)
 
+    # Build display name
+    if mode_str == "duet":
+        display = f"{main_raw} and {feat_raw}"
+        mode_enum = ModeFlag.DUET
+    elif mode_str == "featured":
+        display = f"{main_raw} feat. {feat_raw}"
+        mode_enum = ModeFlag.FEATURED
+    elif mode_str == "group":
+        display = artist_name_raw
+        mode_enum = ModeFlag.GROUP
     else:
-        logger.debug(f"🎙️ Detected SOLO or GROUP → Artist: '{main}'")
+        display = main_raw
+        mode_enum = ModeFlag.SOLO
 
-    # Shared assignments
-    track["main_artist_name"] = main
-    track["featured_artist_name"] = feat
+    # Final assignment
+    track["main_artist_name"] = main_raw
+    track["featured_artist_name"] = feat_raw
     track["artist_display_name"] = display
-    track["mode_flag"] = mode.value
+    track["mode_flag"] = mode_enum.value
+    track["mode_label"] = mode_enum.name
 
+    logger.debug(f"✅ mode_flag: {mode_enum.name}, display: '{display}'")
     return track
