@@ -1,0 +1,383 @@
+{
+  "expected": {
+    "numValidTracks": 62
+  },
+  "expectedLogs": [],
+  "language": "English",
+  "decade": "Multi-Decade",
+  "genre": "Country",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Mountain Music",
+      "artistName": "Alabama",
+      "yearReleased": 1982
+    },
+    {
+      "rank": 2,
+      "trackName": "Dixieland Delight",
+      "artistName": "Alabama",
+      "yearReleased": 1983
+    },
+    {
+      "rank": 3,
+      "trackName": "Love in the First Degree",
+      "artistName": "Alabama",
+      "yearReleased": 1981
+    },
+    {
+      "rank": 4,
+      "trackName": "Take Me Down",
+      "artistName": "Alabama",
+      "yearReleased": 1982
+    },
+    {
+      "rank": 5,
+      "trackName": "Elvira",
+      "artistName": "The Oak Ridge Boys",
+      "yearReleased": 1981
+    },
+    {
+      "rank": 6,
+      "trackName": "Bobbie Sue",
+      "artistName": "simon and garfunkel",
+      "yearReleased": 1982
+    },
+    {
+      "rank": 7,
+      "trackName": "American Made",
+      "artistName": "The Oak Ridge Boys",
+      "yearReleased": 1983
+    },
+    {
+      "rank": 8,
+      "trackName": "Thank God for Kids",
+      "artistName": "The Oak Ridge Boys",
+      "yearReleased": 1982
+    },
+    {
+      "rank": 9,
+      "trackName": "Flowers on the Wall",
+      "artistName": "The Statler Brothers",
+      "yearReleased": 1965
+    },
+    {
+      "rank": 10,
+      "trackName": "Do You Remember These",
+      "artistName": "The Statler Brothers",
+      "yearReleased": 1972
+    },
+    {
+      "rank": 11,
+      "trackName": "Bed of Rose's",
+      "artistName": "The Statler Brothers",
+      "yearReleased": 1970
+    },
+    {
+      "rank": 12,
+      "trackName": "Mama He's Crazy",
+      "artistName": "The Judds",
+      "yearReleased": 1984
+    },
+    {
+      "rank": 13,
+      "trackName": "Love is Alive",
+      "artistName": "The Judds",
+      "yearReleased": 1984
+    },
+    {
+      "rank": 14,
+      "trackName": "Why Not Me",
+      "artistName": "The Judds",
+      "yearReleased": 1984
+    },
+    {
+      "rank": 15,
+      "trackName": "Grandpa (Tell Me 'Bout the Good Old Days)",
+      "artistName": "The Judds",
+      "yearReleased": 1986
+    },
+    {
+      "rank": 16,
+      "trackName": "Fishin' in the Dark",
+      "artistName": "Nitty Gritty Dirt Band",
+      "yearReleased": 1987
+    },
+    {
+      "rank": 17,
+      "trackName": "Modern Day Romance",
+      "artistName": "Nitty Gritty Dirt Band",
+      "yearReleased": 1985
+    },
+    {
+      "rank": 18,
+      "trackName": "Partners, Brothers and Friends",
+      "artistName": "Nitty Gritty Dirt Band",
+      "yearReleased": 1986
+    },
+    {
+      "rank": 19,
+      "trackName": "God Blessed Texas",
+      "artistName": "Little Texas",
+      "yearReleased": 1993
+    },
+    {
+      "rank": 20,
+      "trackName": "What Might Have Been",
+      "artistName": "Little Texas",
+      "yearReleased": 1992
+    },
+    {
+      "rank": 21,
+      "trackName": "Kick a Little",
+      "artistName": "Little Texas",
+      "yearReleased": 1994
+    },
+    {
+      "rank": 22,
+      "trackName": "Meet in the Middle",
+      "artistName": "Diamond Rio",
+      "yearReleased": 1991
+    },
+    {
+      "rank": 23,
+      "trackName": "Beautiful Mess",
+      "artistName": "Diamond Rio",
+      "yearReleased": 2002
+    },
+    {
+      "rank": 24,
+      "trackName": "One More Day",
+      "artistName": "Diamond Rio",
+      "yearReleased": 2000
+    },
+    {
+      "rank": 25,
+      "trackName": "Unbelievable",
+      "artistName": "Diamond Rio",
+      "yearReleased": 1998
+    },
+    {
+      "rank": 26,
+      "trackName": "Amazed",
+      "artistName": "Lonestar",
+      "yearReleased": 1999
+    },
+    {
+      "rank": 27,
+      "trackName": "No News",
+      "artistName": "Lonestar",
+      "yearReleased": 1996
+    },
+    {
+      "rank": 28,
+      "trackName": "My Front Porch Looking In",
+      "artistName": "Lonestar",
+      "yearReleased": 2003
+    },
+    {
+      "rank": 29,
+      "trackName": "I'm Already There",
+      "artistName": "Lonestar",
+      "yearReleased": 2001
+    },
+    {
+      "rank": 30,
+      "trackName": "Bless the Broken Road",
+      "artistName": "Rascal Flatts",
+      "yearReleased": 2004
+    },
+    {
+      "rank": 31,
+      "trackName": "What Hurts the Most",
+      "artistName": "Rascal Flatts",
+      "yearReleased": 2006
+    },
+    {
+      "rank": 32,
+      "trackName": "Life is a Highway",
+      "artistName": "Rascal Flatts",
+      "yearReleased": 2006
+    },
+    {
+      "rank": 33,
+      "trackName": "My Wish",
+      "artistName": "Rascal Flatts",
+      "yearReleased": 2006
+    },
+    {
+      "rank": 34,
+      "trackName": "Need You Now",
+      "artistName": "Lady A",
+      "yearReleased": 2009
+    },
+    {
+      "rank": 35,
+      "trackName": "I Run to You",
+      "artistName": "Lady A",
+      "yearReleased": 2008
+    },
+    {
+      "rank": 36,
+      "trackName": "Just a Kiss",
+      "artistName": "Lady A",
+      "yearReleased": 2011
+    },
+    {
+      "rank": 37,
+      "trackName": "Downtown",
+      "artistName": "Lady A",
+      "yearReleased": 2013
+    },
+    {
+      "rank": 38,
+      "trackName": "Chicken Fried",
+      "artistName": "Zac Brown Band",
+      "yearReleased": 2008
+    },
+    {
+      "rank": 39,
+      "trackName": "Colder Weather",
+      "artistName": "Zac Brown Band",
+      "yearReleased": 2011
+    },
+    {
+      "rank": 40,
+      "trackName": "Toes",
+      "artistName": "Zac Brown Band",
+      "yearReleased": 2009
+    },
+    {
+      "rank": 41,
+      "trackName": "Free",
+      "artistName": "Zac Brown Band",
+      "yearReleased": 2009
+    },
+    {
+      "rank": 42,
+      "trackName": "If I Die Young",
+      "artistName": "The Band Perry",
+      "yearReleased": 2010
+    },
+    {
+      "rank": 43,
+      "trackName": "Better Dig Two",
+      "artistName": "The Band Perry",
+      "yearReleased": 2012
+    },
+    {
+      "rank": 44,
+      "trackName": "You Lie",
+      "artistName": "The Band Perry",
+      "yearReleased": 2011
+    },
+    {
+      "rank": 45,
+      "trackName": "Snapback",
+      "artistName": "Old Dominion",
+      "yearReleased": 2015
+    },
+    {
+      "rank": 46,
+      "trackName": "Hotel Key",
+      "artistName": "Old Dominion",
+      "yearReleased": 2018
+    },
+    {
+      "rank": 47,
+      "trackName": "Break Up with Him",
+      "artistName": "Old Dominion",
+      "yearReleased": 2015
+    },
+    {
+      "rank": 48,
+      "trackName": "One Man Band",
+      "artistName": "Old Dominion",
+      "yearReleased": 2019
+    },
+    {
+      "rank": 49,
+      "trackName": "Drinkin\u2019 Problem",
+      "artistName": "Midland",
+      "yearReleased": 2017
+    },
+    {
+      "rank": 50,
+      "trackName": "Burn Out",
+      "artistName": "Midland",
+      "yearReleased": 2018
+    },
+    {
+      "rank": 51,
+      "trackName": "Make a Little",
+      "artistName": "Midland",
+      "yearReleased": 2017
+    },
+    {
+      "rank": 52,
+      "trackName": "Carolina",
+      "artistName": "Parmalee",
+      "yearReleased": 2013
+    },
+    {
+      "rank": 53,
+      "trackName": "Close Your Eyes",
+      "artistName": "Parmalee",
+      "yearReleased": 2014
+    },
+    {
+      "rank": 54,
+      "trackName": "Just the Way",
+      "artistName": "Parmalee",
+      "yearReleased": 2020
+    },
+    {
+      "rank": 55,
+      "trackName": "Boondocks",
+      "artistName": "Little Big Town",
+      "yearReleased": 2005
+    },
+    {
+      "rank": 56,
+      "trackName": "Girl Crush",
+      "artistName": "Little Big Town",
+      "yearReleased": 2014
+    },
+    {
+      "rank": 57,
+      "trackName": "Pontoon",
+      "artistName": "Little Big Town",
+      "yearReleased": 2012
+    },
+    {
+      "rank": 58,
+      "trackName": "Day Drinking",
+      "artistName": "Little Big Town",
+      "yearReleased": 2014
+    },
+    {
+      "rank": 59,
+      "trackName": "Make You Mine",
+      "artistName": "High Valley",
+      "yearReleased": 2016
+    },
+    {
+      "rank": 60,
+      "trackName": "She's with Me",
+      "artistName": "High Valley",
+      "yearReleased": 2016
+    },
+    {
+      "rank": 61,
+      "trackName": "Buy My Own Drinks",
+      "artistName": "Runaway June",
+      "yearReleased": 2018
+    },
+    {
+      "rank": 62,
+      "trackName": "Wild West",
+      "artistName": "Runaway June",
+      "yearReleased": 2017
+    }
+  ]
+}

@@ -11,6 +11,7 @@ from backend.utils.json_helpers import (
 )
 from backend.utils.mode_utils import ModeFlag
 
+print(">>> 🧙 set_mode_fields loaded fresh <<<")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🗺️ Key Mapping & Validation Rules
@@ -52,7 +53,7 @@ def normalize_track_keys(base: dict, logger) -> dict:
         else:
             logger.debug(f"🧹 [normalize_track_keys] Skipping unrecognized key: '{key}'")
 
-    logger.debug(f"✅ [normalize_track_keys] Normalized keys: {list(result.keys())}")
+    # logger.debug(f"✅ [normalize_track_keys] Normalized keys: {list(result.keys())}")
 
     # Check for missing required keys
     missing = [k for k in REQUIRED_KEYS if k not in result]
@@ -100,7 +101,7 @@ def set_mode_fields(track: dict, logger) -> dict:
     - mode_flag_detail (for TTS)
     """
     artist_name_raw = track.get("artist_name", "").strip()
-    logger.debug(f"🎭 [set_mode_fields] Parsing artist_name: '{artist_name_raw}'")
+    # logger.debug(f"🎭 [set_mode_fields] Parsing artist_name: '{artist_name_raw}'")
 
     # Extract artist parts
     main_raw, feat_raw, keyword = parse_featured_artists(artist_name_raw)
@@ -109,7 +110,7 @@ def set_mode_fields(track: dict, logger) -> dict:
     main = normalize_name(main_raw)
     feat = normalize_name(feat_raw) if feat_raw else None
 
-    logger.debug(f"🔍 Checking mode_flag for main='{main}', feat='{feat}', keyword='{keyword}'")
+    # logger.debug(f"🔍 Checking mode_flag for main='{main}', feat='{feat}', keyword='{keyword}'")
     mode_str = get_mode_flag(main, feat, keyword)
 
     # Determine display name and enum
@@ -134,7 +135,7 @@ def set_mode_fields(track: dict, logger) -> dict:
     track["mode_label"] = mode_enum.name
     track["mode_flag_detail"] = get_mode_flag_detail_for_tts(track)
 
-    print(f"🗣️ mode_flag_detail (for TTS): '{track['mode_flag_detail']}'")
+    # print(f"🗣️ mode_flag_detail (for TTS): '{track['mode_flag_detail']}'")
 
     # logger_step1b.debug(f"✅ mode_flag: {mode_enum.name}, display: '{display}'")
     # logger_step1b.debug(f"🗣️ mode_flag_detail (for TTS): '{track['mode_flag_detail']}'")

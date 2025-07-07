@@ -85,13 +85,12 @@ KNOWN_DUET_PAIRS = {
 # 🔧 Utilities
 # ─────────────────────────────────────────────────────────────────────────────
 def normalize_name(name: str) -> str:
-    print(f"🔍 Calling normalize_name('{name}')")
-    logger_step1b.debug(f"🔍 Calling normalize_name('{name}')")
+    # logger_step1b.debug(f"🔍 Calling normalize_name('{name}')")
 
     # Get the caller info (1 frame up the stack)
-    stack = traceback.extract_stack()
-    caller = stack[-2]  # -1 is this line, -2 is the caller
-    print(f"   ↪️ Called from {caller.filename}:{caller.lineno} in {caller.name}")
+    # stack = traceback.extract_stack()
+    # caller = stack[-2]  # -1 is this line, -2 is the caller
+    # print(f"   ↪️ Called from {caller.filename}:{caller.lineno} in {caller.name}")
 
     original = name.strip()
     corrected = ARTIST_NAME_ALIASES.get(original, original)

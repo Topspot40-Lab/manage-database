@@ -48,7 +48,7 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
 
     try:
         tracks = json.loads(json_input)
-        logger_step1b.debug(f"✅  [STEP_1.B] Parsed {len(tracks)} raw tracks.")
+        # logger_step1b.debug(f"✅  [STEP_1.B] Parsed {len(tracks)} raw tracks.")
     except json.JSONDecodeError as e:
         logger_step1b.error(f"❌ JSON parsing failed: {e}")
         raise

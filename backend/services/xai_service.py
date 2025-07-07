@@ -149,17 +149,17 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
     if test_file_number > 0:
         test_file_path = TEST_JSON_DIR / f"json_test_file_{test_file_number}.json"
-        logger_step1b.debug(f"[STEP_1.B] [TEST] Using {test_file_path}")
+        # logger_step1b.debug(f"[STEP_1.B] [TEST] Using {test_file_path}")
         try:
             with open(test_file_path, "r", encoding="utf-8") as test_file:
                 test_json = json.load(test_file)
             raw_tracks = test_json.get("tracks", [])
-            logger_step1b.debug(f"[STEP_1.B] [TEST] Loaded {len(raw_tracks)} tracks.")
+            # logger_step1b.debug(f"[STEP_1.B] [TEST] Loaded {len(raw_tracks)} tracks.")
 
             tracks = parse_and_filter_tracks(json.dumps(raw_tracks), total_requested, is_test_mode=True)
 
             if logger_step1b.isEnabledFor(logging.INFO) or logger_step1.isEnabledFor(logging.INFO):
-                logger_step1b.info(format_track_list(tracks))
+                # logger_step1b.info(format_track_list(tracks))
                 logger_step1b.info(format_detail_track_list(tracks))
 
             # Stub Spotify data for consistency
