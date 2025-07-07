@@ -1,9 +1,18 @@
 {
   "expected": {
-    "numValidTracks": 1
+    "numValidTracks": 10
   },
   "expectedLogs": [
-    "👥 DUET detected: Kenny Rogers with Dolly Parton"
+    "👥 DUET detected: Kenny Rogers with Dolly Parton",
+    "👥 DUET detected: George Jones with Tammy Wynette",
+    "👥 DUET detected: Johnny Cash with June Carter",
+    "👥 DUET detected: Tim McGraw with Faith Hill",
+    "👥 DUET detected: Garth Brooks with Trisha Yearwood",
+    "👥 DUET detected: Conway Twitty with Loretta Lynn",
+    "👥 DUET detected: Merle Haggard with Bonnie Owens",
+    "👥 DUET detected: Blake Shelton with Gwen Stefani",
+    "👥 DUET detected: Vince Gill with Patty Loveless",
+    "👥 DUET detected: Willie Nelson with Ray Price"
   ],
   "language": "English",
   "decade": "1980s",
@@ -14,6 +23,60 @@
       "trackName": "Islands in the Stream",
       "artistName": "Kenny Rogers with Dolly Parton",
       "yearReleased": 1983
+    },
+    {
+      "rank": 2,
+      "trackName": "Golden Ring",
+      "artistName": "George Jones with Tammy Wynette",
+      "yearReleased": 1984
+    },
+    {
+      "rank": 3,
+      "trackName": "Jackson",
+      "artistName": "Johnny Cash with June Carter",
+      "yearReleased": 1980
+    },
+    {
+      "rank": 4,
+      "trackName": "It's Your Love",
+      "artistName": "Tim McGraw with Faith Hill",
+      "yearReleased": 1989
+    },
+    {
+      "rank": 5,
+      "trackName": "In Another's Eyes",
+      "artistName": "Garth Brooks with Trisha Yearwood",
+      "yearReleased": 1987
+    },
+    {
+      "rank": 6,
+      "trackName": "Louisiana Woman, Mississippi Man",
+      "artistName": "Conway Twitty with Loretta Lynn",
+      "yearReleased": 1981
+    },
+    {
+      "rank": 7,
+      "trackName": "Just Between the Two of Us",
+      "artistName": "Merle Haggard with Bonnie Owens",
+      "yearReleased": 1980
+    },
+    {
+      "rank": 8,
+      "trackName": "Nobody But You",
+      "artistName": "Blake Shelton with Gwen Stefani",
+      "yearReleased": 1988
+    },
+    {
+      "rank": 9,
+      "trackName": "My Kind of Woman/My Kind of Man",
+      "artistName": "Vince Gill with Patty Loveless",
+      "yearReleased": 1985
+    },
+    {
+      "rank": 10,
+      "trackName": "Faded Love",
+      "artistName": "Willie Nelson with Ray Price",
+      "yearReleased": 1982
     }
   ]
 }

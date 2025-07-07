@@ -1,0 +1,40 @@
+{
+  "expected": {
+    "numValidTracks": 4
+  },
+  "expectedLogs": [
+    "🧍 SOLO detected: Elvis Presley",
+    "👥 DUET detected: Tim McGraw with Faith Hill",
+    "👤 FEATURED detected: Beyoncé feat. Jay-Z",
+    "🎤 GROUP detected: Simon and Garfunkel"
+  ],
+  "language": "English",
+  "decade": "1960s",
+  "genre": "Pop",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "Can't Help Falling in Love",
+      "artistName": "Elvis Presley",
+      "yearReleased": 1961
+    },
+    {
+      "rank": 2,
+      "trackName": "It's Your Love",
+      "artistName": "Tim McGraw with Faith Hill",
+      "yearReleased": 1967
+    },
+    {
+      "rank": 3,
+      "trackName": "Crazy in Love",
+      "artistName": "Beyoncé feat. Jay-Z",
+      "yearReleased": 1966
+    },
+    {
+      "rank": 4,
+      "trackName": "The Sound of Silence",
+      "artistName": "Simon and Garfunkel",
+      "yearReleased": 1965
+    }
+  ]
+}

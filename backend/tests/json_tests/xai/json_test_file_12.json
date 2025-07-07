@@ -1,0 +1,82 @@
+{
+  "expected": {
+    "numValidTracks": 10
+  },
+  "expectedLogs": [
+    "👤 FEATURED detected: Brandy feat. Monica",
+    "👤 FEATURED detected: Beyoncé feat. Jay-Z",
+    "👤 FEATURED detected: Mariah Carey feat. Boyz II Men",
+    "👤 FEATURED detected: Usher feat. Lil Jon",
+    "👤 FEATURED detected: James Brown feat. Bobby Byrd",
+    "👤 FEATURED detected: Janet Jackson feat. Q-Tip",
+    "👤 FEATURED detected: Blackstreet feat. Dr. Dre",
+    "👤 FEATURED detected: Lauryn Hill feat. D'Angelo",
+    "👤 FEATURED detected: TLC feat. André 3000",
+    "👤 FEATURED detected: Toni Braxton feat. Babyface"
+  ],
+  "language": "English",
+  "decade": "1990s",
+  "genre": "R&B",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "The Boy Is Mine",
+      "artistName": "Brandy feat. Monica",
+      "yearReleased": 1998
+    },
+    {
+      "rank": 2,
+      "trackName": "Crazy in Love",
+      "artistName": "Beyoncé feat. Jay-Z",
+      "yearReleased": 1999
+    },
+    {
+      "rank": 3,
+      "trackName": "One Sweet Day",
+      "artistName": "Mariah Carey feat. Boyz II Men",
+      "yearReleased": 1995
+    },
+    {
+      "rank": 4,
+      "trackName": "My Way",
+      "artistName": "Usher feat. Lil Jon",
+      "yearReleased": 1997
+    },
+    {
+      "rank": 5,
+      "trackName": "I Got You (I Feel Good)",
+      "artistName": "James Brown feat. Bobby Byrd",
+      "yearReleased": 1993
+    },
+    {
+      "rank": 6,
+      "trackName": "Got 'Til It's Gone",
+      "artistName": "Janet Jackson feat. Q-Tip",
+      "yearReleased": 1997
+    },
+    {
+      "rank": 7,
+      "trackName": "No Diggity",
+      "artistName": "Blackstreet feat. Dr. Dre",
+      "yearReleased": 1996
+    },
+    {
+      "rank": 8,
+      "trackName": "Nothing Even Matters",
+      "artistName": "Lauryn Hill feat. D'Angelo",
+      "yearReleased": 1998
+    },
+    {
+      "rank": 9,
+      "trackName": "Unpretty (Remix)",
+      "artistName": "TLC feat. André 3000",
+      "yearReleased": 1999
+    },
+    {
+      "rank": 10,
+      "trackName": "Give U My Heart",
+      "artistName": "Toni Braxton feat. Babyface",
+      "yearReleased": 1992
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "expected": {
-    "numValidTracks": 1
+    "numValidTracks": 10
   },
   "expectedLogs": [],
   "language": "English",
@@ -12,6 +12,60 @@
       "trackName": "The Sound of Silence",
       "artistName": "Simon and Garfunkel",
       "yearReleased": 1965
+    },
+    {
+      "rank": 2,
+      "trackName": "Leaving on a Jet Plane",
+      "artistName": "Peter Paul and Mary",
+      "yearReleased": 1967
+    },
+    {
+      "rank": 3,
+      "trackName": "Turn! Turn! Turn!",
+      "artistName": "The Byrds",
+      "yearReleased": 1965
+    },
+    {
+      "rank": 4,
+      "trackName": "Bad Moon Rising",
+      "artistName": "Creedence Clearwater Revival",
+      "yearReleased": 1969
+    },
+    {
+      "rank": 5,
+      "trackName": "Suite: Judy Blue Eyes",
+      "artistName": "Crosby Stills Nash",
+      "yearReleased": 1969
+    },
+    {
+      "rank": 6,
+      "trackName": "Eight Days a Week",
+      "artistName": "The Beatles",
+      "yearReleased": 1964
+    },
+    {
+      "rank": 7,
+      "trackName": "Joy to the World",
+      "artistName": "Three Dog Night",
+      "yearReleased": 1969
+    },
+    {
+      "rank": 8,
+      "trackName": "Heart of Rock & Roll",
+      "artistName": "Huey Lewis and the News",
+      "yearReleased": 1980
+    },
+    {
+      "rank": 9,
+      "trackName": "Southern Cross",
+      "artistName": "Crosby Stills Nash and Young",
+      "yearReleased": 1969
+    },
+    {
+      "rank": 10,
+      "trackName": "I Am the Walrus",
+      "artistName": "The Beatles",
+      "yearReleased": 1967
     }
   ]
 }
