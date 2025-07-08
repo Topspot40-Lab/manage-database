@@ -80,4 +80,9 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
         set_mode_fields(t, logger_step1b)  # 🧠 Safe to access artist_name
         tracks[i] = t  # ✅ Save back to the list
 
+    # ✂️ Trim to num_tracks unless in test mode
+    if not is_test_mode and num_tracks > 0:
+        tracks = tracks[:num_tracks]
+        logger_step1b.debug(f"🔢 Trimmed to top {num_tracks} tracks (not in test mode)")
+
     return tracks

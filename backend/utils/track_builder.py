@@ -1,7 +1,8 @@
 from backend.utils.mode_utils import ModeFlag
 from backend.utils.json_helpers import parse_featured_artists, normalize_name
-
+import json
 import logging
+import re  # make sure it's imported at top if not already
 
 logger = logging.getLogger(__name__)
 
@@ -12,22 +13,20 @@ logger_step4b = get_step_logger("STEP_4.B")
 logger_step4c = get_step_logger("STEP_4.C")
 logger_step4d = get_step_logger("STEP_4.D")
 logger_step4e = get_step_logger("STEP_4.E")
-
-def normalize_keys(base: dict) -> dict:
-    """Ensure consistent snake_case keys for downstream processing."""
-    return {
-        "track_name": base.get("track_name") or base.get("trackName"),
-        "artist_name": base.get("artist_name") or base.get("artistName"),
-        "year_released": base.get("year_released") or base.get("yearReleased"),
-        "rank": base.get("rank"),
-        "intro": base.get("intro"),
-        "detail": base.get("detail"),
-        **base  # Preserve any other existing fields
-    }
+#
+# def normalize_keys(base: dict) -> dict:
+#     """Ensure consistent snake_case keys for downstream processing."""
+#     return {
+#         "track_name": base.get("track_name") or base.get("trackName"),
+#         "artist_name": base.get("artist_name") or base.get("artistName"),
+#         "year_released": base.get("year_released") or base.get("yearReleased"),
+#         "rank": base.get("rank"),
+#         "intro": base.get("intro"),
+#         "detail": base.get("detail"),
+#         **base  # Preserve any other existing fields
+#     }
 
 def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
-    print("🐛 ENTERED build_track_entry")
-    import json
 
     if is_test_mode:
         logger_step4b.debug(
@@ -84,7 +83,12 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
         "genre": request.genre,
         "decade": request.decade,
         "spotify_track_id": spotify_data.get("spotify_track_id"),
-        "spotify_artist_id": spotify_data.get("artist_id") or base.get("artist_id") or f"test_{normalize_name(artist_name_raw)}",
+        "spotify_artist_id": (
+                spotify_data.get("artist_id")
+                or base.get("artist_id")
+                or f"test_{re.sub(r'\W+', '_', normalize_name(artist_name_raw))}"
+        ),
+
         "mode_flag": mode_flag.value,
         "duration_ms": spotify_data.get("duration_ms"),
         "popularity": spotify_data.get("popularity"),
@@ -105,6 +109,7 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     return result
 
 def build_final_json(enriched_tracks, request, now, is_test_mode=False):
+
     seen_artists = {}
     artists = []
     tracks = []
@@ -112,22 +117,27 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
 
     # Loop through each track entry in the list of enriched tracks
     for base in enriched_tracks:
-        # Log that we’re about to normalize the key names of this track dictionary
-        logger_step4a.debug("⟳ [STEP_4.A] Normalizing keys to assure snake_case")
 
-        # Convert all known camelCase keys (e.g., 'trackName') to snake_case (e.g., 'track_name')
-        # This ensures uniform field access in the rest of the pipeline
-        base = normalize_keys(base)
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 🎧 STEP 4.A — Get Spotify data (or skip if test)
+        # ─────────────────────────────────────────────────────────────────────────────
+        spotify_data = {}
 
         if is_test_mode:
-            spotify_data = {}
-            logger_step4a.debug(f"[STEP_4.A] [TEST MODE] Skipping spotify_data for: {base['track_name']} by {base['artist_name']}")
+            logger_step4a.debug(
+                f"[STEP_4.A] [TEST MODE] No Spotify enrichment — using empty spotify_data for: {base.get('track_name')} by {base.get('artist_name')}"
+            )
         else:
+            logger_step4a.debug("[STEP_4.A] Running in NORMAL mode")
             spotify_data = base.get("spotify_data", {})
             if spotify_data:
-                logger_step4a.debug(f"🎷 [STEP_4.A] Enrich OK: '{base.get('track_name')}' by '{base.get('artist_name')}'")
+                logger_step4a.debug(
+                    f"🎷 Enrich OK: '{base.get('track_name')}' by '{base.get('artist_name')}'"
+                )
             else:
-                logger_step4a.warning(f"⚠️ [STEP_4.A] Missing spotify_data for '{base.get('track_name')}'")
+                logger_step4a.warning(
+                    f"⚠️ Missing spotify_data for '{base.get('track_name')}'"
+                )
 
         track_entry = build_track_entry(base, request, spotify_data, now, is_test_mode)
         tracks.append(track_entry)
@@ -146,11 +156,24 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             "ranking_date": now.split("T")[0],
         })
 
+
         artist_id = track_entry.get("spotify_artist_id")
         artist_name = track_entry.get("artist_name", "unknown")
+
+        # ✅ Fallback if Spotify did not provide an artist_id
+        if not artist_id:
+            safe_name = re.sub(r"\W+", "_", artist_name.strip().lower())
+            artist_id = f"test_{safe_name}"
+            logger_step4d.warning(
+                f"⚠️ [STEP_4.D] No Spotify artist_id → using fallback ID: {artist_id}"
+            )
+
+        # ✅ Proceed if artist_id is now defined and hasn't been seen yet
         if artist_id and artist_id not in seen_artists:
             seen_artists[artist_id] = artist_name
-            logger_step4d.debug(f"🎤 [STEP_4.D] Adding artist: {artist_name} ({artist_id})")
+            logger_step4d.debug(
+                f"🎤 [STEP_4.D] Adding artist: {artist_name} ({artist_id})"
+            )
             artists.append({
                 "artist_name": artist_name,
                 "spotify_artist_id": artist_id,
@@ -159,6 +182,17 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 "artist_mp3_url": None,
                 "not_on_spotify": False
             })
+            #
+            # seen_artists[artist_id] = artist_name
+            # logger_step4d.debug(f"🎤 [STEP_4.D] Adding artist: {artist_name} ({artist_id})")
+            # artists.append({
+            #     "artist_name": artist_name,
+            #     "spotify_artist_id": artist_id,
+            #     "artist_artwork": spotify_data.get("artist_artwork"),
+            #     "artist_description": base.get("artist_description"),
+            #     "artist_mp3_url": None,
+            #     "not_on_spotify": False
+            # })
 
     logger_step4e.info("🧱 [STEP_4.E] Assembling final JSON...")
     final_json = {

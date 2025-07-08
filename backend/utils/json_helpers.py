@@ -57,22 +57,149 @@ ARTIST_NAME_ALIASES = {
     "Ike & Tina Turner": "Ike and Tina Turner",
     "Peter, Paul & Mary": "Peter, Paul and Mary",
 }
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 👥 Group + Duet Name Lists (normalized)
+# 🎸 KNOWN GROUPS WITH TOP‑40 HITS (1950s → present)
+#   • Keys  = genre
+#   • Values = {normalized group names}
+#   • Update whenever you run into a new mis‑detected group.
 # ─────────────────────────────────────────────────────────────────────────────
 KNOWN_GROUPS = {
-    "simon and garfunkel",
-    "peter paul and mary",
-    "brooks and dunn",
-    "the byrds",
-    "the beatles",
-    "three dog night",
-    "huey lewis and the news",
-    "crosby stills nash",
-    "crosby stills nash and young",
-    "creedence clearwater revival",
+    "country": {
+        # 1960s‑80s pioneers
+        "alabama",
+        "the oak ridge boys",
+        "the statler brothers",
+        "the judds",
+        "nitty gritty dirt band",
+        "sawyer brown",
+        "restless heart",
+        "shenandoah",
+        "the mavericks",
+        "bellamy brothers",
+
+        # 1990s‑2000s mainstream
+        "little texas",
+        "diamond rio",
+        "lonestar",
+        "rascal flatts",
+        "lady a",
+        "zac brown band",
+        "the band perry",
+        "blackhawk",
+        "dixie chicks",   # 😎 include alias; your alias‑map can remap → “the chicks”
+
+        # 2010s‑present
+        "old dominion",
+        "midland",
+        "parmalee",
+        "little big town",
+        "eli young band",
+        "florida georgia line",
+        "brothers osborne",
+        "high valley",
+        "runaway june",
+        "pistol annies",
+        "home free",
+    },
+
+    "pop": {
+        # 1960s‑70s classics
+        "the beatles",
+        "the beach boys",
+        "abba",
+        "bee gees",
+        "the supremes",
+        "jackson 5",
+        "earth wind and fire",
+
+        # 1980s‑90s radio staples
+        "spice girls",
+        "destinys child",
+        "tlc",
+        "boyz ii men",
+        "backstreet boys",
+        "nsync",
+        "ace of base",
+        "roxette",
+        "eurythmics",
+        "wham",
+
+        # 2000s‑present chart giants
+        "coldplay",
+        "maroon 5",
+        "imagine dragons",
+        "one direction",
+        "pentatonix",
+        "little mix",
+        "chainsmokers",
+        "twenty one pilots",
+        "bts",                 # counts as group even if k‑pop
+        "blackpink",
+    },
+
+    "rock": {
+        # 1960s‑70s icons
+        "rolling stones",
+        "led zeppelin",
+        "pink floyd",
+        "queen",
+        "the who",
+        "the doors",
+        "aerosmith",
+        "eagles",
+        "lynyrd skynyrd",
+        "the clash",
+        "u2",
+
+        # 1980s‑90s
+        "acdc",
+        "van halen",
+        "journey",
+        "bon jovi",
+        "guns n roses",
+        "metallica",
+        "nirvana",
+        "pearl jam",
+        "red hot chili peppers",
+        "rem",
+        "radiohead",
+        "green day",
+        "foo fighters",
+
+        # 2000s‑present
+        "linkin park",
+        "my chemical romance",
+        "arctic monkeys",
+        "the killers",
+        "mumford and sons",
+        "imagine dragons",   # also pop/alt
+        "kings of leon",
+    },
+
+    "folk": {
+        # folk & folk‑rock trailblazers
+        "simon and garfunkel",
+        "peter paul and mary",
+        "the kingston trio",
+        "the weavers",
+        "the byrds",
+        "crosby stills nash",
+        "crosby stills nash and young",
+
+        # modern folk/folk‑pop
+        "the lumineers",
+        "mumford and sons",
+        "of monsters and men",
+        "fleet foxes",
+        "the avett brothers",
+        "punch brothers",
+        "old crow medicine show",
+        "first aid kit",
+        "civil wars",
+        "indigo girls",
+    },
 }
+
 
 KNOWN_DUET_PAIRS = {
     "ella fitzgerald louis armstrong",
@@ -127,30 +254,32 @@ def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Op
     logger_step1b.debug(f"parse_featured_artists('{raw_artist_name}') → no featured artist found")
     return raw_artist_name.strip(), None, None
 
-
 def get_mode_flag(main: str, feat: Optional[str], keyword: Optional[str]) -> str:
     """
     Determine mode_flag type based on normalized artist parts.
     Assumes 'main' and 'feat' are already normalized.
     """
 
-    logger_step1b.debug(f" [STEP_1.B] get_mode_flag → 'group' (matched KNOWN_GROUPS as '{main}')")
-    if main in KNOWN_GROUPS:
-        logger_step1b.debug(f" [STEP_1.B] get_mode_flag → 'group' (matched KNOWN_GROUPS as '{main}')")
-        return "group"
+    # 🧠 Check if the main artist is part of any known group (across all genres)
+    for genre, group_set in KNOWN_GROUPS.items():
+        if main in group_set:
+            logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'group' (matched '{main}' in KNOWN_GROUPS[{genre}])")
+            return "group"
 
+    # 🎤 Check for duet or featured
     if feat:
         combined = f"{main} {feat}"
         if combined in KNOWN_DUET_PAIRS:
-            logger_step1b.debug(f"get_mode_flag → 'duet' (matched KNOWN_DUET_PAIRS as '{combined}')")
+            logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'duet' (matched '{combined}' in KNOWN_DUET_PAIRS)")
             return "duet"
         if keyword == "with":
-            logger_step1b.debug(f"get_mode_flag → 'duet' (keyword='with')")
+            logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'duet' (keyword='with')")
             return "duet"
-        logger_step1b.debug(f"get_mode_flag → 'featured' (keyword='{keyword}')")
+        logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'featured' (keyword='{keyword}')")
         return "featured"
 
-    logger_step1b.debug("get_mode_flag → 'solo' (default)")
+    # 🎙️ Default to solo if no group or duet conditions matched
+    logger_step1b.debug("[STEP_1.B] get_mode_flag → 'solo' (default)")
     return "solo"
 
 # ─────────────────────────────────────────────────────────────────────────────

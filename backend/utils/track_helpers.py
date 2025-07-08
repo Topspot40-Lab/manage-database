@@ -51,7 +51,8 @@ def normalize_track_keys(base: dict, logger) -> dict:
         if normalized_key:
             result[normalized_key] = value
         else:
-            logger.debug(f"🧹 [normalize_track_keys] Skipping unrecognized key: '{key}'")
+            pass
+            # logger.debug(f"🧹 [normalize_track_keys] Skipping unrecognized key: '{key}'")
 
     # logger.debug(f"✅ [normalize_track_keys] Normalized keys: {list(result.keys())}")
 
@@ -66,12 +67,14 @@ def normalize_track_keys(base: dict, logger) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # 🗣️ TTS-Friendly Artist Mode Phrases
 # ─────────────────────────────────────────────────────────────────────────────
+import random
+
 def get_mode_flag_detail_for_tts(track: dict) -> Optional[str]:
     """
     Returns a TTS-friendly phrase for the artist's mode:
-    - "in a duet with X"
-    - "featuring Y"
-    - "performed by the group Z"
+    - Duet: varied phrasing like "in a duet with", "joined by"
+    - Featured: varied phrasing like "featuring", "with special guest"
+    - Group: varied phrasing like "performed by the group", "from the band"
     Returns None for solo artists.
     """
     mode = track.get("mode_flag")
@@ -80,13 +83,41 @@ def get_mode_flag_detail_for_tts(track: dict) -> Optional[str]:
 
     if mode == ModeFlag.SOLO:
         return None
+
     elif mode == ModeFlag.DUET and feat:
-        return f"in a duet with {feat}"
+        duet_phrases = [
+            f"in a duet with {feat}",
+            f"joined by {feat}",
+            f"sharing the mic with {feat}",
+            f"performing alongside {feat}",
+            f"a two-voice harmony with {feat}"
+        ]
+        return random.choice(duet_phrases)
+
     elif mode == ModeFlag.FEATURED and feat:
-        return f"featuring {feat}"
+        feature_phrases = [
+            f"featuring {feat}",
+            f"with special guest {feat}",
+            f"with a spotlight on {feat}",
+            f"with help from {feat}",
+            f"with a featured performance by {feat}"
+        ]
+        return random.choice(feature_phrases)
+
     elif mode == ModeFlag.GROUP:
-        return f"performed by the group {main}"
+        group_phrases = [
+            f"performed by the group {main}",
+            f"a hit from the band {main}",
+            f"recorded by country group {main}",
+            f"delivered by legendary group {main}",
+            f"from the classic band {main}",
+            f"brought to you by {main}",
+            f"created by the talented group {main}"
+        ]
+        return random.choice(group_phrases)
+
     return None
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +159,7 @@ def set_mode_fields(track: dict, logger) -> dict:
         mode_enum = ModeFlag.SOLO
 
     # Final field assignment
+    track["artist_name"] = main
     track["main_artist_name"] = main_raw
     track["featured_artist_name"] = feat_raw
     track["artist_display_name"] = display

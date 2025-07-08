@@ -163,7 +163,7 @@ def get_spotify_data(track_name: str, artist_name: str):
             artist_list = t["artists"]
             for artist in artist_list:
                 candidate_name_norm = normalize_name(artist["name"])
-                logger_spotify.debug(f"🧪 Comparing: '{expected_artist_norm}' vs '{candidate_name_norm}'")
+                logger_spotify.debug(f"🧪 [STEP 3.B] Comparing: '{expected_artist_norm}' vs '{candidate_name_norm}'")
 
                 if expected_artist_norm == candidate_name_norm:
                     artist_id = artist["id"]

@@ -1,5 +1,5 @@
 # backend/services/xai_descriptions.py
-
+from backend.utils.track_helpers import normalize_track_keys
 import json, requests
 from typing import Optional
 
@@ -12,10 +12,11 @@ from backend.config import (
 )
 from backend.utils.logger_factory import get_step_logger
 
-logger_step2 = get_step_logger("STEP_2")      # General Step 2
-logger_intro = get_step_logger("STEP_2.A")    # Rank Intro Text
-logger_detail = get_step_logger("STEP_2.B")   # Track Detail Text
-logger_artist = get_step_logger("STEP_2.C")   # Artist Detail Text
+logger_step2 = get_step_logger("STEP_2")        # General Step 2
+logger_step2a = get_step_logger("STEP_2.A")     # ✍️ Rank Intro Text
+logger_step2b = get_step_logger("STEP_2.B")     # 🧪 Track Detail Text
+logger_step2c = get_step_logger("STEP_2.C")     # 🎙️ Artist Bio Text
+
 
 
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
@@ -119,10 +120,22 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
                     f"artist={'✔️' if tracks[batch_start + i].get('artist_description') else '❌'}"
                 )
 
+                artist_name = tracks[batch_start + i].get("artistName")
+                artist_desc = tracks[batch_start + i].get("artist_description")
+
+                # Combined logging block for rank intro, detail, and artist description
+                log_lines = []
                 if intro:
-                    logger_intro.debug(f"🅰️ Rank {rank} intro: {intro.strip()}")
+                    log_lines.append(f"🅰️ [STEP 2.A] Rank {rank} intro: {intro.strip()}")
                 if detail:
-                    logger_detail.debug(f"🅱️ Rank {rank} detail:\n{detail.strip()}")
+                    log_lines.append(f"🅱️[STEP 2.B] Rank {rank} detail:\n{detail.strip()}")
+                if artist_desc:
+                    log_lines.append(f"🎙️ [STEP 2.C] Rank {rank} — Artist: {artist_name}\n{artist_desc.strip()}")
+
+                if log_lines:
+                    logger_step2.debug("\n".join(log_lines))
+
+
 
 
         except Exception as e:
@@ -132,6 +145,14 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
     # -- after finishing all batches --
     enrich_tracks_with_artist_descriptions(tracks, language)
 
+    # 🔍 Log artist descriptions after enrichment
+    for t in tracks:
+        artist_desc = t.get("artist_description")
+        # print("Artist Description", artist_desc)
+        if artist_desc:
+            logger_step2c.debug(
+                f"🎙️ Rank {t.get('rank')} — Artist: {t.get('artist_name')}\n{artist_desc.strip()}"
+            )
 
     logger_step2.info("✅ STEP 2 complete.")
     return {
@@ -144,7 +165,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
 
 def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:
     if not ENABLE_ARTIST_DESCRIPTION:
-        logger_step2.debug(f"[SKIP] Artist description disabled for {artist_name}.")
+        logger_step2c.debug(f"[SKIP] Artist description disabled for {artist_name}.")
         return None
 
     prompt = (
@@ -168,7 +189,7 @@ def get_artist_description(artist_name: str, language: str = "English") -> Optio
         "temperature": 0.5
     }
 
-    logger_artist.debug(f"🎤 Requesting bio for: {artist_name}")
+    logger_step2c.debug(f"🎤 Requesting bio for: {artist_name}")
 
     try:
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
@@ -176,70 +197,71 @@ def get_artist_description(artist_name: str, language: str = "English") -> Optio
         content = response.json()["choices"][0]["message"]["content"]
 
         if not content.strip():
-            logger_step2.warning(f"[EMPTY] No content returned for: {artist_name}")
+            logger_step2c.warning(f"[EMPTY] No content returned for: {artist_name}")
             return f"(No description found for {artist_name})"
 
-        logger_artist.debug(f"🎤 Full bio for {artist_name}:\n{content.strip()}")
+        logger_step2c.debug(f"🎤 Full bio for {artist_name}:\n{content.strip()}")
 
         return content.strip()
 
     except requests.exceptions.HTTPError as e:
-        logger_step2.error(f"[HTTP ERROR] {e}")
+        logger_step2c.error(f"[HTTP ERROR] {e}")
         return f"(HTTP error fetching description for {artist_name})"
 
     except Exception as e:
-        logger_step2.error(f"[ERROR] Unexpected issue: {e}")
+        logger_step2c.error(f"[ERROR] Unexpected issue: {e}")
         return f"(Unexpected error fetching description for {artist_name})"
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 🆕  STEP‑2D  ─ Fetch & attach artist descriptions
-# -----------------------------------------------------------------------------
+# 🆕  STEP‑2C  ─ Fetch & attach artist bios
+# ----------------------------------------------------------------------------
 
 
 def enrich_tracks_with_artist_descriptions(tracks: list[dict], language: str) -> None:
     """
-    Mutates `tracks` in place: adds 'artist_description' to each track.
-    Only runs if ENABLE_ARTIST_DESCRIPTION = True.
+    Adds `artist_description` to each track in-place.
+    Runs only if ENABLE_ARTIST_DESCRIPTION = True.
     """
 
     if not ENABLE_ARTIST_DESCRIPTION:
-        logger_step2.info("🎤 [STEP_2D] Artist‑description enrichment disabled.")
+        logger_step2c.info("🎤 [STEP_2C] Artist‑description enrichment disabled.")
         return
 
-    # 1️⃣ Build a set of unique artist names that still need a bio
+    # 🔄 Ensure we’re working with snake_case keys (`artist_name`)
+    for i, t in enumerate(tracks):
+        tracks[i] = normalize_track_keys(t, logger_step2c)  # harmless if already snake_case
+
+    # 🗂️ Collect unique artists missing a bio
     unique_artists: set[str] = {
-        t.get("artistName") for t in tracks
-        if t.get("artistName") and not t.get("artist_description")
+        t["artist_name"]
+        for t in tracks
+        if t.get("artist_name") and not (t.get("artist_description") or "").strip()
     }
 
     if not unique_artists:
-        logger_step2.debug("🎤 [STEP_2] No missing artist descriptions. Skipping.")
+        logger_step2c.debug("🎤 [STEP_2C] No missing artist descriptions. Skipping.")
         return
 
-    logger_step2.debug(f"🎤 [STEP_2] Fetching bios for {len(unique_artists)} artists…")
+    logger_step2c.debug(f"🎯 [STEP_2C] Fetching bios for {len(unique_artists)} artists: {unique_artists}")
 
-    # 2️⃣ Fetch bios with per‑artist caching to avoid duplicates
+    # ️♻️ Simple in‑memory cache so we don’t hit XAI twice for the same artist
     bio_cache: dict[str, str] = {}
 
     for artist in sorted(unique_artists):
+        # Fetch (or reuse) bio
         bio = bio_cache.get(artist)
         if bio is None:
-            bio = get_artist_description(artist, language)  # already logs internally
+            bio = get_artist_description(artist, language)  # already logs request/result
             bio_cache[artist] = bio
 
+        # Attach to every track by that artist
         for t in tracks:
-            if t.get("artistName") == artist:
+            if t.get("artist_name") == artist:
                 t["artist_description"] = bio
 
-        logger_artist.debug(
+        logger_step2c.debug(
             f"🎙️  Attached bio for '{artist}' to "
-            f"{sum(1 for t in tracks if t.get('artistName') == artist)} track(s)."
+            f"{sum(1 for t in tracks if t.get('artist_name') == artist)} track(s)."
         )
 
-    logger_step2.debug("🎤 [STEP_2.C] Artist bios attached.\n")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 🎯 Call this at the very end of get_track_descriptions_from_xai()
-# ─────────────────────────────────────────────────────────────────────────────
+    logger_step2c.debug("🎤 [STEP_2C] Artist bios attached.")

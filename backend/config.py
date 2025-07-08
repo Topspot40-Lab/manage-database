@@ -90,17 +90,17 @@ LOG_LEVEL_OVERRIDES = {
     # ────────────────────────────── STEP 2 ──────────────────────────────
     # ✍️ Description Generation — generates intros and details for each track
 
-    "STEP_2": "INFO",  # High-level orchestration for description generation
+    "STEP_2":    "INFO",  # 🔁 Overall STEP 2 orchestration (XAI + bio)
 
-    "STEP_2.A": "INFO",  # ✍️ STEP 2.A — Generate Descriptions via XAI
-    # Function: get_track_descriptions_from_xai(tracks, ...)
-    # - Uses XAI to generate `intro` and `detail` fields
-    # - May skip if already provided or disabled by flags
+    "STEP_2.A":  "INFO",  # 🅰️ Rank intro generation
+    # Function: get_track_descriptions_from_xai(...)
+    # Handles: `intro` field (1-liner with rank, artist, genre, etc.)
 
-    "STEP_2.B": "INFO",  # 🧪 STEP 2.B — Validate or Patch Description Fields
-    # Function: validate_descriptions(tracks)
-    # - Ensures `intro` and `detail` are present and well-formed
-    # - Logs missing fields or uses fallback templates
+    "STEP_2.B":  "INFO",  # 🅱️ Track detail generation
+    # Handles: `detail` field (Casey Kasem-style narrative)
+
+    "STEP_2.C":  "INFO",  # 🎙️ Artist bio generation
+    # Handles: `artist_description` field (stored per artist)
 
     # ────────────────────────────── STEP 3 ──────────────────────────────
     # 🎧 Spotify Enrichment Pipeline — enhances basic track data with Spotify metadata

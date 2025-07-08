@@ -134,6 +134,7 @@ async def generate_track_json(
                 "track_count": len(track_list),
                 "tracks": track_list
             }
+        logger.info("🛑 Step 1 ----- Complete")
         # ───────────────── STEP 2 ─────────────────
         logger.info("✍️ STEP 2: Enriching tracks with XAI descriptions")
         enriched = get_track_descriptions_from_xai(
@@ -153,26 +154,29 @@ async def generate_track_json(
                 "track_count": len(enriched['tracks']),
                 "tracks": enriched["tracks"]
             }
-
+        logger.info("🛑 Step 2 ----- Complete")
         # ───────────────── STEP 3 ─────────────────
+        logger.info("✍️ STEP 3: Enriching tracks with Spotify API")
         enriched["tracks"] = enrich_tracks_with_spotify(
             enriched["tracks"], is_test_mode=(test_file_number > 0)
         )
+        logger.info("🛑 Step 3 ----- Complete")
 
         if max_step == 3:
-            logger.info("🛑 Stopping after STEP 3 as requested")
+            logger.info("        🛑 Stopping after STEP 3 as requested")
             return {"message": "Stopped after STEP 3"}
 
         # ───────────────── STEP 4 ─────────────────
-        is_test_mode = test_file_number > 0
         logger.info("🧱 STEP 4: Building full JSON structure from enriched data")
+        is_test_mode = test_file_number > 0
+
         final_json, track_entries, artist_entries = build_final_json(
             enriched_tracks=enriched["tracks"],
             request=request,
             now=now,
             is_test_mode=is_test_mode
         )
-
+        logger.info("        🛑 Step 4 ----- Complete")
         if max_step == 4:
             logger.info("🛑 Stopping after STEP 4 as requested")
             return {"message": "Stopped after STEP 4", "preview": final_json}

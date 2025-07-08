@@ -199,7 +199,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
             if not isinstance(raw_tracks, list):
                 raise ValueError("Expected 'tracks' to be a list.")
             logger_step1b.debug(f"[XAI] Extracted {len(raw_tracks)} tracks.")
-            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), num_tracks, is_test_mode=False)
+            tracks = parse_and_filter_tracks(json.dumps(raw_tracks), total_requested, is_test_mode=False)
 
         else:
             logger_step1b.error(f"[STEP_1.B] ❌ content is unexpected type: {type(content)}")
@@ -207,6 +207,7 @@ def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_numbe
 
         if tracks:
             logger_step1b.info("🎧 [STEP_1.B] XAI Track summary:\n" + format_track_list(tracks))
+            logger_step1b.info(format_detail_track_list(tracks))
         else:
             logger_step1b.debug("⚠️ No tracks returned.")
 
