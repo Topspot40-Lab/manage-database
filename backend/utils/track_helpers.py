@@ -1,7 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 📦 Imports
 # ─────────────────────────────────────────────────────────────────────────────
-from enum import IntEnum
 from typing import Optional
 
 from backend.utils.json_helpers import (
@@ -21,6 +20,8 @@ TRACK_KEY_MAP = {
     "track_name": "track_name",
     "artistName": "artist_name",
     "artist_name": "artist_name",
+    "artistDisplayName": "artist_display_name",          # ✅ NEW
+    "featuredArtistName": "featured_artist_name",        # ✅ NEW
     "yearReleased": "year_released",
     "year_released": "year_released",
     "rank": "rank",
@@ -41,25 +42,23 @@ REQUIRED_KEYS = [
 # ─────────────────────────────────────────────────────────────────────────────
 def normalize_track_keys(base: dict, logger) -> dict:
     """
-    Normalize raw track dictionary keys from camelCase to snake_case.
-    Logs skipped keys and warns about missing required keys.
+    Normalize a raw track dictionary by converting key names to consistent snake_case.
+    Preserves enriched metadata unless camelCase is present.
     """
     result = {}
 
     for key, value in base.items():
         normalized_key = TRACK_KEY_MAP.get(key)
+
         if normalized_key:
-            result[normalized_key] = value
+            # Only overwrite if normalized_key not present or this is the canonical source
+            if normalized_key not in result:
+                result[normalized_key] = value
+            else:
+                logger.debug(f"⚠️ normalize_track_keys: key '{normalized_key}' already exists; keeping existing value.")
         else:
-            pass
-            # logger.debug(f"🧹 [normalize_track_keys] Skipping unrecognized key: '{key}'")
-
-    # logger.debug(f"✅ [normalize_track_keys] Normalized keys: {list(result.keys())}")
-
-    # Check for missing required keys
-    missing = [k for k in REQUIRED_KEYS if k not in result]
-    if missing:
-        logger.warning(f"⚠️ [normalize_track_keys] Missing required keys: {missing}")
+            # Keep any unrecognized keys as-is
+            result[key] = value
 
     return result
 

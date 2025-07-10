@@ -4,11 +4,17 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 import json
-from backend.services.spotify_service import handle_missing_track, reassign_ranks
+from backend.services.spotify.missing_log import (
+    handle_missing_track,
+    reassign_ranks,
+)
+from backend.utils.logger_factory import get_step_logger
+
+from backend.utils.logger_factory import get_step_logger
 from backend.utils.track_builder import build_track_entry, build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
-
+import json  # if not already at the top
 # New
 from backend.services.xai_descriptions import get_track_descriptions_from_xai
 
@@ -18,6 +24,7 @@ from pydantic import BaseModel
 from backend.utils.log_helpers import log_generate_json_summary
 
 logger = logging.getLogger(__name__)
+logger_step4e = get_step_logger("STEP_4.E")
 
 router = APIRouter()
 
@@ -134,6 +141,7 @@ async def generate_track_json(
                 "track_count": len(track_list),
                 "tracks": track_list
             }
+
         logger.info("🛑 Step 1 ----- Complete")
         # ───────────────── STEP 2 ─────────────────
         logger.info("✍️ STEP 2: Enriching tracks with XAI descriptions")
@@ -176,7 +184,26 @@ async def generate_track_json(
             now=now,
             is_test_mode=is_test_mode
         )
+
+        # ✅ STEP 4 Summary Output
+        logger.info("📋 STEP 4 SUMMARY: Track Listing")
+        tracks = final_json["track_tables"]["track"]
+        for t in tracks:
+            rank = t.get("rank")
+            name = t.get("trackName") or t.get("track_name")
+            artist = t.get("artistName") or t.get("artist_name")
+            track_id = t.get("spotify_track_id")
+            if track_id:
+                logger.info(f"   #{rank:02d} — {name} by {artist} 🎧 {track_id}")
+            else:
+                logger.warning(f"   #{rank:02d} — {name} by {artist} ❌ MISSING Spotify ID")
+
         logger.info("        🛑 Step 4 ----- Complete")
+
+
+        logger_step4e.debug("🧾 STEP 4.E: Final JSON preview (pretty-printed)")
+        logger_step4e.debug(json.dumps(final_json, indent=2, ensure_ascii=False))
+
         if max_step == 4:
             logger.info("🛑 Stopping after STEP 4 as requested")
             return {"message": "Stopped after STEP 4", "preview": final_json}
@@ -223,6 +250,7 @@ async def generate_track_json(
                 rebuilt["rank"] = len(tracks) + 1
                 tracks.append(rebuilt)
                 logger.info(f"✅ Spare track added: {rebuilt['artist_display_name']}")
+
             except Exception as e:
                 logger.warning(f"❌ Failed to rebuild spare track: {e}")
                 continue
@@ -261,6 +289,7 @@ async def generate_track_json(
         log_generate_json_summary(
             tracks=track_entries,
             artists=artist_entries,
+
             now=datetime.now(),
             category=request.decade,
             genre=request.genre,

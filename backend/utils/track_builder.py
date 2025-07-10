@@ -3,6 +3,7 @@ from backend.utils.json_helpers import parse_featured_artists, normalize_name
 import json
 import logging
 import re  # make sure it's imported at top if not already
+from backend.services.spotify.track_search import get_spotify_artist_info
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,9 @@ logger_step4e = get_step_logger("STEP_4.E")
 #         "detail": base.get("detail"),
 #         **base  # Preserve any other existing fields
 #     }
-
 def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
+
+    logger_step4b.debug(f"[build_track_entry] incoming base keys: {list(base.keys())}")
 
     if is_test_mode:
         logger_step4b.debug(
@@ -34,7 +36,6 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
             f"   🏅 Rank: {base.get('rank')}\n"
             f"   🎼 Track: '{base.get('track_name')}', Artist: '{base.get('artist_name')}'\n"
             f"   🐛 Logger: {logger_step4b.name}, Level: {logger_step4b.getEffectiveLevel()}\n"
-            "   📆 Spotify data: <SKIPPED in test mode>"
         )
     else:
         logger_step4b.debug(
@@ -56,10 +57,29 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     track_name_raw = base["track_name"]
     year_released = base["year_released"]
 
-    artist_name_clean, featured_artist_name, _ = parse_featured_artists(artist_name_raw)
+    # Parse artist names
+    artist_name_clean, featured_artist_name_raw, _ = parse_featured_artists(artist_name_raw)
     artist_name_clean = normalize_name(artist_name_clean)
-    featured_artist = normalize_name(featured_artist_name) if featured_artist_name else None
+
+    logger_step4b.debug(f"🔍 base['featured_artist_name'] = {base.get('featured_artist_name')}")
+
+    if not featured_artist_name_raw:
+        featured_artist_name_raw = base.get("featured_artist_name")
+
+    logger_step4b.debug(f"🎯 Final featured_artist_name_raw = {featured_artist_name_raw}")
+
     track_name_clean = normalize_name(track_name_raw)
+    track_display_name = track_name_clean
+    if featured_artist_name_raw:
+        track_display_name += f" (feat. {featured_artist_name_raw})"
+
+    logger_step4b.debug(f"🎵 track_display_name = '{track_display_name}'")
+
+    track_name_clean = normalize_name(track_name_raw)
+    track_display_name = track_name_clean
+    if featured_artist_name_raw:
+        track_display_name += f" (feat. {featured_artist_name_raw})"
+
     track_display_name = track_name_clean
 
     mode_flag_str = base.get("mode_flag", "unknown")
@@ -70,25 +90,25 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
         mode_flag = ModeFlag.UNKNOWN
 
     logger_step4b.debug(f"🧽 Normalized: '{track_name_clean}' by '{artist_name_clean}', Mode: {mode_flag.value}")
-    logger_step4b.debug(f"🎨 Display Name: {track_display_name}, Featured: {featured_artist}")
+    logger_step4b.debug(f"🎨 Display Name: {track_display_name}, Featured: {featured_artist_name_raw}")
+    logger_step4b.debug(f"🖼️ Artist Display Name: {base.get('artist_display_name')}")
 
     result = {
         "rank": base.get("rank"),
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
-        "artist_display_name": artist_name_raw,
-        "featured_artist": featured_artist,
+        "artist_display_name": base.get("artist_display_name", artist_name_raw),
+        "featured_artist": base.get("featured_artist_name", featured_artist_name_raw),
         "featured_artist_id": spotify_data.get("featured_artist_id"),
         "track_display_name": track_display_name,
         "genre": request.genre,
         "decade": request.decade,
         "spotify_track_id": spotify_data.get("spotify_track_id"),
         "spotify_artist_id": (
-                spotify_data.get("artist_id")
-                or base.get("artist_id")
-                or f"test_{re.sub(r'\W+', '_', normalize_name(artist_name_raw))}"
+            spotify_data.get("artist_id")
+            or base.get("artist_id")
+            or f"test_{re.sub(r'\W+', '_', normalize_name(artist_name_raw))}"
         ),
-
         "mode_flag": mode_flag.value,
         "duration_ms": spotify_data.get("duration_ms"),
         "popularity": spotify_data.get("popularity"),
@@ -115,21 +135,18 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
     tracks = []
     rankings = []
 
-    # Loop through each track entry in the list of enriched tracks
     for base in enriched_tracks:
+        spotify_data = base.get("spotify_data", {})
 
         # ─────────────────────────────────────────────────────────────────────────────
-        # 🎧 STEP 4.A — Get Spotify data (or skip if test)
+        # 🎧 STEP 4.A — Logging Spotify metadata usage
         # ─────────────────────────────────────────────────────────────────────────────
-        spotify_data = {}
-
         if is_test_mode:
             logger_step4a.debug(
-                f"[STEP_4.A] [TEST MODE] No Spotify enrichment — using empty spotify_data for: {base.get('track_name')} by {base.get('artist_name')}"
+                f"[TEST MODE] Using Spotify metadata for: "
+                f"{base.get('track_name')} by {base.get('artist_name')}"
             )
         else:
-            logger_step4a.debug("[STEP_4.A] Running in NORMAL mode")
-            spotify_data = base.get("spotify_data", {})
             if spotify_data:
                 logger_step4a.debug(
                     f"🎷 Enrich OK: '{base.get('track_name')}' by '{base.get('artist_name')}'"
@@ -138,6 +155,14 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 logger_step4a.warning(
                     f"⚠️ Missing spotify_data for '{base.get('track_name')}'"
                 )
+
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 🎵 STEP 4.B — Build individual track record
+        # ─────────────────────────────────────────────────────────────────────────────
+        logger_step4b.debug(
+            f"🧪 base[{base.get('rank')}]: artist_name={base.get('artist_name')}, "
+            f"display_name={base.get('artist_display_name')}, featured={base.get('featured_artist_name')}"
+        )
 
         track_entry = build_track_entry(base, request, spotify_data, now, is_test_mode)
         tracks.append(track_entry)
@@ -156,44 +181,55 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             "ranking_date": now.split("T")[0],
         })
 
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 🎤 STEP 4.D — Add MAIN artist
+        # ─────────────────────────────────────────────────────────────────────────────
+        main_artist = base.get("artist_name", "").strip().lower()
+        if main_artist:
+            artist_info = get_spotify_artist_info(main_artist)
+            artist_id = artist_info.get("spotify_artist_id") if artist_info else None
+            if not artist_id:
+                safe_main = re.sub(r"\W+", "_", main_artist)
+                artist_id = f"test_{safe_main}"
+                logger_step4d.warning(f"⚠️ No Spotify artist_id for main artist '{main_artist}' → fallback: {artist_id}")
+            if artist_id not in seen_artists:
+                seen_artists[artist_id] = main_artist
+                logger_step4d.debug(f"🎤 Adding main artist: {main_artist} ({artist_id})")
+                artists.append({
+                    "artist_name": main_artist,
+                    "spotify_artist_id": artist_id,
+                    "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
+                    "artist_description": base.get("artist_description"),
+                    "artist_mp3_url": None,
+                    "not_on_spotify": not bool(artist_info),
+                })
 
-        artist_id = track_entry.get("spotify_artist_id")
-        artist_name = track_entry.get("artist_name", "unknown")
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 👤 STEP 4.D — Add FEATURED artist if present
+        # ─────────────────────────────────────────────────────────────────────────────
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 👤 STEP 4.D — Add FEATURED artist if present
+        # ─────────────────────────────────────────────────────────────────────────────
+        featured_artist = track_entry.get("featured_artist")
+        feat_artist_id = track_entry.get("featured_artist_id")
 
-        # ✅ Fallback if Spotify did not provide an artist_id
-        if not artist_id:
-            safe_name = re.sub(r"\W+", "_", artist_name.strip().lower())
-            artist_id = f"test_{safe_name}"
-            logger_step4d.warning(
-                f"⚠️ [STEP_4.D] No Spotify artist_id → using fallback ID: {artist_id}"
-            )
+        if featured_artist and feat_artist_id:
+            if feat_artist_id not in seen_artists:
+                logger_step4d.debug(f"👤 Adding featured artist: {featured_artist} ({feat_artist_id})")
+                artist_info = get_spotify_artist_info(featured_artist)
+                artists.append({
+                    "artist_name": featured_artist,
+                    "spotify_artist_id": feat_artist_id,
+                    "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
+                    "artist_description": None,  # You may fill this from base or a separate source later
+                    "artist_mp3_url": None,
+                    "not_on_spotify": not bool(artist_info),
+                })
+                seen_artists[feat_artist_id] = featured_artist
 
-        # ✅ Proceed if artist_id is now defined and hasn't been seen yet
-        if artist_id and artist_id not in seen_artists:
-            seen_artists[artist_id] = artist_name
-            logger_step4d.debug(
-                f"🎤 [STEP_4.D] Adding artist: {artist_name} ({artist_id})"
-            )
-            artists.append({
-                "artist_name": artist_name,
-                "spotify_artist_id": artist_id,
-                "artist_artwork": spotify_data.get("artist_artwork"),
-                "artist_description": base.get("artist_description"),
-                "artist_mp3_url": None,
-                "not_on_spotify": False
-            })
-            #
-            # seen_artists[artist_id] = artist_name
-            # logger_step4d.debug(f"🎤 [STEP_4.D] Adding artist: {artist_name} ({artist_id})")
-            # artists.append({
-            #     "artist_name": artist_name,
-            #     "spotify_artist_id": artist_id,
-            #     "artist_artwork": spotify_data.get("artist_artwork"),
-            #     "artist_description": base.get("artist_description"),
-            #     "artist_mp3_url": None,
-            #     "not_on_spotify": False
-            # })
-
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 🧱 STEP 4.E — Assemble the final JSON structure
+    # ─────────────────────────────────────────────────────────────────────────────
     logger_step4e.info("🧱 [STEP_4.E] Assembling final JSON...")
     final_json = {
         "language": request.language,
@@ -220,6 +256,13 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             "track_ranking": rankings
         }
     }
+
+    logger_step4e.debug(
+        f"🧾 Final JSON includes:\n"
+        f"   🎵 Tracks: {len(tracks)}\n"
+        f"   👨‍🎤 Main + Featured Artists: {len(artists)}\n"
+        f"   🪪 Rankings: {len(rankings)}"
+    )
 
     logger_step4e.info(
         f"🌟 [STEP_4.E] JSON build complete: {len(tracks)} tracks, {len(artists)} unique artists, {len(rankings)} rankings."

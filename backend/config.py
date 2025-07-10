@@ -165,6 +165,7 @@ STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
 # These work independently of STEP loggers.
 # ---------------------------------------------------------------------------
 LOG_LEVELS_BY_MODULE = {
+    "backend.services.generate_json": "INFO",
     "backend.services.xai_service": "INFO",
     "backend.services.spotify_service": "INFO",
     "backend.services.track_generator": "INFO",

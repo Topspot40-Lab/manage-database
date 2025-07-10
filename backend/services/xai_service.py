@@ -4,7 +4,6 @@
 import os
 import json
 import logging
-from typing import Optional
 from dotenv import load_dotenv
 
 from backend.config import TEST_JSON_DIR
@@ -88,6 +87,8 @@ def format_track_list(tracks, fields=("rank", "track_name", "artist_name", "mode
 
     return "\n".join(lines)
 
+def safe_trim(text: str, width: int) -> str:
+    return (text or "")[: width - 1] + "…" if text and len(text) > width else (text or "")
 
 def format_detail_track_list(tracks) -> str:
     """
@@ -107,25 +108,27 @@ def format_detail_track_list(tracks) -> str:
     lines.append("-" * len(header1))
     for t in tracks:
         lines.append(
-            f"{str(t.get('rank','')):<4} | "
-            f"{str(t.get('track_name',''))[:30]:<30} | "
-            f"{str(t.get('main_artist_name',''))[:25]:<25} | "
-            f"{str(t.get('featured_artist_name',''))[:25]:<25}"
+            f"{str(t.get('rank', '')):<4} | "
+            f"{safe_trim(t.get('track_name', ''), 30):<30} | "
+            f"{safe_trim(t.get('main_artist_name', ''), 25):<25} | "
+            f"{safe_trim(t.get('featured_artist_name', ''), 25):<25}"
         )
+
     lines.append("")
 
     # Section 2: Mode & Display
     lines.append("🎧 Section 2 — Mode & Display Info")
-    header2 = f"{'rank':<4} | {'artist_name':<30} | {'artist_display_name':<30} | {'mode_flag':<12} | {'mode_flag_detail':<18}"
+    header2 = f"{'rank':<4} | {'artist_name':<30} | {'artist_display_name':<40} | {'mode_flag':<12} | {'mode_flag_detail':<60}"
+
     lines.append(header2)
     lines.append("-" * len(header2))
     for t in tracks:
         lines.append(
-            f"{str(t.get('rank','')):<4} | "
-            f"{str(t.get('artist_name',''))[:30]:<30} | "
-            f"{str(t.get('artist_display_name',''))[:40]:<40} | "
+            f"{str(t.get('rank', '')):<4} | "
+            f"{safe_trim(t.get('artist_name', ''), 30):<30} | "
+            f"{safe_trim(t.get('artist_display_name', ''), 40):<40} | "
             f"{format_mode_flag(t.get('mode_flag')):<12} | "
-            f"{str(t.get('mode_flag_detail',''))[:30]:<30}"
+            f"{safe_trim(t.get('mode_flag_detail', ''), 60):<60}"
         )
 
     return "\n".join(lines)

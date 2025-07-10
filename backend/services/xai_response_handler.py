@@ -85,4 +85,10 @@ def parse_and_filter_tracks(json_input, num_tracks, is_test_mode=False):
         tracks = tracks[:num_tracks]
         logger_step1b.debug(f"🔢 Trimmed to top {num_tracks} tracks (not in test mode)")
 
+    for t in tracks:
+        if "featured_artist_name" in t:
+            logger_step1b.debug(f"✅ Normalized featured_artist_name: {t['featured_artist_name']}")
+        else:
+            logger_step1b.debug(f"⚠️ Missing featured_artist_name for rank {t.get('rank')}")
+
     return tracks
