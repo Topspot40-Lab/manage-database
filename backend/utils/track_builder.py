@@ -200,7 +200,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 "artist_name": main_artist_name,
                 "spotify_artist_id": main_artist_id,
                 "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                "artist_description": spotify_data.get("artist_description"),
+                "artist_description": base.get("artist_description") or spotify_data.get("artist_description"),
                 "artist_mp3_url": None,
                 "not_on_spotify": not bool(artist_info),
             })
@@ -221,7 +221,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                     "artist_name": featured_artist,
                     "spotify_artist_id": feat_artist_id,
                     "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                    "artist_description": None,  # You may fill this from base or a separate source later
+                    "artist_description": artist_info.get("artist_description") if artist_info else None,
                     "artist_mp3_url": None,
                     "not_on_spotify": not bool(artist_info),
                 })
