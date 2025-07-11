@@ -112,7 +112,7 @@ LOG_LEVEL_OVERRIDES = {
                             # - Calls Spotipy to search for matching track and artist
                             # - Applies fallback logic and filtering
 
-    "STEP_3.B": "DEBUG",     # 🧱 STEP 3.B — Build Enriched Track Entry
+    "STEP_3.B": "INFO",     # 🧱 STEP 3.B — Build Enriched Track Entry
                             # Function: enrich_track(base, spotify_match)
                             # - Merges XAI data with Spotify metadata into unified structure
 
@@ -120,19 +120,19 @@ LOG_LEVEL_OVERRIDES = {
     # ────────────────────────────── STEP 4 ──────────────────────────────
     # 📦 Final JSON Builder — assembles full TopSpot data structure (track, artist, ranking)
 
-    "STEP_4": "DEBUG",      # Orchestrator: build_final_json(enriched_tracks, request, now)
+    "STEP_4": "INFO",      # Orchestrator: build_final_json(enriched_tracks, request, now)
 
-    "STEP_4.A": "DEBUG",    # 🧹 STEP 4.A — Normalize & Verify Fields
+    "STEP_4.A": "INFO",    # 🧹 STEP 4.A — Normalize & Verify Fields
                             # Function: normalize_keys(base)
                             # - Ensures consistent field names (snake_case)
                             # - Validates presence of spotify_data and logs enrichment status
 
-    "STEP_4.B": "DEBUG",    # 🧪 STEP 4.B — Build Track Table Entries
+    "STEP_4.B": "INFO",    # 🧪 STEP 4.B — Build Track Table Entries
                             # Function: build_track_entry(base, request, spotify_data, now)
                             # - Converts one enriched track into a row for the track table
                             # - Logs duration, artwork, and ID fields
 
-    "STEP_4.C": "DEBUG",    # 🎙️ STEP 4.C — Build Artist Table Entries
+    "STEP_4.C": "INFO",    # 🎙️ STEP 4.C — Build Artist Table Entries
                             # Function: build_artist_entry(...) — likely inside build_final_json
                             # - Deduplicates artists and creates a record for each
                             # - Optionally includes Spotify ID, description, and artwork

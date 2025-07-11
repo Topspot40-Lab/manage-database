@@ -53,7 +53,8 @@ def reassign_ranks(tracks: List[Dict]) -> None:
         track["rank"] = i
 
 
-def handle_missing_track(bad_track: Dict, tracks: List[Dict], spare_tracks: List[Dict]) -> bool:
+def handle_missing_track(bad_track: Dict, tracks: List[Dict]) -> bool:
+
     """
     Attempt to resolve a missing track by using Spotify suggestions.
     If matched, update the track in-place and reinsert it into the list.
@@ -135,8 +136,8 @@ def handle_missing_track(bad_track: Dict, tracks: List[Dict], spare_tracks: List
             bad_track,
             f"✅ Auto-replaced with Spotify suggestion ({reason})",
             best_match,
-            category,
-            genre
+            category=category,
+            genre=genre
         )
 
         return True

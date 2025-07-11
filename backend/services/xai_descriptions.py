@@ -154,7 +154,6 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
                 f"🎙️ Rank {t.get('rank')} — Artist: {t.get('artist_name')}\n{artist_desc.strip()}"
             )
 
-    logger_step2.info("✅ STEP 2 complete.")
     return {
         "language": language,
         "decade": decade,

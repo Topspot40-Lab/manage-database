@@ -43,7 +43,7 @@ REQUIRED_KEYS = [
 def normalize_track_keys(base: dict, logger) -> dict:
     """
     Normalize a raw track dictionary by converting key names to consistent snake_case.
-    Preserves enriched metadata unless camelCase is present.
+    Preserves enriched metadata by favoring non-null values if duplicates are found.
     """
     result = {}
 
@@ -51,14 +51,21 @@ def normalize_track_keys(base: dict, logger) -> dict:
         normalized_key = TRACK_KEY_MAP.get(key)
 
         if normalized_key:
-            # Only overwrite if normalized_key not present or this is the canonical source
-            if normalized_key not in result:
-                result[normalized_key] = value
+            if normalized_key in result:
+                existing = result[normalized_key]
+                if existing in [None, "", []] and value not in [None, "", []]:
+                    logger.debug(f"🔁 Overwriting '{normalized_key}' null/empty value with enriched value.")
+                    result[normalized_key] = value
+                else:
+                    logger.debug(f"⚠️ Skipping '{normalized_key}'; existing value is non-empty.")
             else:
-                logger.debug(f"⚠️ normalize_track_keys: key '{normalized_key}' already exists; keeping existing value.")
+                result[normalized_key] = value
         else:
-            # Keep any unrecognized keys as-is
-            result[key] = value
+            # Keep unknown or already-normalized keys (like spotify_data, artist_artwork, etc.)
+            if key not in result:
+                result[key] = value
+            else:
+                logger.debug(f"⚠️ normalize_track_keys: Skipping unknown key '{key}' already in result.")
 
     return result
 

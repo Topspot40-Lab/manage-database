@@ -182,31 +182,31 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         })
 
         # ─────────────────────────────────────────────────────────────────────────────
-        # 🎤 STEP 4.D — Add MAIN artist
+        # 🎤 STEP 4.D — Add MAIN artist (from track_entry)
         # ─────────────────────────────────────────────────────────────────────────────
-        main_artist = base.get("artist_name", "").strip().lower()
-        if main_artist:
-            artist_info = get_spotify_artist_info(main_artist)
-            artist_id = artist_info.get("spotify_artist_id") if artist_info else None
-            if not artist_id:
-                safe_main = re.sub(r"\W+", "_", main_artist)
-                artist_id = f"test_{safe_main}"
-                logger_step4d.warning(f"⚠️ No Spotify artist_id for main artist '{main_artist}' → fallback: {artist_id}")
-            if artist_id not in seen_artists:
-                seen_artists[artist_id] = main_artist
-                logger_step4d.debug(f"🎤 Adding main artist: {main_artist} ({artist_id})")
-                artists.append({
-                    "artist_name": main_artist,
-                    "spotify_artist_id": artist_id,
-                    "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                    "artist_description": base.get("artist_description"),
-                    "artist_mp3_url": None,
-                    "not_on_spotify": not bool(artist_info),
-                })
+        main_artist_name = track_entry.get("artist_name")
+        main_artist_id = track_entry.get("spotify_artist_id")
 
-        # ─────────────────────────────────────────────────────────────────────────────
-        # 👤 STEP 4.D — Add FEATURED artist if present
-        # ─────────────────────────────────────────────────────────────────────────────
+        logger_step4d.debug(
+            f"🎯 MAIN ARTIST check: name={main_artist_name}, id={main_artist_id}, seen={main_artist_id in seen_artists}"
+        )
+
+        if main_artist_name and main_artist_id and main_artist_id not in seen_artists:
+            artist_info = get_spotify_artist_info(main_artist_name)
+
+            logger_step4d.debug(f"🎤 Adding main artist: {main_artist_name} ({main_artist_id})")
+
+            artists.append({
+                "artist_name": main_artist_name,
+                "spotify_artist_id": main_artist_id,
+                "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
+                "artist_description": spotify_data.get("artist_description"),
+                "artist_mp3_url": None,
+                "not_on_spotify": not bool(artist_info),
+            })
+
+            seen_artists[main_artist_id] = main_artist_name
+
         # ─────────────────────────────────────────────────────────────────────────────
         # 👤 STEP 4.D — Add FEATURED artist if present
         # ─────────────────────────────────────────────────────────────────────────────
@@ -227,10 +227,14 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 })
                 seen_artists[feat_artist_id] = featured_artist
 
+                logger_step4d.debug(
+                    f"🧾 Artist list so far (Rank {base.get('rank')}): {[a['artist_name'] for a in artists]}"
+                )
+
     # ─────────────────────────────────────────────────────────────────────────────
     # 🧱 STEP 4.E — Assemble the final JSON structure
     # ─────────────────────────────────────────────────────────────────────────────
-    logger_step4e.info("🧱 [STEP_4.E] Assembling final JSON...")
+    logger_step4e.debug("🧱 [STEP_4.E] Assembling final JSON...")
     final_json = {
         "language": request.language,
         "category": request.decade,
@@ -264,7 +268,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         f"   🪪 Rankings: {len(rankings)}"
     )
 
-    logger_step4e.info(
+    logger_step4e.debug(
         f"🌟 [STEP_4.E] JSON build complete: {len(tracks)} tracks, {len(artists)} unique artists, {len(rankings)} rankings."
     )
 
