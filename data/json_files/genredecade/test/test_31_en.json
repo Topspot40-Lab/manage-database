@@ -1,0 +1,198 @@
+{
+  "language": "english",
+  "category": "test",
+  "genre": "31",
+  "generated_at": "2025-07-11T16:36:51.767624",
+  "core_tables": {
+    "genre": [
+      {
+        "genre_name": "31"
+      }
+    ],
+    "decade": [
+      {
+        "decade_name": "test"
+      }
+    ],
+    "artist": [
+      {
+        "artist_name": "hank snow",
+        "spotify_artist_id": "test_artist_1",
+        "artist_artwork": "https://i.scdn.co/image/ef29bf97f6e45a57de49e29a4f6f01913db7ab9c",
+        "artist_description": "Hank Snow was a Canadian country music artist born in 1914 in Nova Scotia. He began his career performing on local radio stations and rose to fame with hits like \"I'm Moving On,\" which became a number one hit in the U.S. Snow was inducted into the Country Music Hall of Fame in 1979 and was known for his yodeling and his signature song \"The Golden Rocket.\"",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "simon and garfunkel",
+        "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
+        "artist_artwork": "https://i.scdn.co/image/afde2fdd14f8c8ca23393f257e3a369a234a24b6",
+        "artist_description": "Simon & Garfunkel are an American folk-rock duo formed in 1957 by Paul Simon and Art Garfunkel, who met in high school in Queens, New York. They achieved international fame with hits like \"The Sound of Silence\" and \"Bridge Over Troubled Water,\" the latter earning them six Grammy Awards in 1971. A lesser-known fact is that they initially performed under the name Tom & Jerry before adopting Simon & Garfunkel.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ]
+  },
+  "track_tables": {
+    "track": [
+      {
+        "rank": 1,
+        "track_name": "im movin on",
+        "artist_name": "hank snow",
+        "artist_display_name": "Hank Snow",
+        "featured_artist": null,
+        "featured_artist_id": null,
+        "track_display_name": "im movin on",
+        "genre": "31",
+        "decade": "test",
+        "spotify_track_id": "test_track_1",
+        "spotify_artist_id": "test_artist_1",
+        "mode_flag": "solo",
+        "duration_ms": 180000,
+        "popularity": 55,
+        "album_artwork": null,
+        "year_released": 1961,
+        "is_explicit": false,
+        "created_at": "2025-07-11T16:36:51.767624",
+        "intro": "Kicking off at number 1 in the test decade, this 31 genre track is a masterpiece by an unnamed artist!",
+        "detail": "This song was crafted in a small, cozy studio where the magic of music truly came alive. The songwriter, who prefers to stay behind the scenes, poured their heart into every lyric, creating a timeless piece that resonates with listeners. It's fascinating to note that this track was recorded in one take, a rare feat that speaks to the talent involved. And that's the magic that still spins on turntables today!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "rank": 2,
+        "track_name": "the golden rocket",
+        "artist_name": "hank snow",
+        "artist_display_name": "Hank Snow",
+        "featured_artist": null,
+        "featured_artist_id": null,
+        "track_display_name": "the golden rocket",
+        "genre": "31",
+        "decade": "test",
+        "spotify_track_id": "5jcprGzyDUAq25Babtyuei",
+        "spotify_artist_id": "3fq6r0bSIm4McymHKNMk4S",
+        "mode_flag": "solo",
+        "duration_ms": 165453,
+        "popularity": 33,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27393f781ab38f717efc7a13f73",
+        "year_released": 1967,
+        "is_explicit": false,
+        "created_at": "2025-07-11T16:36:51.767624",
+        "intro": "At number 2, dive into the vibrant sounds of the test decade with this 31 genre gem from a mysterious artist!",
+        "detail": "The song's journey to the charts was nothing short of miraculous, climbing steadily due to its infectious melody and heartfelt lyrics. Recorded in a legendary studio known for its acoustics, the track benefited from the expertise of a renowned producer who added just the right touch. It's said that during the recording, the entire team couldn't help but dance, a testament to the song's irresistible rhythm. Keep those feet tapping, because that's the beat that keeps the world moving!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "rank": 3,
+        "track_name": "i dont hurt anymore",
+        "artist_name": "hank snow",
+        "artist_display_name": "Hank Snow",
+        "featured_artist": null,
+        "featured_artist_id": null,
+        "track_display_name": "i dont hurt anymore",
+        "genre": "31",
+        "decade": "test",
+        "spotify_track_id": "test_track_3",
+        "spotify_artist_id": "test_artist_3",
+        "mode_flag": "solo",
+        "duration_ms": 180000,
+        "popularity": 55,
+        "album_artwork": null,
+        "year_released": 1966,
+        "is_explicit": false,
+        "created_at": "2025-07-11T16:36:51.767624",
+        "intro": "Number 3 brings you a playful twist from the test decade, featuring a 31 genre track by an enigmatic artist!",
+        "detail": "This song's creation story is as whimsical as its melody. The songwriter, inspired by a chance encounter at a local café, penned the lyrics on a napkin, capturing the spontaneity of the moment. The track's light-hearted vibe made it a favorite at parties, where it often sparked impromptu dance-offs. And remember, folks, that's the kind of joy that music brings into our lives!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "rank": 4,
+        "track_name": "the sound of silence",
+        "artist_name": "simon and garfunkel",
+        "artist_display_name": "Simon and Garfunkel",
+        "featured_artist": null,
+        "featured_artist_id": null,
+        "track_display_name": "the sound of silence",
+        "genre": "31",
+        "decade": "test",
+        "spotify_track_id": "5y788ya4NvwhBznoDIcXwK",
+        "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
+        "mode_flag": "group",
+        "duration_ms": 185413,
+        "popularity": 75,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b50c381e5f477c3cd066286",
+        "year_released": 1965,
+        "is_explicit": false,
+        "created_at": "2025-07-11T16:36:51.767624",
+        "intro": "Dramatically claiming the 4th spot, this 31 genre track from the test decade is brought to you by a secretive artist!",
+        "detail": "The cultural impact of this song cannot be overstated; it became an anthem for a generation seeking to break free from convention. The recording session was filled with laughter and creativity, with the band experimenting with different sounds until they found the perfect mix. A fun fact: the lead instrument was played by a musician who had never touched it before that day! And that, my friends, is the power of music to inspire and surprise!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 31 - test",
+        "created_at": "2025-07-11T16:36:51.767624"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "track_ranking": [
+      {
+        "track_id": "test_track_1",
+        "track_name": "im movin on",
+        "artist_name": "hank snow",
+        "rank": 1,
+        "genre": "31",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "Kicking off at number 1 in the test decade, this 31 genre track is a masterpiece by an unnamed artist!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      },
+      {
+        "track_id": "5jcprGzyDUAq25Babtyuei",
+        "track_name": "the golden rocket",
+        "artist_name": "hank snow",
+        "rank": 2,
+        "genre": "31",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "At number 2, dive into the vibrant sounds of the test decade with this 31 genre gem from a mysterious artist!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      },
+      {
+        "track_id": "test_track_3",
+        "track_name": "i dont hurt anymore",
+        "artist_name": "hank snow",
+        "rank": 3,
+        "genre": "31",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "Number 3 brings you a playful twist from the test decade, featuring a 31 genre track by an enigmatic artist!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      },
+      {
+        "track_id": "5y788ya4NvwhBznoDIcXwK",
+        "track_name": "the sound of silence",
+        "artist_name": "simon and garfunkel",
+        "rank": 4,
+        "genre": "31",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "Dramatically claiming the 4th spot, this 31 genre track from the test decade is brought to you by a secretive artist!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      }
+    ]
+  }
+}

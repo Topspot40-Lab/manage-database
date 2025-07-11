@@ -127,10 +127,8 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     )
 
     return result
-
 def build_final_json(enriched_tracks, request, now, is_test_mode=False):
-
-    seen_artists = {}
+    seen_artists = set()
     artists = []
     tracks = []
     rankings = []
@@ -167,6 +165,13 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         track_entry = build_track_entry(base, request, spotify_data, now, is_test_mode)
         tracks.append(track_entry)
 
+        logger_step4b.debug(
+            f"🎭 Mode flag: {track_entry.get('mode_flag')} for {track_entry.get('track_name')}"
+        )
+
+        # ─────────────────────────────────────────────────────────────────────────────
+        # 🏆 STEP 4.C — Add ranking row
+        # ─────────────────────────────────────────────────────────────────────────────
         logger_step4c.debug(f"➕ [STEP_4.C] Adding ranking for {track_entry.get('track_name')}")
         rankings.append({
             "track_id": track_entry.get("spotify_track_id"),
@@ -182,54 +187,72 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         })
 
         # ─────────────────────────────────────────────────────────────────────────────
-        # 🎤 STEP 4.D — Add MAIN artist (from track_entry)
+        # 🎤 STEP 4.D — Add MAIN artist
         # ─────────────────────────────────────────────────────────────────────────────
-        main_artist_name = track_entry.get("artist_name")
+        raw_main_artist_name = track_entry.get("artist_name")
+        norm_main_artist_name = normalize_name(raw_main_artist_name)
         main_artist_id = track_entry.get("spotify_artist_id")
 
         logger_step4d.debug(
-            f"🎯 MAIN ARTIST check: name={main_artist_name}, id={main_artist_id}, seen={main_artist_id in seen_artists}"
+            f"🎯 MAIN ARTIST check: raw={raw_main_artist_name}, normalized={norm_main_artist_name}, "
+            f"id={main_artist_id}, seen={main_artist_id in seen_artists}"
         )
 
-        if main_artist_name and main_artist_id and main_artist_id not in seen_artists:
-            artist_info = get_spotify_artist_info(main_artist_name)
+        if norm_main_artist_name and norm_main_artist_name not in seen_artists:
+            artist_info = get_spotify_artist_info(norm_main_artist_name)
 
-            logger_step4d.debug(f"🎤 Adding main artist: {main_artist_name} ({main_artist_id})")
+            if not artist_info:
+                logger_step4d.warning(f"❌ No Spotify info found for main artist: {norm_main_artist_name}")
+
+            logger_step4d.debug(f"🎤 Adding main artist: {norm_main_artist_name} ({main_artist_id})")
 
             artists.append({
-                "artist_name": main_artist_name,
+                "artist_name": norm_main_artist_name,
                 "spotify_artist_id": main_artist_id,
                 "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                "artist_description": base.get("artist_description") or spotify_data.get("artist_description"),
+                "artist_description": (
+                    artist_info.get("artist_description")
+                    if artist_info else base.get("artist_description") or spotify_data.get("artist_description")
+                ),
                 "artist_mp3_url": None,
                 "not_on_spotify": not bool(artist_info),
             })
 
-            seen_artists[main_artist_id] = main_artist_name
+            seen_artists.add(norm_main_artist_name)
 
         # ─────────────────────────────────────────────────────────────────────────────
         # 👤 STEP 4.D — Add FEATURED artist if present
         # ─────────────────────────────────────────────────────────────────────────────
-        featured_artist = track_entry.get("featured_artist")
+        raw_feat_name = track_entry.get("featured_artist")
+        norm_feat_name = normalize_name(raw_feat_name) if raw_feat_name else None
         feat_artist_id = track_entry.get("featured_artist_id")
 
-        if featured_artist and feat_artist_id:
-            if feat_artist_id not in seen_artists:
-                logger_step4d.debug(f"👤 Adding featured artist: {featured_artist} ({feat_artist_id})")
-                artist_info = get_spotify_artist_info(featured_artist)
-                artists.append({
-                    "artist_name": featured_artist,
-                    "spotify_artist_id": feat_artist_id,
-                    "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                    "artist_description": artist_info.get("artist_description") if artist_info else None,
-                    "artist_mp3_url": None,
-                    "not_on_spotify": not bool(artist_info),
-                })
-                seen_artists[feat_artist_id] = featured_artist
+        logger_step4d.debug(
+            f"👤 FEATURED ARTIST check: raw={raw_feat_name}, normalized={norm_feat_name}, "
+            f"id={feat_artist_id}, seen={feat_artist_id in seen_artists}"
+        )
 
-                logger_step4d.debug(
-                    f"🧾 Artist list so far (Rank {base.get('rank')}): {[a['artist_name'] for a in artists]}"
-                )
+        if norm_feat_name and feat_artist_id and feat_artist_id not in seen_artists:
+            artist_info = get_spotify_artist_info(norm_feat_name)
+
+            if not artist_info:
+                logger_step4d.warning(f"❌ No Spotify info found for featured artist: {norm_feat_name}")
+
+            logger_step4d.debug(f"👤 Adding featured artist: {norm_feat_name} ({feat_artist_id})")
+
+            artists.append({
+                "artist_name": norm_feat_name,
+                "spotify_artist_id": feat_artist_id,
+                "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
+                "artist_description": artist_info.get("artist_description") if artist_info else None,
+                "artist_mp3_url": None,
+                "not_on_spotify": not bool(artist_info),
+            })
+
+            seen_artists.add(norm_feat_name)
+            logger_step4d.debug(
+                f"🧾 Artist list so far (Rank {base.get('rank')}): {[a['artist_name'] for a in artists]}"
+            )
 
     # ─────────────────────────────────────────────────────────────────────────────
     # 🧱 STEP 4.E — Assemble the final JSON structure
@@ -269,7 +292,8 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
     )
 
     logger_step4e.debug(
-        f"🌟 [STEP_4.E] JSON build complete: {len(tracks)} tracks, {len(artists)} unique artists, {len(rankings)} rankings."
+        f"🌟 [STEP_4.E] JSON build complete: {len(tracks)} tracks, "
+        f"{len(artists)} unique artists, {len(rankings)} rankings."
     )
 
     return final_json, tracks, artists
