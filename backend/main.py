@@ -2,18 +2,14 @@
 import sys
 from pathlib import Path
 import io
-from backend.routers.json_playback import router as playback_router
-from backend.routers.play_json_track_by_rank import router as play_router
+from backend.routers.play_json_track_by_rank import router as playback_router
+from fastapi import Query
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 
-
-# print("This will disappear in 3 seconds...")
-# import os
-# import time
-# time.sleep(3)
-# os.system('cls')
-# print("Screen cleared!")
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # ---------------------------------------------------------------------------
@@ -67,8 +63,10 @@ def get_version():
         "last_updated": config.LAST_UPDATED
     }
 
+def auth_callback(code: str = Query(...)):
+    logger.info(f"🔁 Received auth callback with code: {code}")
+    return {"message": "✅ Auth callback handled"}
 
 app.include_router(json_router)
 app.include_router(save_router)
 app.include_router(playback_router, prefix="/json")
-app.include_router(play_router)

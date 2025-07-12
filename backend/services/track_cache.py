@@ -20,7 +20,7 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
     try:
         data = load_json(file_path=full_path)  # Now uses logging
         # tracks = data.get("track_tables", {}).get("track", [])
-        tracks = data.get("ranking_tables", {}).get("track_ranking", [])
+        tracks = data.get("track_tables", {}).get("track", [])  # ✅ Full track data with spotify_track_id
 
         track_cache["filename"] = filename
         track_cache["tracks"] = tracks
