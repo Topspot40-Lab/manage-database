@@ -23,14 +23,15 @@ def validate_json(
     decade: str = FastAPIPath(...),
     genre: str = FastAPIPath(...)
 ):
+
+
     filename = f"{decade}_{genre}_en.json"
     base_dir = Path(__file__).resolve().parent.parent.parent  # ← adjust from /backend/routers/
     full_path = base_dir / "data/json_files/genredecade" / decade / filename
-
     logger.info(f"🔍 Validating JSON file: {full_path.resolve()}")
 
     try:
-        data = load_json(decade, filename)
+        data = load_json(full_path)
         tracks = data.get("ranking_tables", {}).get("track_ranking", [])
         logger.info(f"📄 Loaded {len(tracks)} track(s) for validation.")
     except FileNotFoundError:

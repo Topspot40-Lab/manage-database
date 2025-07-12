@@ -2,7 +2,11 @@ import json
 from pathlib import Path
 
 # Example base directory — adjust if needed
-BASE_JSON_DIR = Path(__file__).resolve().parent.parent / "data" / "json_files" / "genredecade"
+from backend.config import BASE_DIR
+
+BASE_JSON_DIR = BASE_DIR / "data" / "json_files" / "genredecade"
+
+
 
 def get_track_file_path(genre: str, decade: str) -> Path:
     """

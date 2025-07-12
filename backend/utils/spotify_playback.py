@@ -11,7 +11,7 @@ def play_track_by_rank(genre: str, decade: str, rank: int) -> dict:
     if not track:
         raise ValueError(f"No track found with rank {rank} for {genre} in {decade}")
 
-    track_id = track.get("spotifyTrackId")
+    track_id = track.get("spotify_track_id")
     if not track_id:
         raise ValueError(f"Track at rank {rank} is missing a Spotify track ID.")
 

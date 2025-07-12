@@ -1,11 +1,15 @@
 import os, json
 from typing import Dict, Tuple, Optional
 
-import traceback
 import unicodedata
 import re
 
 from backend.utils.logger_factory import get_step_logger
+from pathlib import Path
+
+# Replace string base path with resolved Path
+JSON_BASE = Path(__file__).resolve().parent.parent.parent / "data" / "json_files" / "genredecade"
+
 
 # Use centralized step logger
 logger_step1b = get_step_logger("STEP_1.B")
@@ -13,7 +17,6 @@ logger_step1b = get_step_logger("STEP_1.B")
 # ─────────────────────────────────────────────────────────────────────────────
 # 📁 JSON Path Constants
 # ─────────────────────────────────────────────────────────────────────────────
-JSON_BASE = "data/json_files/genredecade"
 
 REQUIRED_FIELDS = [
     "track_name",
@@ -320,15 +323,44 @@ def get_mode_flag(main: str, feat: Optional[str], keyword: Optional[str]) -> str
 # ─────────────────────────────────────────────────────────────────────────────
 # 📁 File Loaders
 # ─────────────────────────────────────────────────────────────────────────────
-def load_json(decade: str, filename: str) -> Dict:
-    path = os.path.join(JSON_BASE, decade, filename)
-    if not os.path.exists(path):
-        raise FileNotFoundError(path)
+
+def load_json(decade: Optional[str] = None, filename: Optional[str] = None, *, file_path: Optional[Path] = None) -> Dict:
+    """
+    Load a JSON file either by:
+      - full `file_path`, or
+      - `decade` + `filename` under JSON_BASE
+
+    Logs what it loads and how many tracks were found.
+    """
+
+    if file_path:
+        path = file_path
+        context = f"[Direct path: {file_path.name}]"
+    elif decade and filename:
+        path = JSON_BASE / decade / filename
+        context = f"[From decade: {decade}, file: {filename}]"
+    else:
+        raise ValueError("Must provide either file_path or (decade and filename)")
+
+    logger_step1b.info(f"📁 Loading JSON {context}")
+    logger_step1b.debug(f"🔍 Full path: {path.resolve()}")
+
+    if not path.exists():
+        logger_step1b.error(f"❌ File not found: {path}")
+        raise FileNotFoundError(f"File not found: {path}")
+
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+
+    top_keys = list(data.keys())
+    track_count = len(data.get("ranking_tables", {}).get("track_ranking", []))
+
+    logger_step1b.info(f"✅ Loaded JSON: {len(top_keys)} top-level keys, {track_count} track(s)")
+
+    return data
 
 def save_json(payload: Dict, decade: str, filename: str):
-    path = os.path.join(JSON_BASE, decade)
-    os.makedirs(path, exist_ok=True)
-    with open(os.path.join(path, filename), "w", encoding="utf-8") as f:
+    path = JSON_BASE / decade
+    path.mkdir(parents=True, exist_ok=True)
+    with open(path / filename, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)

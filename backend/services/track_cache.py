@@ -1,5 +1,4 @@
 from pathlib import Path
-import json
 import random
 from typing import Optional, Dict, Any
 
@@ -12,17 +11,26 @@ track_cache: Dict[str, Any] = {
     "last_played_rank": None
 }
 
+from backend.utils.json_helpers import load_json
+from backend.utils.logger_factory import get_step_logger
+
+logger_step1c = get_step_logger("STEP_1.C")
 
 def load_tracks_from_file(filename: str, full_path: Path) -> bool:
     try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = load_json(file_path=full_path)  # Now uses logging
+        # tracks = data.get("track_tables", {}).get("track", [])
+        tracks = data.get("ranking_tables", {}).get("track_ranking", [])
+
         track_cache["filename"] = filename
-        track_cache["tracks"] = data.get("track_tables", {}).get("track", [])
-        track_cache["last_played_rank"] = None  # 🔄 Reset on new file load
+        track_cache["tracks"] = tracks
+        track_cache["last_played_rank"] = None
+
+        logger_step1c.info(f"✅ Cached {len(tracks)} tracks from {filename}")
         return True
+
     except Exception as e:
-        print(f"❌ Failed to load track file: {e}")
+        logger_step1c.error(f"❌ Failed to load track file '{filename}': {e}")
         return False
 
 
