@@ -41,6 +41,13 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
         )
 
     prompt += (
+        "\n\n🚫 **Exclusions (Spotify availability warning):**\n"
+        "- Do NOT include artists whose catalogs are missing from Spotify. Examples: Garth Brooks, Bob Seger, King Crimson, and Joanna Newsom.\n"
+        "- If in doubt, skip artists known to limit streaming availability or who are not reliably playable.\n"
+    )
+
+
+    prompt += (
         "🎯 Your goal is to recreate a realistic and accurate list that could appear in a retrospective music documentary.\n"
         "Return ONLY a valid JSON array — no headings, explanations, or markdown."
     )

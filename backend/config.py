@@ -137,11 +137,11 @@ LOG_LEVEL_OVERRIDES = {
                             # - Deduplicates artists and creates a record for each
                             # - Optionally includes Spotify ID, description, and artwork
 
-    "STEP_4.D": "DEBUG",    # 🏆 STEP 4.D — Build Ranking Table Entries
+    "STEP_4.D": "INFO",    # 🏆 STEP 4.D — Build Ranking Table Entries
                             # Function: build_ranking_entry(base, track_entry, request, now)
                             # - Builds rank entry including track_id, genre, decade, and intro/detail
 
-    "STEP_4.E": "DEBUG",    # 📦 STEP 4.E — Final JSON Assembly
+    "STEP_4.E": "INFO",    # 📦 STEP 4.E — Final JSON Assembly
                             # Function: build_final_json(...) — final return step
                             # - Combines all tables: core_tables, track_tables, ranking_tables
                             # - Outputs full JSON object and summary log

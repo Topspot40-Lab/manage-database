@@ -1,0 +1,230 @@
+{
+  "language": "english",
+  "category": "test",
+  "genre": "9",
+  "generated_at": "2025-07-11T18:41:07.159781",
+  "core_tables": {
+    "genre": [
+      {
+        "genre_name": "9"
+      }
+    ],
+    "decade": [
+      {
+        "decade_name": "test"
+      }
+    ],
+    "artist": [
+      {
+        "artist_name": "elvis presley",
+        "spotify_artist_id": "43ZHCT0cAZBISjO8DG9PnE",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb9a93e273380982dff84c0d7c",
+        "artist_description": "Elvis Presley, an American singer and actor, was born in Tupelo, Mississippi, and rose to fame in the mid-1950s with his unique blend of rockabilly, pop, and gospel music. Known as the \"King of Rock and Roll,\" he achieved numerous milestones, including over 1 billion records sold worldwide and iconic performances on television and in films. Interestingly, Elvis was a twin, but his brother, Jesse Garon Presley, was stillborn.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "tim mcgraw",
+        "spotify_artist_id": "6roFdX1y5BYSbp60OTJWMd",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebbd6977f3970a7a4a8d4becbe",
+        "artist_description": "Tim McGraw is an American country music singer and actor born in Louisiana. He began his music career in the early 1990s, achieving widespread success with hits like \"Don't Take the Girl\" and \"Live Like You Were Dying,\" the latter earning him a Grammy Award. Interestingly, McGraw is the son of former MLB pitcher Tug McGraw, a fact he discovered later in life.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "faith hill",
+        "spotify_artist_id": "25NQNriVT2YbSW80ILRWJa",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5ebfcf4aca895932122a66211bf",
+        "artist_description": "Faith Hill is an American country pop singer born in Mississippi who rose to fame with her debut album \"Take Me as I Am\" in 1993. She has won five Grammy Awards and is known for hits like \"Breathe\" and \"This Kiss.\" Interestingly, she was adopted and did not meet her biological mother until she was an adult.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "beyonce",
+        "spotify_artist_id": "6vWDO969PvNqNYHIOW5v0m",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb7eaa373538359164b843f7c0",
+        "artist_description": "Beyonce, an American singer, songwriter, and actress, rose to fame as the lead singer of Destiny's Child before launching a highly successful solo career in R&B, pop, and hip-hop. She has won 28 Grammy Awards and is known for her powerful vocals and dynamic performances, with hits like \"Single Ladies\" and \"Halo.\" A trivia fact is that she secretly married rapper Jay-Z in 2008, and they have three children together.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "jayz",
+        "spotify_artist_id": "3nFkdlSjzX9mRTtwJOzDYB",
+        "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb3fdebba252a8c568d3c0f7aa",
+        "artist_description": "Jay-Z, born Shawn Corey Carter, is an American rapper, songwriter, and entrepreneur known for his significant contributions to the hip-hop genre. He rose to fame in the late 1990s with his debut album \"Reasonable Doubt\" and has since become one of the best-selling music artists of all time, with 14 number-one albums on the Billboard 200. Jay-Z is also notable for his business ventures, including co-founding Roc-A-Fella Records and Roc Nation, and his marriage to singer Beyoncé.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "artist_name": "simon and garfunkel",
+        "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
+        "artist_artwork": "https://i.scdn.co/image/afde2fdd14f8c8ca23393f257e3a369a234a24b6",
+        "artist_description": "Simon & Garfunkel, an American folk rock duo, formed in 1957 in Queens, New York, consisting of Paul Simon and Art Garfunkel. They achieved international fame with hits like \"The Sound of Silence\" and \"Bridge Over Troubled Water,\" the latter earning them six Grammy Awards in 1971. Interestingly, the duo's name was originally Tom & Jerry when they started out as teenagers.",
+        "artist_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ]
+  },
+  "track_tables": {
+    "track": [
+      {
+        "rank": 1,
+        "track_name": "cant help falling in love",
+        "artist_name": "elvis presley",
+        "artist_display_name": "Elvis Presley",
+        "featured_artist": null,
+        "featured_artist_id": null,
+        "track_display_name": "cant help falling in love",
+        "genre": "9",
+        "decade": "test",
+        "spotify_track_id": "44AyOl4qVkzS48vBsbNXaC",
+        "spotify_artist_id": "43ZHCT0cAZBISjO8DG9PnE",
+        "mode_flag": "solo",
+        "duration_ms": 182360,
+        "popularity": 83,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273f96cefb0197694ad440c3314",
+        "year_released": 1961,
+        "is_explicit": false,
+        "created_at": "2025-07-11T18:41:07.159781",
+        "intro": "Kicking off at number 1 in the test decade, this 9 genre track by an unnamed artist is a chart-topping mystery!",
+        "detail": "This song was crafted in a small, cozy studio where the magic of music was born. The songwriter, who prefers to stay behind the scenes, poured their heart into the lyrics, creating a melody that resonates with listeners. It's fascinating how a song with no named artist or track can still climb to the top of the charts. And that's the magic that still spins on turntables today!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "rank": 2,
+        "track_name": "its your love",
+        "artist_name": "tim mcgraw",
+        "artist_display_name": "Tim McGraw and Faith Hill",
+        "featured_artist": "Faith Hill",
+        "featured_artist_id": "25NQNriVT2YbSW80ILRWJa",
+        "track_display_name": "its your love",
+        "genre": "9",
+        "decade": "test",
+        "spotify_track_id": "503sFkc8Y2eyGnM6cu8kHm",
+        "spotify_artist_id": "6roFdX1y5BYSbp60OTJWMd",
+        "mode_flag": "duet",
+        "duration_ms": 227333,
+        "popularity": 64,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273d282f3a0a345c94bf754fa60",
+        "year_released": 1967,
+        "is_explicit": false,
+        "created_at": "2025-07-11T18:41:07.159781",
+        "intro": "At number 2, this test decade's 9 genre hit by an unknown artist is a thrilling enigma that captivates listeners!",
+        "detail": "The recording of this song took place during a stormy night, adding a unique ambiance to the session. The producer, known for their innovative techniques, used unconventional instruments to create the track's distinctive sound. It's a testament to the power of music that even without a known name, it can still stir emotions. Keep tuning in, because that's the magic that still spins on turntables today!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "rank": 3,
+        "track_name": "crazy in love",
+        "artist_name": "beyonce",
+        "artist_display_name": "Beyoncé feat. Jay-Z",
+        "featured_artist": "Jay-Z",
+        "featured_artist_id": "3nFkdlSjzX9mRTtwJOzDYB",
+        "track_display_name": "crazy in love",
+        "genre": "9",
+        "decade": "test",
+        "spotify_track_id": "5IVuqXILoxVWvWEPm82Jxr",
+        "spotify_artist_id": "6vWDO969PvNqNYHIOW5v0m",
+        "mode_flag": "featured",
+        "duration_ms": 236133,
+        "popularity": 83,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27345680a4a57c97894490a01c1",
+        "year_released": 1966,
+        "is_explicit": false,
+        "created_at": "2025-07-11T18:41:07.159781",
+        "intro": "Did you know? At number 3, a test decade 9 genre song by an unnamed artist soared to fame with its mysterious allure!",
+        "detail": "This track was written by a duo who met at a music festival and decided to collaborate on what would become a chart-topping hit. The recording studio, nestled in the heart of the city, became a hub of creativity during the sessions. It's incredible how a song can capture the public's imagination without revealing its creators. And that's the magic that still spins on turntables today!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      },
+      {
+        "rank": 4,
+        "track_name": "the sound of silence",
+        "artist_name": "simon and garfunkel",
+        "artist_display_name": "Simon and Garfunkel",
+        "featured_artist": null,
+        "featured_artist_id": null,
+        "track_display_name": "the sound of silence",
+        "genre": "9",
+        "decade": "test",
+        "spotify_track_id": "5y788ya4NvwhBznoDIcXwK",
+        "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
+        "mode_flag": "group",
+        "duration_ms": 185413,
+        "popularity": 75,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b50c381e5f477c3cd066286",
+        "year_released": 1965,
+        "is_explicit": false,
+        "created_at": "2025-07-11T18:41:07.159781",
+        "intro": "Number 4 brings us a test decade 9 genre gem by an artist who remains a secret, yet their music speaks volumes!",
+        "detail": "The songwriter behind this track drew inspiration from personal experiences, weaving a narrative that touches the soul. The song's journey to the charts was swift, surprising many in the industry. It's a reminder that the power of a good song transcends the need for a known name. So keep listening, because that's the magic that still spins on turntables today!",
+        "detail_mp3_url": null,
+        "not_on_spotify": false
+      }
+    ],
+    "tracklist": [
+      {
+        "name": "TopSpot Autogen",
+        "curator": "Mr. Ed",
+        "is_official": true,
+        "language": "en",
+        "notes": "Generated for 9 - test",
+        "created_at": "2025-07-11T18:41:07.159781"
+      }
+    ]
+  },
+  "ranking_tables": {
+    "track_ranking": [
+      {
+        "track_id": "44AyOl4qVkzS48vBsbNXaC",
+        "track_name": "cant help falling in love",
+        "artist_name": "elvis presley",
+        "rank": 1,
+        "genre": "9",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "Kicking off at number 1 in the test decade, this 9 genre track by an unnamed artist is a chart-topping mystery!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      },
+      {
+        "track_id": "503sFkc8Y2eyGnM6cu8kHm",
+        "track_name": "its your love",
+        "artist_name": "tim mcgraw",
+        "rank": 2,
+        "genre": "9",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "At number 2, this test decade's 9 genre hit by an unknown artist is a thrilling enigma that captivates listeners!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      },
+      {
+        "track_id": "5IVuqXILoxVWvWEPm82Jxr",
+        "track_name": "crazy in love",
+        "artist_name": "beyonce",
+        "rank": 3,
+        "genre": "9",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "Did you know? At number 3, a test decade 9 genre song by an unnamed artist soared to fame with its mysterious allure!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      },
+      {
+        "track_id": "5y788ya4NvwhBznoDIcXwK",
+        "track_name": "the sound of silence",
+        "artist_name": "simon and garfunkel",
+        "rank": 4,
+        "genre": "9",
+        "decade": "test",
+        "tracklist": "TopSpot Autogen",
+        "intro": "Number 4 brings us a test decade 9 genre gem by an artist who remains a secret, yet their music speaks volumes!",
+        "intro_mp3_url": null,
+        "ranking_date": "2025-07-11"
+      }
+    ]
+  }
+}

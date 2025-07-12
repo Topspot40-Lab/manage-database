@@ -152,8 +152,8 @@ def get_spotify_data(track_name: str, artist_name: str):
 
                 simplified_items.append(item_copy)
 
-            logger_spotify.debug("📦 [STEP_3.A] Raw Spotify results (trimmed):\n" +
-                                 json.dumps(simplified_items, indent=2))
+            # logger_spotify.debug("📦 [STEP_3.A] Raw Spotify results (trimmed):\n" +
+            #                      json.dumps(simplified_items, indent=2))
 
         if not results["tracks"]["items"]:
             logger_spotify.warning(f"❌ [STEP_3.A] No results for: '{track_name}' by '{artist_name}'")
@@ -404,8 +404,7 @@ def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -
                 )
             else:
                 logger_spotify.warning(
-                    f"❌ [STEP_3.A] Rank {rank}: No match found for '{tn}' by '{an}'"
-                )
+                    f"❌ [STEP_3.A] Rank {rank}: No match found for '{tn}' by '{an}'")
 
         except Exception as e:
             logger_step3.error(f"💥 [STEP_3] Rank {rank}: Spotify enrichment failed → {e}")

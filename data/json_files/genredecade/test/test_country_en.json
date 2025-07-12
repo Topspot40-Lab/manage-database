@@ -1,12 +1,12 @@
 {
   "language": "english",
   "category": "test",
-  "genre": "31",
-  "generated_at": "2025-07-11T19:58:41.399778",
+  "genre": "country",
+  "generated_at": "2025-07-11T19:59:27.915587",
   "core_tables": {
     "genre": [
       {
-        "genre_name": "31"
+        "genre_name": "country"
       }
     ],
     "decade": [
@@ -19,7 +19,7 @@
         "artist_name": "hank snow",
         "spotify_artist_id": "4F2Wz6nsyGRJWISzANL6vQ",
         "artist_artwork": "https://i.scdn.co/image/ef29bf97f6e45a57de49e29a4f6f01913db7ab9c",
-        "artist_description": "Hank Snow was a Canadian country music artist born in 1914 in Nova Scotia. He began performing at a young age and rose to fame with hits like \"I'm Moving On\" and \"The Golden Rocket,\" becoming a member of the Grand Ole Opry in 1950. Snow was known for his yodeling and had a significant influence on Elvis Presley, who opened for him early in his career.",
+        "artist_description": "Hank Snow was a Canadian country music artist born in 1914 in Nova Scotia. He began his career performing on local radio stations and rose to fame with hits like \"I'm Moving On,\" which became a number one hit in 1950. Snow was inducted into the Country Music Hall of Fame in 1979, and interestingly, he was known for his yodeling style and his custom-built \"Hank Snow White Gospel Ranger\" guitar.",
         "artist_mp3_url": null,
         "not_on_spotify": false
       },
@@ -27,7 +27,7 @@
         "artist_name": "simon and garfunkel",
         "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
         "artist_artwork": "https://i.scdn.co/image/afde2fdd14f8c8ca23393f257e3a369a234a24b6",
-        "artist_description": "Simon & Garfunkel, an American folk rock duo formed in 1957 in Queens, New York, consists of Paul Simon and Art Garfunkel. They rose to fame in the 1960s with hits like \"The Sound of Silence\" and \"Bridge Over Troubled Water,\" the latter earning them six Grammy Awards including Album of the Year. A notable trivia is that their song \"Mrs. Robinson\" was featured prominently in the 1967 film \"The Graduate.\"",
+        "artist_description": "Simon & Garfunkel, an American folk rock duo from New York, formed in 1957 and rose to fame in the 1960s with hits like \"The Sound of Silence\" and \"Bridge Over Troubled Water.\" Paul Simon and Art Garfunkel met in elementary school and began performing together as teenagers under the name Tom & Jerry. They won multiple Grammy Awards and were inducted into the Rock and Roll Hall of Fame in 1990, with their music continuing to influence generations.",
         "artist_mp3_url": null,
         "not_on_spotify": false
       }
@@ -43,7 +43,7 @@
         "featured_artist": null,
         "featured_artist_id": null,
         "track_display_name": "im movin on",
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "spotify_track_id": "446eGf6Afa6PuZYTsF19U1",
         "spotify_artist_id": "4F2Wz6nsyGRJWISzANL6vQ",
@@ -53,9 +53,9 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273ee00d9d467fd5a45808c062b",
         "year_released": 1961,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "Kicking off at number one in the test decade, this genre 31 track by an unnamed artist is the ultimate chart-topper!",
-        "detail": "This song was crafted in a small studio where the magic of music truly comes alive. The songwriter, a relatively unknown talent at the time, poured their heart into every lyric, hoping to capture the essence of the era. It's fascinating to note that this track was recorded in one take, a testament to the artist's skill and the producer's vision. And that's the magic that still spins on turntables today!",
+        "created_at": "2025-07-11T19:59:27.915587",
+        "intro": "Kicking off at number one in the test decade, this country gem is a toe-tapping delight from an artist who knows how to spin a yarn!",
+        "detail": "This song was crafted in a small studio nestled in the heart of Nashville, where the songwriter poured their heart into every lyric. It quickly climbed the charts, resonating with fans across the nation. There's a fun story about how the artist recorded this track wearing their lucky boots, which they believe brought them good luck. And that’s the magic that still spins on turntables today!",
         "detail_mp3_url": null,
         "not_on_spotify": false
       },
@@ -67,7 +67,7 @@
         "featured_artist": null,
         "featured_artist_id": null,
         "track_display_name": "the golden rocket",
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "spotify_track_id": "5jcprGzyDUAq25Babtyuei",
         "spotify_artist_id": "3fq6r0bSIm4McymHKNMk4S",
@@ -77,9 +77,9 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27393f781ab38f717efc7a13f73",
         "year_released": 1967,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "At number two, dive into the vibrant sounds of the test decade with this genre 31 gem from an artist who remains a mystery!",
-        "detail": "The creation of this song involved a unique collaboration between the songwriter and a local band, blending different musical influences into a harmonious masterpiece. It quickly climbed the charts, resonating with listeners across the nation. There's a fun story about how the recording session was interrupted by a power outage, yet it only added to the song's charm. Keep those records spinning, and enjoy the timeless tunes!",
+        "created_at": "2025-07-11T19:59:27.915587",
+        "intro": "At number two, dive into the soulful depths of this country classic from the test decade, where the artist's voice weaves a tapestry of emotion!",
+        "detail": "The songwriters behind this hit drew inspiration from their own life experiences, creating a piece that many could relate to. Recorded in a legendary studio known for its acoustics, the track benefited from the expertise of a renowned producer. It became a staple at live performances, often receiving standing ovations. Keep those memories alive, and that’s the magic that still spins on turntables today!",
         "detail_mp3_url": null,
         "not_on_spotify": false
       },
@@ -91,7 +91,7 @@
         "featured_artist": null,
         "featured_artist_id": null,
         "track_display_name": "i dont hurt anymore",
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "spotify_track_id": "test_track_3",
         "spotify_artist_id": "test_artist_3",
@@ -101,9 +101,9 @@
         "album_artwork": null,
         "year_released": 1966,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "Did you know? At number three, this genre 31 track from the test decade by an unnamed artist is a hidden treasure!",
-        "detail": "Behind the scenes, the song's writer was inspired by a personal journey that reflects in the song's poignant lyrics. It achieved moderate success on the charts but has since become a cult classic among fans. Interestingly, the recording took place in a converted barn, adding a rustic feel to the production. So, keep your ears open for this gem, and let the music take you on a journey!",
+        "created_at": "2025-07-11T19:59:27.915587",
+        "intro": "Did you know? At number three, this country tune from the test decade showcases an artist's unique storytelling, blending humor and heart!",
+        "detail": "The song was written during a spontaneous jam session, capturing the raw energy of the moment. It charted impressively, becoming a favorite at country radio stations. There's a charming anecdote about how the artist once forgot the lyrics during a live performance but improvised brilliantly, winning over the crowd. And that’s the magic that still spins on turntables today!",
         "detail_mp3_url": null,
         "not_on_spotify": false
       },
@@ -115,7 +115,7 @@
         "featured_artist": null,
         "featured_artist_id": null,
         "track_display_name": "the sound of silence",
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "spotify_track_id": "5y788ya4NvwhBznoDIcXwK",
         "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
@@ -125,9 +125,9 @@
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b50c381e5f477c3cd066286",
         "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "Brace yourself for number four, where the test decade's genre 31 vibes meet an artist's anonymity in a thrilling musical adventure!",
-        "detail": "This track's songwriter drew inspiration from the bustling city life, which you can hear in the energetic rhythm and catchy hooks. It made a notable impact on the charts, becoming a favorite at dance clubs. A quirky fact is that the lead instrument was accidentally damaged during recording, yet it added a unique sound that fans adore. And that's the beat that keeps the party going, even today!",
+        "created_at": "2025-07-11T19:59:27.915587",
+        "intro": "Number four brings us a heartwarming country ballad from the test decade, where the artist's voice soothes like a gentle breeze on a summer night!",
+        "detail": "This track was penned by a duo of songwriters who met at a songwriting camp, sparking a creative collaboration. It was recorded in a cozy studio that added a warm, intimate feel to the song. The track's success led to numerous covers by other artists, each adding their own twist. Keep the love alive, and that’s the magic that still spins on turntables today!",
         "detail_mp3_url": null,
         "not_on_spotify": false
       }
@@ -138,8 +138,8 @@
         "curator": "Mr. Ed",
         "is_official": true,
         "language": "en",
-        "notes": "Generated for 31 - test",
-        "created_at": "2025-07-11T19:58:41.399778"
+        "notes": "Generated for country - test",
+        "created_at": "2025-07-11T19:59:27.915587"
       }
     ]
   },
@@ -150,10 +150,10 @@
         "track_name": "im movin on",
         "artist_name": "hank snow",
         "rank": 1,
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Kicking off at number one in the test decade, this genre 31 track by an unnamed artist is the ultimate chart-topper!",
+        "intro": "Kicking off at number one in the test decade, this country gem is a toe-tapping delight from an artist who knows how to spin a yarn!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-11"
       },
@@ -162,10 +162,10 @@
         "track_name": "the golden rocket",
         "artist_name": "hank snow",
         "rank": 2,
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number two, dive into the vibrant sounds of the test decade with this genre 31 gem from an artist who remains a mystery!",
+        "intro": "At number two, dive into the soulful depths of this country classic from the test decade, where the artist's voice weaves a tapestry of emotion!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-11"
       },
@@ -174,10 +174,10 @@
         "track_name": "i dont hurt anymore",
         "artist_name": "hank snow",
         "rank": 3,
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Did you know? At number three, this genre 31 track from the test decade by an unnamed artist is a hidden treasure!",
+        "intro": "Did you know? At number three, this country tune from the test decade showcases an artist's unique storytelling, blending humor and heart!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-11"
       },
@@ -186,10 +186,10 @@
         "track_name": "the sound of silence",
         "artist_name": "simon and garfunkel",
         "rank": 4,
-        "genre": "31",
+        "genre": "country",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Brace yourself for number four, where the test decade's genre 31 vibes meet an artist's anonymity in a thrilling musical adventure!",
+        "intro": "Number four brings us a heartwarming country ballad from the test decade, where the artist's voice soothes like a gentle breeze on a summer night!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-11"
       }

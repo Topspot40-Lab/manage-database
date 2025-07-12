@@ -1,0 +1,19 @@
+{
+  "expected": {
+    "numValidTracks": 1
+  },
+  "expectedLogs": [
+
+  ],
+  "language": "English",
+  "decade": "1950s",
+  "genre": "Country",
+  "tracks": [
+    {
+      "rank": 1,
+      "trackName": "i don't hurt anymore",
+      "artistName": "Hank Snow",
+      "yearReleased": 1961
+    }
+  ]
+}

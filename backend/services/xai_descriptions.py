@@ -62,7 +62,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             requested_fields.append("intro")
             instructions.append(
                 # Short, punchy opener
-                "• 'intro' must be ONE lively sentence (max 25 words). "
+                "• 'intro' must be ONE lively sentence (max 25 words). "
                 "Include rank, decade, genre, track name, and artist name. "
                 "Vary the tone: sometimes playful, sometimes dramatic, sometimes trivia‑style. "
                 "Avoid starting more than two intros in a row with the same word."

@@ -56,7 +56,17 @@ ARTIST_NAME_ALIASES = {
     "Captain & Tennille": "Captain and Tennille",
     "Ike & Tina Turner": "Ike and Tina Turner",
     "Peter, Paul & Mary": "Peter, Paul and Mary",
+
+    # 🎵 Hank Snow aliases
+    "Hank Snow & Anita Carter": "Hank Snow",
+    "Hank Snow & Chet Atkins": "Hank Snow",
+    "Hank Snow and The Rainbow Ranch Boys": "Hank Snow",
+    "Hank Snow, Anita Carter & The Carter Family": "Hank Snow",
+    "Hank Snow, The Singing Ranger, And His Rainbow Ranch Boys": "Hank Snow",
+    "Hank Snow, The Singing Ranger & His Rainbow Ranch Boys": "Hank Snow",
+    "Hank Snow, The Singing Ranger, and His Rainbow Ranch Boys": "Hank Snow",
 }
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 🎸 KNOWN GROUPS WITH TOP‑40 HITS (1950s → present)
 #   • Keys  = genre
@@ -214,14 +224,22 @@ KNOWN_DUET_PAIRS = {
 def normalize_name(name: str) -> str:
     # logger_step1b.debug(f"🔍 Calling normalize_name('{name}')")
 
-    # Get the caller info (1 frame up the stack)
+    # Get the caller info (optional for debug tracing)
     # stack = traceback.extract_stack()
     # caller = stack[-2]  # -1 is this line, -2 is the caller
     # print(f"   ↪️ Called from {caller.filename}:{caller.lineno} in {caller.name}")
 
     original = name.strip()
-    corrected = ARTIST_NAME_ALIASES.get(original, original)
 
+    # 🎭 Alias substitution (before any other processing)
+    if original in ARTIST_NAME_ALIASES:
+        alias = ARTIST_NAME_ALIASES[original]
+        logger_step1b.debug(f"🎭 Alias substitution: '{original}' → '{alias}'")
+        corrected = alias
+    else:
+        corrected = original
+
+    # 🎨 Normalization: accents, punctuation, case
     corrected = unicodedata.normalize("NFKD", corrected)
     corrected = "".join(c for c in corrected if not unicodedata.combining(c))
     corrected = corrected.lower()
@@ -229,11 +247,11 @@ def normalize_name(name: str) -> str:
     corrected = re.sub(r"[^\w\s]", "", corrected)
     corrected = re.sub(r"\s+", " ", corrected).strip()
 
+    # 📝 Final normalization log if changed
     if original != corrected:
         logger_step1b.debug(f"normalize_name('{original}') → '{corrected}'")
 
     return corrected
-
 
 
 def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Optional[str]]:
@@ -253,33 +271,50 @@ def parse_featured_artists(raw_artist_name: str) -> Tuple[str, Optional[str], Op
 
     logger_step1b.debug(f"parse_featured_artists('{raw_artist_name}') → no featured artist found")
     return raw_artist_name.strip(), None, None
-
 def get_mode_flag(main: str, feat: Optional[str], keyword: Optional[str]) -> str:
     """
     Determine mode_flag type based on normalized artist parts.
-    Assumes 'main' and 'feat' are already normalized.
+    Handles test mode gracefully by scanning all known groups across genres.
     """
 
-    # 🧠 Check if the main artist is part of any known group (across all genres)
+    main_norm = normalize_name(main)
+    feat_norm = normalize_name(feat) if feat else None
+
+    logger_step1b.debug(
+        f"[get_mode_flag] Checking artist mode — main: '{main}' → '{main_norm}', "
+        f"feat: '{feat}' → '{feat_norm}', keyword: '{keyword}'"
+    )
+
+    # ✅ Scan all known groups (across all genres — works in test mode)
     for genre, group_set in KNOWN_GROUPS.items():
-        if main in group_set:
-            logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'group' (matched '{main}' in KNOWN_GROUPS[{genre}])")
+        if main_norm in group_set:
+            logger_step1b.debug(
+                f"[get_mode_flag] ✅ Matched known group → '{main_norm}' in genre '{genre}'"
+            )
             return "group"
 
-    # 🎤 Check for duet or featured
-    if feat:
-        combined = f"{main} {feat}"
+    # 🎤 Check duet / feature
+    if feat_norm:
+        combined = f"{main_norm} {feat_norm}"
         if combined in KNOWN_DUET_PAIRS:
-            logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'duet' (matched '{combined}' in KNOWN_DUET_PAIRS)")
+            logger_step1b.debug(
+                f"[get_mode_flag] ✅ Matched known duet → '{combined}' in KNOWN_DUET_PAIRS"
+            )
             return "duet"
         if keyword == "with":
-            logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'duet' (keyword='with')")
+            logger_step1b.debug(
+                f"[get_mode_flag] ✅ Keyword 'with' detected → treating as duet"
+            )
             return "duet"
-        logger_step1b.debug(f"[STEP_1.B] get_mode_flag → 'featured' (keyword='{keyword}')")
+        logger_step1b.debug(
+            f"[get_mode_flag] ✅ Featured artist pattern detected → keyword: '{keyword}'"
+        )
         return "featured"
 
-    # 🎙️ Default to solo if no group or duet conditions matched
-    logger_step1b.debug("[STEP_1.B] get_mode_flag → 'solo' (default)")
+    # 🎙️ Default to solo
+    logger_step1b.debug(
+        f"[get_mode_flag] No group or feature match → defaulting to 'solo'"
+    )
     return "solo"
 
 # ─────────────────────────────────────────────────────────────────────────────
