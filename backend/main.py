@@ -2,6 +2,10 @@
 import sys
 from pathlib import Path
 import io
+from backend.routers.json_playback import router as playback_router
+from backend.routers.play_json_track_by_rank import router as play_router
+
+
 
 
 # print("This will disappear in 3 seconds...")
@@ -66,3 +70,5 @@ def get_version():
 
 app.include_router(json_router)
 app.include_router(save_router)
+app.include_router(playback_router, prefix="/json")
+app.include_router(play_router)
