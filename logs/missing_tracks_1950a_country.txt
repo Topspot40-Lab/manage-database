@@ -1,0 +1,48 @@
+========================================
+🕒 2025-07-12 06:25:32
+❌ Original Track: Slow Poke by Hawkshaw Hawkins
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Exact title match)
+✅ Replacement Track: Slow Poke by Hawkshaw Hawkins
+🔗 Spotify URL: https://open.spotify.com/track/4JA4qsUQDupqNGtkMMfsFB
+🌟 Popularity: 35
+
+========================================
+🕒 2025-07-12 06:25:33
+❌ Original Track: The Rhumba Boogie by Hank Snow & His Rainbow Ranch Boys
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match)
+✅ Replacement Track: The Rhumba Boogie by Hank Snow & His Rainbow Ranch Boys
+🔗 Spotify URL: https://open.spotify.com/track/10tOCSmnpXfjCRuibrTBns
+🌟 Popularity: 13
+
+========================================
+🕒 2025-07-12 06:25:33
+❌ Original Track: Wedding Bells / Let's Turn Back the Years by John Prine
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match)
+✅ Replacement Track: Wedding Bells / Let's Turn Back the Years by John Prine
+🔗 Spotify URL: https://open.spotify.com/track/3La5moZRmf7kDHIMZwdCpH
+🌟 Popularity: 32
+
+========================================
+🕒 2025-07-12 06:25:33
+❌ Original Track: i don't wanna be hurt anymore by subtle life enthusiast
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match)
+✅ Replacement Track: i don't wanna be hurt anymore by subtle life enthusiast
+🔗 Spotify URL: https://open.spotify.com/track/52rs8uwnivuQTcKbDIodiS
+🌟 Popularity: 35
+
+========================================
+🕒 2025-07-12 06:25:34
+❌ Original Track: Don't Let the Stars Get in Your Eyes by k.d. lang
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Fuzzy match)
+✅ Replacement Track: Don't Let the Stars Get in Your Eyes by k.d. lang
+🔗 Spotify URL: https://open.spotify.com/track/2OJhlmVxlXBL0IY4Z8YdcM
+🌟 Popularity: 24
+
+========================================
+🕒 2025-07-12 06:25:34
+❌ Original Track: Wondering Why by The Red Clay Strays
+🛠️ Action Taken: ✅ Auto-replaced with Spotify suggestion (Partial match)
+✅ Replacement Track: Wondering Why by The Red Clay Strays
+🔗 Spotify URL: https://open.spotify.com/track/1HbzxLqpNVPdiBXvpC7Ovb
+🌟 Popularity: 86
+

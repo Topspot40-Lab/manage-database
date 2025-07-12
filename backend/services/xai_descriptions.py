@@ -41,16 +41,18 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         batch_num = (batch_start // batch_size) + 1
         logger_step2.debug(f"   • [STEP_2] Batch {batch_num}: tracks {batch_start+1}-{batch_end}")
 
-        formatted_input = [
-            {
+        formatted_input = []
+        for t in batch:
+            entry = {
                 "rank": t.get("rank"),
                 "decade": decade,
                 "genre": genre,
-                "trackName": t.get("trackName"),
-                "artistName": t.get("artistName"),
+                "track_name": t.get("track_name"),
+                "artist_name": t.get("artist_name"),
             }
-            for t in batch
-        ]
+            if t.get("mode_flag_detail"):
+                entry["mode_flag_detail"] = t["mode_flag_detail"]
+            formatted_input.append(entry)
 
         # requested_fields, instructions = [], []
         # --------------------------------------------------------------
@@ -61,9 +63,9 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         if ENABLE_RANK_INTRO:
             requested_fields.append("intro")
             instructions.append(
-                # Short, punchy opener
-                "• 'intro' must be ONE lively sentence (max 25 words). "
-                "Include rank, decade, genre, track name, and artist name. "
+                "• 'intro' must be ONE lively sentence (max 30 words). "
+                "Include rank, decade, genre, track_name, and artist_name. "
+                "If 'mode_flag_detail' is present, incorporate it naturally (e.g., 'joined by Willie Nelson'). "
                 "Vary the tone: sometimes playful, sometimes dramatic, sometimes trivia‑style. "
                 "Avoid starting more than two intros in a row with the same word."
             )
@@ -72,7 +74,7 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             requested_fields.append("detail")
             instructions.append(
                 # Rich Casey‑Kasem‑style narrative
-                "• 'detail' must be 2‑4 sentences (≈80‑120 words) in a warm Casey Kasem style. "
+                "• 'detail' must be 2‑4 sentences (≈80‑120 words) in a warm Casey Kasem style. "
                 "⚠️ Do NOT repeat the rank, decade, genre, track name or artist name already stated in 'intro'. "
                 "Focus on songwriting history, chart performance, producer/session tidbits, cultural impact, or a light humorous anecdote. "
                 "Feel free to mention the songwriter(s), recording studio, or a quirky behind‑the‑scenes fact. "
@@ -100,18 +102,29 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             "Authorization": f"Bearer {XAI_API_KEY}",
             "Content-Type": "application/json"
         }
-
         try:
             response = requests.post(XAI_API_URL, json=payload, headers=headers)
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
 
-            batch_descriptions = json.loads(content)
+            try:
+                batch_descriptions = json.loads(content)
+            except json.JSONDecodeError as e:
+                logger_step2.error(
+                    f"[XAI ERROR] JSON decode failed for Batch {batch_num}:\n{e}\nRaw content:\n{content}")
+                continue
+
             for i, desc in enumerate(batch_descriptions):
                 tracks[batch_start + i].update(desc)
                 rank = tracks[batch_start + i].get("rank")
                 intro = desc.get("intro")
                 detail = desc.get("detail")
+
+                track_name = tracks[batch_start + i].get("track_name", "")
+                artist_name = tracks[batch_start + i].get("artist_name", "")
+
+                if intro and not is_valid_intro(intro, track_name, artist_name):
+                    logger_step2a.warning(f"⚠️ Rank {rank} — Intro missing required elements:\n{intro}")
 
                 logger_step2.debug(
                     f"✅ [STEP_2] Rank {rank}: "
@@ -120,23 +133,18 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
                     f"artist={'✔️' if tracks[batch_start + i].get('artist_description') else '❌'}"
                 )
 
-                artist_name = tracks[batch_start + i].get("artistName")
                 artist_desc = tracks[batch_start + i].get("artist_description")
 
-                # Combined logging block for rank intro, detail, and artist description
                 log_lines = []
                 if intro:
                     log_lines.append(f"🅰️ [STEP 2.A] Rank {rank} intro: {intro.strip()}")
                 if detail:
-                    log_lines.append(f"🅱️[STEP 2.B] Rank {rank} detail:\n{detail.strip()}")
+                    log_lines.append(f"🅱️ [STEP 2.B] Rank {rank} detail:\n{detail.strip()}")
                 if artist_desc:
                     log_lines.append(f"🎙️ [STEP 2.C] Rank {rank} — Artist: {artist_name}\n{artist_desc.strip()}")
 
                 if log_lines:
                     logger_step2.debug("\n".join(log_lines))
-
-
-
 
         except Exception as e:
             logger_step2.error(f"[XAI ERROR] Batch {batch_num}: {e}")
@@ -160,6 +168,14 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         "genre": genre,
         "tracks": tracks
     }
+
+def is_valid_intro(intro, track_name, artist_name):
+    if not intro:
+        return False
+    intro_lower = intro.lower()
+    return track_name.lower() in intro_lower and artist_name.lower() in intro_lower
+
+
 
 
 def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:

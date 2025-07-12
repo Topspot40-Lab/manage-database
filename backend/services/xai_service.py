@@ -138,7 +138,7 @@ def format_detail_track_list(tracks) -> str:
 # 🧠 XAI Track Retrieval
 # ─────────────────────────────────────────────────────────────────────────────
 def get_top_tracks_from_xai(decade, genre, language, num_tracks, test_file_number=0):
-    buffer_size = 0 if test_file_number > 0 else max(0, round(num_tracks * 0.10))
+    buffer_size = 0 if test_file_number > 0 else max(0, round(num_tracks * 0.15))
     total_requested = num_tracks + buffer_size
 
     logger_step1a.debug(

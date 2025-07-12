@@ -127,13 +127,34 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     )
 
     return result
+
 def build_final_json(enriched_tracks, request, now, is_test_mode=False):
     seen_artists = set()
     artists = []
     tracks = []
     rankings = []
 
-    for base in enriched_tracks:
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 🧼 STEP 4 PREP — Filter tracks with missing Spotify ID & reassign rank
+    # ─────────────────────────────────────────────────────────────────────────────
+    valid_tracks = [
+        t for t in enriched_tracks
+        if t.get("spotify_data") and t["spotify_data"].get("spotify_track_id")
+    ]
+
+    # Optional: log dropped ones
+    dropped = [t for t in enriched_tracks if t not in valid_tracks]
+    for d in dropped:
+        logger_step4a.warning(
+            f"🗑️ Dropped from final: '{d.get('track_name')}' by '{d.get('artist_name')}' — missing Spotify ID"
+        )
+
+    # 🔢 Reassign rank 1..N
+    for i, t in enumerate(valid_tracks, start=1):
+        t["rank"] = i
+
+    for base in valid_tracks:
+
         spotify_data = base.get("spotify_data", {})
 
         # ─────────────────────────────────────────────────────────────────────────────
