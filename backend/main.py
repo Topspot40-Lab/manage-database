@@ -5,11 +5,9 @@ import io
 from backend.routers.play_json_track_by_rank import router as playback_router
 from fastapi import Query
 import logging
+from backend.routers.tts_endpoints import router as tts_router
 
 logger = logging.getLogger(__name__)
-
-
-
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # ---------------------------------------------------------------------------
@@ -35,6 +33,29 @@ logging.info(f"Starting TopSpot v{config.APP_VERSION} — Updated {config.LAST_U
 # ---------------------------------------------------------------------------
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
+
+from backend.config import (
+    ELEVENLABS_API_KEY,
+    VOICE_ID_INTRO, VOICE_ID_ARTIST, VOICE_ID_TRACK,
+    VOICE_STABILITY, VOICE_SIMILARITY,
+    ELEVENLABS_MODEL,
+    SKIP_TTS_IF_EXISTS, VOICE_PREVIEW_ENABLED, DEFAULT_TTS_LANGUAGE
+)
+#
+# print("\n🎙️ ElevenLabs config loaded:")
+# print("API Key present?        ", bool(ELEVENLABS_API_KEY))
+# print("Intro Voice:            ", VOICE_ID_INTRO)
+# print("Artist Voice:           ", VOICE_ID_ARTIST)
+# print("Track Voice:            ", VOICE_ID_TRACK)
+# print("Model:                  ", ELEVENLABS_MODEL)
+# print("Stability / Similarity: ", VOICE_STABILITY, VOICE_SIMILARITY)
+# print("Skip if exists?         ", SKIP_TTS_IF_EXISTS)
+# print("Voice Preview enabled?  ", VOICE_PREVIEW_ENABLED)
+# print("Default Language:       ", DEFAULT_TTS_LANGUAGE)
+
+
+
+
 
 app = FastAPI(
     title="TopSpot API",
@@ -70,3 +91,4 @@ def auth_callback(code: str = Query(...)):
 app.include_router(json_router)
 app.include_router(save_router)
 app.include_router(playback_router, prefix="/json")
+app.include_router(tts_router)

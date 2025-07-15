@@ -33,6 +33,13 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
         logger_step1c.error(f"❌ Failed to load track file '{filename}': {e}")
         return False
 
+def get_all_rankings() -> list[Dict]:
+    """
+    Return the list of ranking records from track_cache["tracks"].
+    Each record must include rank, decade, genre, and intro.
+    """
+    return track_cache.get("tracks", [])
+
 
 def get_track_by_rank(rank: int) -> Optional[Dict]:
     """Return the track dictionary that matches the given rank."""

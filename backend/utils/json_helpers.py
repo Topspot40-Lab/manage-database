@@ -1,4 +1,4 @@
-import os, json
+import json
 from typing import Dict, Tuple, Optional
 
 import unicodedata

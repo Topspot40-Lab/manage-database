@@ -53,6 +53,31 @@ ENABLE_RANK_INTRO = True
 GENERATE_JSON_LOGGING_ENABLED = False  # ✅ Toggle logging of generate-json summary
 GENERATE_JSON_LOG_PATH = "backend/logs/new_json_all_decades.log"
 
+# ---------------------------------------------------------------------------
+# 🔊 ELEVENLABS TEXT-TO-SPEECH CONFIGURATION
+# ---------------------------------------------------------------------------
+
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+
+# Voice IDs for different types of narration
+VOICE_ID_INTRO = os.getenv("VOICE_ID_INTRO", "EXAVITQu4vr4xnSDxMaL")
+VOICE_ID_ARTIST = os.getenv("VOICE_ID_ARTIST", "Vr6EZfGAz5W6T1wn6b4p")
+VOICE_ID_TRACK = os.getenv("VOICE_ID_TRACK", "oWAxZDx7w5VEj9dCyTzz")
+
+# Audio tuning parameters
+VOICE_STABILITY = float(os.getenv("VOICE_STABILITY", 0.5))
+VOICE_SIMILARITY = float(os.getenv("VOICE_SIMILARITY", 0.75))
+
+# Model used for generation
+ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_monolingual_v1")
+
+# Optional behavior toggles
+SKIP_TTS_IF_EXISTS = os.getenv("SKIP_TTS_IF_EXISTS", "true").strip().lower() == "true"
+VOICE_PREVIEW_ENABLED = os.getenv("VOICE_PREVIEW_ENABLED", "false").strip().lower() == "true"
+DEFAULT_TTS_LANGUAGE = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
+
+
+
 
 # ---------------------------------------------------------------------------
 # 📡 LOGGING CONFIGURATION
