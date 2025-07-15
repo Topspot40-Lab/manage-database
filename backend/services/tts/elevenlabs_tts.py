@@ -8,10 +8,16 @@ from backend.config import (
 )
 
 
-def generate_tts_mp3(text: str, out_path: Path, voice_id: str, overwrite: bool = False):
+def generate_tts_mp3(
+    text: str,
+    out_path: Path,
+    voice_id: str,
+    overwrite: bool = False,
+    play: bool = False  # ✅ NEW PARAM
+):
     if out_path.exists() and not overwrite:
         print(f"⚠️ Skipping TTS: File already exists → {out_path}")
-        return
+        return str(out_path)
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
@@ -33,10 +39,17 @@ def generate_tts_mp3(text: str, out_path: Path, voice_id: str, overwrite: bool =
     if response.status_code != 200:
         raise RuntimeError(f"❌ ElevenLabs error: {response.status_code} — {response.text}")
 
-    # ✅ Correct
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "wb") as f:
         f.write(response.content)
 
     print(f"✅ TTS generated: {out_path}")
 
+    if play:
+        try:
+            from playsound import playsound
+            playsound(str(out_path), block=False)
+        except Exception as e:
+            print(f"⚠️ Could not play sound: {e}")
+
+    return str(out_path)
