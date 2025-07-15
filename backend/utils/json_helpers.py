@@ -207,3 +207,20 @@ def save_full_json_file(payload: Dict, decade: str, filename: str):
 
     logger_step1b.info(f"💾 Saved JSON file: {full_path.name}")
     logger_step1b.debug(f"📁 Save path: {full_path.resolve()}")
+
+
+
+def normalize_text(text: str) -> str:
+    """
+    Normalize string by:
+    - lowercasing
+    - removing punctuation
+    - normalizing Unicode accents
+    - collapsing extra whitespace
+    """
+    if not text:
+        return ""
+
+    text = unicodedata.normalize("NFKD", text)
+    text = re.sub(r"[^\w\s]", "", text.lower())  # Remove punctuation
+    return re.sub(r"\s+", " ", text).strip()

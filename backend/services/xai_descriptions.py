@@ -1,7 +1,9 @@
 # backend/services/xai_descriptions.py
 from backend.utils.track_helpers import normalize_track_keys
 import json, requests
+import re
 from typing import Optional
+from backend.utils.json_helpers import normalize_text
 
 from backend.config import (
     ENABLE_TRACK_DESCRIPTION,
@@ -169,13 +171,35 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
         "tracks": tracks
     }
 
-def is_valid_intro(intro, track_name, artist_name):
+
+def is_valid_intro(intro: str, track_name: str, artist_name: str, genre: str = None, decade: str = None,
+                   rank: int = None) -> bool:
     if not intro:
         return False
-    intro_lower = intro.lower()
-    return track_name.lower() in intro_lower and artist_name.lower() in intro_lower
 
+    intro_norm = normalize_text(intro)
+    missing_fields = []
 
+    # Check normalized fields
+    if normalize_text(track_name) not in intro_norm:
+        missing_fields.append("track_name")
+    if normalize_text(artist_name) not in intro_norm:
+        missing_fields.append("artist_name")
+    if genre and normalize_text(genre) not in intro_norm:
+        missing_fields.append("genre")
+    if decade and str(decade) not in intro_norm:
+        missing_fields.append("decade")
+
+    # Accept either "rank 37", "#37", or "at 37"
+    if rank is not None:
+        if not re.search(rf"(rank|#|at)\s*{rank}\b", intro_norm):
+            missing_fields.append(f"rank={rank}")
+
+    if missing_fields:
+        logger_step2a.debug(f"⚠️ Intro missing elements: {missing_fields}\n→ Intro: {intro}")
+        return False
+
+    return True
 
 
 def get_artist_description(artist_name: str, language: str = "English") -> Optional[str]:
