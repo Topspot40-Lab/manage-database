@@ -5,7 +5,8 @@ import sqlalchemy
 
 from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
-from backend.utils.json_helpers import load_json
+from backend.utils.json_helpers import load_full_json_file
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["json-insert"])
@@ -21,7 +22,7 @@ async def insert_json_to_db(
 
     try:
         filename = f"{decade}_{genre}_en.json"
-        data = load_json(decade, filename)
+        data = load_full_json_file(decade, filename)
         logger.info(f"Loaded JSON file: {filename}")
     except FileNotFoundError:
         logger.error("JSON file not found")

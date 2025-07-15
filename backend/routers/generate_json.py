@@ -14,7 +14,7 @@ from backend.utils.track_builder import build_track_entry, build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
 from backend.services.xai_descriptions import get_track_descriptions_from_xai
-
+from backend.utils.json_helpers import save_full_json_file
 from shared.filepaths import get_json_path
 from pydantic import BaseModel
 
@@ -288,8 +288,17 @@ async def generate_track_json(
         # 💾 STEP 10: Saving final JSON to file
         filepath = get_json_path(request.decade, request.genre, request.language[:2])
         logger.debug(f"💾 STEP 10: Saving final JSON to file: {filepath}")
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(final_json, f, indent=2)
+
+        decade = request.decade.lower()
+        genre = request.genre.lower()
+        filename = f"{decade}_{genre}_en.json"
+
+        save_full_json_file(
+            payload=final_json,
+            decade=decade,
+            filename=filename
+        )
+
 
         logger.info("🛑 Step 10 ----- Complete")
 

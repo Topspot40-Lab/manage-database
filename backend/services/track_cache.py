@@ -11,16 +11,26 @@ track_cache: Dict[str, Any] = {
     "last_played_rank": None
 }
 
-from backend.utils.json_helpers import load_json
+from backend.utils.json_helpers import load_full_json_file
+
 from backend.utils.logger_factory import get_step_logger
 
 logger_step1c = get_step_logger("STEP_1.C")
-
 def load_tracks_from_file(filename: str, full_path: Path) -> bool:
     try:
-        data = load_json(file_path=full_path)  # Now uses logging
-        # tracks = data.get("track_tables", {}).get("track", [])
-        tracks = data.get("track_tables", {}).get("track", [])  # ✅ Full track data with spotify_track_id
+        logger_step1c.info(f"📂 Loading track file: {full_path}")
+        data = load_full_json_file(file_path=full_path)
+
+        if not isinstance(data, dict):
+            logger_step1c.error(f"❌ Unexpected data format. Expected dict, got {type(data)}")
+            return False
+
+        track_tables = data.get("track_tables", {})
+        tracks = track_tables.get("track", [])
+
+        if not isinstance(tracks, list):
+            logger_step1c.error("❌ 'track' is not a list.")
+            return False
 
         track_cache["filename"] = filename
         track_cache["tracks"] = tracks

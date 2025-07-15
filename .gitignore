@@ -3,6 +3,19 @@
 
 
 echo "backend/logs/" >> .gitignore
+# Ignore all JSON files
+*.json
+
+# Ignore all MP3 files
+*.mp3
+
+# Optional: Ignore only those in specific folders
+# data/json_files/
+# data/audio/
+
+# Or ignore all JSON/MP3s inside data/ directory
+data/**/*.json
+data/**/*.mp3
 
 # IntelliJ project files
 .idea

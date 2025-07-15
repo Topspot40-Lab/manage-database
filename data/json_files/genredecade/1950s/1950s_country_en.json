@@ -141,7 +141,7 @@
     "track": [
       {
         "rank": 1,
-        "track_name": "your cheatin heart",
+        "track_name": "your stupid cheatin heart",
         "artist_name": "hank williams",
         "artist_display_name": "Hank Williams",
         "featured_artist": null,
@@ -1046,7 +1046,7 @@
         "year_released": 1950,
         "is_explicit": false,
         "created_at": "2025-07-14T16:28:54.647325",
-        "intro": "At number 39 from the 1950s, Hank Snow's 'The Golden Rocket' takes us on a thrilling country journey through time!",
+        "intro": "At number 38 from the 1950s, Hank Snow's 'The Golden Rocket' takes us on a thrilling country journey through time!",
         "detail": "Written by Hank Snow himself, this song reflects his love for trains and adventure, blending personal passion with storytelling. Recorded in a lively studio in Nashville, the session was filled with excitement, as if everyone was on board the golden rocket. It became a fan favorite, appreciated for its energetic tempo and vivid imagery. And that's the kind of thrilling ride that keeps country music fans coming back for more!",
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -1070,7 +1070,7 @@
         "year_released": 1950,
         "is_explicit": false,
         "created_at": "2025-07-14T16:28:54.647325",
-        "intro": "Ranked 41 in the 1950s, 'I'm Movin' On' by Hank Snow is a country classic that keeps the wheels rolling!",
+        "intro": "Ranked 39 in the 1950s, 'I'm Movin' On' by Hank Snow is a country classic that keeps the wheels rolling!",
         "detail": "This timeless tune was penned by Hank himself, showcasing his knack for storytelling through song. Recorded in the heart of Nashville, it became his signature hit, soaring to the top of the charts and staying there for an impressive 21 weeks. The song's success paved the way for Hank's induction into the Country Music Hall of Fame. And that's the magic that still spins on turntables today!",
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -1094,7 +1094,7 @@
         "year_released": 1959,
         "is_explicit": false,
         "created_at": "2025-07-14T16:28:54.647325",
-        "intro": "Number 43 in the 1950s, 'I've Been Everywhere' by Hank Snow is a whirlwind tour of places and rhymes!",
+        "intro": "Number 40 in the 1950s, 'I've Been Everywhere' by Hank Snow is a whirlwind tour of places and rhymes!",
         "detail": "Written by Geoff Mack, this song is a marvel of lyrical gymnastics, listing over 90 places in just over two minutes. It was recorded in Nashville, and its rapid-fire delivery became a challenge for many artists who covered it later. The song's success highlighted Hank's versatility and cemented his place in country music history. And that's the kind of song that takes you on a journey every time you listen!",
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -1118,7 +1118,7 @@
         "year_released": 1950,
         "is_explicit": false,
         "created_at": "2025-07-14T16:28:54.647325",
-        "intro": "Landing at 44 in the 1950s, 'The Shotgun Boogie' by Tennessee Ernie Ford is a country hit that packs a punch!",
+        "intro": "Landing at 41 in the 1950s, 'The Shotgun Boogie' by Tennessee Ernie Ford is a country hit that packs a punch!",
         "detail": "This catchy tune was written by Ford himself, showcasing his playful side. Recorded in Hollywood, it became an instant classic, blending humor with a toe-tapping beat. The song's success helped solidify Ford's status as a versatile entertainer, crossing over from country to pop charts. And that's the kind of song that keeps you smiling and tapping your feet!",
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -1142,7 +1142,7 @@
         "year_released": 1955,
         "is_explicit": false,
         "created_at": "2025-07-14T16:28:54.647325",
-        "intro": "At number 45 from the 1950s, Tennessee Ernie Ford's 'Ballad of Davy Crockett' captures the spirit of a frontier legend!",
+        "intro": "At number 42 from the 1950s, Tennessee Ernie Ford's 'Ballad of Davy Crockett' captures the spirit of a frontier legend!",
         "detail": "This song was part of a larger cultural phenomenon, inspired by the Disney TV series. Written by Tom Blackburn and George Bruns, it resonated with audiences, becoming a chart-topping hit. Ford's deep, resonant voice brought the character to life, making it a favorite among young and old alike. And that's the kind of song that brings history to life through music!",
         "detail_mp3_url": null,
         "not_on_spotify": false
@@ -1613,7 +1613,7 @@
         "genre": "country",
         "decade": "1950s",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number 39 from the 1950s, Hank Snow's 'The Golden Rocket' takes us on a thrilling country journey through time!",
+        "intro": "At number 38 from the 1950s, Hank Snow's 'The Golden Rocket' takes us on a thrilling country journey through time!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-14"
       },
@@ -1625,7 +1625,7 @@
         "genre": "country",
         "decade": "1950s",
         "tracklist": "TopSpot Autogen",
-        "intro": "Ranked 41 in the 1950s, 'I'm Movin' On' by Hank Snow is a country classic that keeps the wheels rolling!",
+        "intro": "Ranked 39 in the 1950s, 'I'm Movin' On' by Hank Snow is a country classic that keeps the wheels rolling!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-14"
       },
@@ -1637,7 +1637,7 @@
         "genre": "country",
         "decade": "1950s",
         "tracklist": "TopSpot Autogen",
-        "intro": "Number 43 in the 1950s, 'I've Been Everywhere' by Hank Snow is a whirlwind tour of places and rhymes!",
+        "intro": "Number 40 in the 1950s, 'I've Been Everywhere' by Hank Snow is a whirlwind tour of places and rhymes!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-14"
       },
@@ -1649,7 +1649,7 @@
         "genre": "country",
         "decade": "1950s",
         "tracklist": "TopSpot Autogen",
-        "intro": "Landing at 44 in the 1950s, 'The Shotgun Boogie' by Tennessee Ernie Ford is a country hit that packs a punch!",
+        "intro": "Landing at 41 in the 1950s, 'The Shotgun Boogie' by Tennessee Ernie Ford is a country hit that packs a punch!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-14"
       },
@@ -1661,7 +1661,7 @@
         "genre": "country",
         "decade": "1950s",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number 45 from the 1950s, Tennessee Ernie Ford's 'Ballad of Davy Crockett' captures the spirit of a frontier legend!",
+        "intro": "At number 42 from the 1950s, Tennessee Ernie Ford's 'Ballad of Davy Crockett' captures the spirit of a frontier legend!",
         "intro_mp3_url": null,
         "ranking_date": "2025-07-14"
       }

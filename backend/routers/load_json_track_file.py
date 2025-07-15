@@ -5,6 +5,11 @@ from pydantic import BaseModel
 from backend.services.track_cache import load_tracks_from_file
 from backend.config import BASE_DIR
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 router = APIRouter()
 
 class FileLoadRequest(BaseModel):
@@ -21,6 +26,8 @@ def load_json_track_file(request: FileLoadRequest):
         BASE_DIR / "topspot_json_creator" / "data" / "json_files" /
         "genredecade" / decade / filename
     )
+
+    print(f"🧭 Loading from: {file_path.resolve()}")
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")

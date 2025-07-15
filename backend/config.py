@@ -112,6 +112,7 @@ LOG_LEVEL_OVERRIDES = {
     # - Filters out invalid or duplicate entries
     # - Trims down to `num_tracks` unless in test mode
 
+    "STEP_1.C": "DEBUG",  # 🧹 STEP 1.C
     # ────────────────────────────── STEP 2 ──────────────────────────────
     # ✍️ Description Generation — generates intros and details for each track
 

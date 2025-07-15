@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path  # 🟢 Used for file paths
 from fastapi import APIRouter, HTTPException, Path as FastAPIPath  # 🟢 Avoids name conflict
-from backend.utils.json_helpers import load_json
+from backend.utils.json_helpers import load_full_json_file
+
+
 
 logger = logging.getLogger(__name__)  # 🔧 Module-specific logger
 
@@ -31,7 +33,8 @@ def validate_json(
     logger.info(f"🔍 Validating JSON file: {full_path.resolve()}")
 
     try:
-        data = load_json(full_path)
+        data = load_full_json_file(...)  # instead of load_json(...)
+
         tracks = data.get("ranking_tables", {}).get("track_ranking", [])
         logger.info(f"📄 Loaded {len(tracks)} track(s) for validation.")
     except FileNotFoundError:
