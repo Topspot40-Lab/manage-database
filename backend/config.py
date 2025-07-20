@@ -125,7 +125,7 @@ LOG_LEVEL_OVERRIDES = {
     "STEP_2.B":  "INFO",  # 🅱️ Track detail generation
     # Handles: `detail` field (Casey Kasem-style narrative)
 
-    "STEP_2.C":  "INFO",  # 🎙️ Artist bio generation
+    "STEP_2.C":  "DEBUG",  # 🎙️ Artist bio generation
     # Handles: `artist_description` field (stored per artist)
 
     # ────────────────────────────── STEP 3 ──────────────────────────────

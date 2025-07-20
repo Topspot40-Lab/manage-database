@@ -209,11 +209,14 @@ def get_artist_description(artist_name: str, language: str = "English") -> Optio
         return None
 
     prompt = (
-        f"Write a short, engaging artist biography in {language} for '{artist_name}'. "
-        "Include their nationality, primary genre or musical style, and early beginnings. "
-        "Mention their biggest achievements or milestones, and include one interesting fact or piece of trivia. "
-        "If known, mention who influenced them musically — other artists, genres, or movements. "
-        "Use a warm, storytelling tone like a classic radio DJ. Keep it concise — 2 to 3 sentences, no formatting."
+        f"Write a vivid and original artist biography in {language} for the musician '{artist_name}'. "
+        "Avoid using the phrase 'Gather round' or any similar stock intros. Each biography should start differently and sound unique. "
+        "Use a warm, conversational tone—like a radio DJ or music historian with a flair for storytelling. "
+        "Cover their origin story, musical style, career milestones (like hit songs or awards), and their impact or legacy. "
+        "Include at least one surprising or charming fact about the artist—something lesser known or personal. "
+        "Mention musical influences if relevant, but don’t force it. "
+        "The biography should feel fresh and engaging, as if it were being told aloud to an interested listener. "
+        "Write 4 to 6 full sentences, no formatting or lists—just a flowing, natural narrative."
     )
 
     headers = {
