@@ -1,5 +1,4 @@
 import json
-import re
 import unicodedata
 from typing import Dict, Tuple, Optional
 from pathlib import Path
@@ -107,6 +106,29 @@ KNOWN_DUET_PAIRS = {
 # ─────────────────────────────────────────────────────────────────────────────
 # 🔧 Utilities
 # ─────────────────────────────────────────────────────────────────────────────
+
+import re
+
+def clean_text_field(text: str) -> str:
+    """Clean up spacing and punctuation in generated text fields."""
+    if not text:
+        return text
+
+    # Remove leading/trailing whitespace
+    text = text.strip()
+
+    # Replace multiple spaces with one
+    text = re.sub(r"\s+", " ", text)
+
+    # Replace multiple dots with a single period
+    text = re.sub(r"\.{2,}", ".", text)
+
+    # Ensure sentence ends with a single period
+    if not text.endswith("."):
+        text += "."
+
+    return text
+
 
 def normalize_name(name: str) -> str:
     original = name.strip()

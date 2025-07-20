@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Query
 from pathlib import Path
-from backend.services.track_cache import get_all_rankings
+from backend.services.track_cache import get_all_rank_entries
 from backend.services.tts.elevenlabs_tts import generate_tts_mp3
-from backend.config import VOICE_ID_INTRO
+from backend.config import VOICE_ID_INTRO, VOICE_ID_TRACK, VOICE_ID_ARTIST
 import logging
 logger = logging.getLogger("tts_logger")
 
@@ -19,10 +19,15 @@ def generate_intro_tts_by_rank(
     start_rank: int = Query(..., ge=1),
     end_rank: int = Query(..., ge=1)
 ):
+    logger.debug(f"🎙️ [Intro TTS] Requested ranks {start_rank} to {end_rank}")
+
     if start_rank > end_rank:
+        logger.warning("❌ [Intro TTS] Invalid range: start_rank > end_rank")
         return {"error": "Start rank must be <= end rank"}
 
-    rankings = get_all_rankings()
+    rankings = get_all_rank_entries()
+    logger.debug(f"📋 [Intro TTS] Loaded {len(rankings)} track entries")
+
     output_dir = Path("data/mp3_files/intro_mp3_files")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -34,56 +39,80 @@ def generate_intro_tts_by_rank(
             continue
 
         intro_text = entry.get("intro")
-        decade = entry.get("decade", "unknown").replace(" ", "_").lower()
-        genre = entry.get("genre", "unknown").replace(" ", "_").lower()
-
         if not intro_text:
+            logger.debug(f"⚠️ [Intro TTS] No intro text for rank {rank}, skipping")
             continue
 
+        decade = entry.get("decade", "unknown").replace(" ", "_").lower()
+        genre = entry.get("genre", "unknown").replace(" ", "_").lower()
         filename = f"{decade}_{genre}_{rank:02d}.mp3"
         out_path = output_dir / filename
 
+        logger.debug(f"🎧 [Intro TTS] Generating MP3: {out_path}")
         generate_tts_mp3(intro_text, out_path, VOICE_ID_INTRO, overwrite=True)
         generated_files.append(str(out_path))
 
+    logger.info(f"✅ [Intro TTS] Generated {len(generated_files)} files")
     return {
         "message": f"✅ Generated {len(generated_files)} intro TTS files",
         "files": generated_files
     }
-@router.get("/tts/generate-track-detail-tts-by-rank")
+@router.post("/tts/generate-track-detail-tts-by-rank")
 def generate_track_detail_tts_by_rank(
-    rank: int = Query(..., ge=1),
+    start_rank: int = Query(..., ge=1),
+    end_rank: int = Query(..., ge=1),
     overwrite: bool = Query(False),
     play: bool = Query(False)
 ):
-    rankings = get_all_rankings()
-    match = next((t for t in rankings if t.get("rank") == rank), None)
-    if not match:
-        return {"error": f"No track found with rank {rank}"}
+    logger.debug(f"🎙️ [Track Detail TTS] Requested ranks {start_rank} to {end_rank} | overwrite={overwrite} | play={play}")
 
-    intro = match.get("intro", "").strip()
-    detail = match.get("detail", "").strip()
+    if start_rank > end_rank:
+        logger.warning("❌ [Track Detail TTS] Invalid range: start_rank > end_rank")
+        return {"error": "Start rank must be <= end rank"}
 
-    if not intro and not detail:
-        return {"error": "No intro or detail available for TTS."}
+    rankings = get_all_rank_entries()
+    logger.debug(f"📋 [Track Detail TTS] Loaded {len(rankings)} track entries")
 
-    track_id = match.get("spotify_track_id")
-    if not track_id:
-        return {"error": "Missing spotify_track_id for filename generation."}
+    output_dir = Path("data/mp3_files/track_detail_mp3_files")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    full_text = f"{intro} {detail}".strip()
-    out_path = Path("data/mp3_files/track_detail_mp3_files") / f"{track_id}.mp3"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    generated_files = []
 
-    if out_path.exists() and not overwrite:
-        log_tts_action("Track", track_id, out_path, "⏭️ Skipped (exists)", play)
-    else:
-        generate_tts_mp3(full_text, out_path, VOICE_ID_INTRO, overwrite=overwrite, play=play)
-        log_tts_action("Track", track_id, out_path, "✅ Generated", play)
+    for entry in rankings:
+        rank = entry.get("rank")
+        if rank is None or not (start_rank <= rank <= end_rank):
+            continue
 
+        intro = entry.get("intro", "").strip()
+        detail = entry.get("detail", "").strip()
+        if not intro and not detail:
+            logger.debug(f"⚠️ [Track Detail TTS] No text for rank {rank}, skipping")
+            continue
+
+        track_id = entry.get("spotify_track_id")
+        if not track_id:
+            logger.warning(f"⚠️ [Track Detail TTS] Missing track ID for rank {rank}, skipping")
+            continue
+
+        # full_text = f"{intro} {detail}".strip()
+        # Only want detail text here, intro text separate
+        full_text = f"{detail}".strip()
+        out_path = output_dir / f"{track_id}.mp3"
+
+        if out_path.exists() and not overwrite:
+            logger.debug(f"⏭️ [Track Detail TTS] File exists, skipping: {out_path}")
+            log_tts_action("Track", track_id, out_path, "⏭️ Skipped (exists)", play)
+        else:
+            logger.debug(f"🎧 [Track Detail TTS] Generating MP3: {out_path}")
+            generate_tts_mp3(full_text, out_path, VOICE_ID_TRACK, overwrite=overwrite, play=play)
+            log_tts_action("Track", track_id, out_path, "✅ Generated", play)
+
+        generated_files.append(str(out_path))
+
+    logger.info(f"✅ [Track Detail TTS] Generated {len(generated_files)} files")
     return {
-        "message": f"✅ Track detail TTS generated for rank {rank}",
-        "file": str(out_path)
+        "message": f"✅ Generated {len(generated_files)} track detail TTS file(s)",
+        "files": generated_files
     }
 
 @router.get("/tts/generate-artist-tts-by-rank")
@@ -92,7 +121,7 @@ def generate_artist_tts_by_rank(
     overwrite: bool = Query(False),
     play: bool = Query(False)
 ):
-    rankings = get_all_rankings()
+    rankings = get_all_rank_entries()
     match = next((t for t in rankings if t.get("rank") == rank), None)
     if not match:
         return {"error": f"No track found with rank {rank}"}
@@ -111,20 +140,23 @@ def generate_artist_tts_by_rank(
     if out_path.exists() and not overwrite:
         log_tts_action("Artist", artist_id, out_path, "⏭️ Skipped (exists)", play)
     else:
-        generate_tts_mp3(artist_desc, out_path, VOICE_ID_INTRO, overwrite=overwrite, play=play)
+        generate_tts_mp3(artist_desc, out_path, VOICE_ID_ARTIST, overwrite=overwrite, play=play)
         log_tts_action("Artist", artist_id, out_path, "✅ Generated", play)
 
     return {
         "message": f"✅ Artist TTS generated for rank {rank}",
         "file": str(out_path)
     }
-
 @router.post("/tts/generate-all-track-detail-tts")
 def generate_all_track_detail_tts(
     overwrite: bool = Query(False),
     play: bool = Query(False)
 ):
-    rankings = get_all_rankings()
+    logger.debug(f"🎙️ [Track Detail TTS] Generating all tracks | overwrite={overwrite} | play={play}")
+
+    rankings = get_all_rank_entries()
+    logger.debug(f"📋 [Track Detail TTS] Loaded {len(rankings)} track entries")
+
     out_dir = Path("data/mp3_files/track_detail_mp3_files")
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,28 +165,36 @@ def generate_all_track_detail_tts(
         intro = track.get("intro", "").strip()
         detail = track.get("detail", "").strip()
         if not intro and not detail:
+            logger.debug(f"⚠️ [Track Detail TTS] No text for track {track.get('rank', 'unknown')}, skipping")
             continue
 
         track_id = track.get("spotify_track_id")
         if not track_id:
+            logger.warning(f"⚠️ [Track Detail TTS] Missing track ID for rank {track.get('rank', 'unknown')}, skipping")
             continue
 
         out_path = out_dir / f"{track_id}.mp3"
         if out_path.exists() and not overwrite:
+            logger.debug(f"⏭️ [Track Detail TTS] Skipping existing file: {out_path}")
             continue
 
         full_text = f"{intro} {detail}".strip()
+        logger.debug(f"🎧 [Track Detail TTS] Generating MP3: {out_path}")
         generate_tts_mp3(full_text, out_path, VOICE_ID_INTRO, overwrite=overwrite, play=play)
         count += 1
 
+    logger.info(f"✅ [Track Detail TTS] Generated TTS for {count} tracks")
     return {"message": f"✅ Generated TTS for {count} tracks"}
-
 @router.post("/tts/generate-all-artist-tts")
 def generate_all_artist_tts(
     overwrite: bool = Query(False),
     play: bool = Query(False)
 ):
-    rankings = get_all_rankings()
+    logger.debug(f"🎙️ [Artist TTS] Generating all artist files | overwrite={overwrite} | play={play}")
+
+    rankings = get_all_rank_entries()
+    logger.debug(f"📋 [Artist TTS] Loaded {len(rankings)} track entries")
+
     out_dir = Path("data/mp3_files/artist_mp3_files")
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -164,21 +204,30 @@ def generate_all_artist_tts(
     for track in rankings:
         artist_id = track.get("spotify_artist_id")
         artist_desc = track.get("artist_description", "").strip()
-        if not artist_id or not artist_desc or artist_id in seen:
+        rank = track.get("rank", "unknown")
+
+        if not artist_id or not artist_desc:
+            logger.debug(f"⚠️ [Artist TTS] Skipping rank {rank}: Missing artist_id or description")
+            continue
+        if artist_id in seen:
+            logger.debug(f"🔁 [Artist TTS] Already processed: {artist_id}")
             continue
 
         out_path = out_dir / f"{artist_id}.mp3"
 
         if out_path.exists() and not overwrite:
+            logger.debug(f"⏭️ [Artist TTS] File exists, skipping: {out_path}")
             log_tts_action("Artist", artist_id, out_path, "⏭️ Skipped (exists)", play)
             seen.add(artist_id)
             continue
 
+        logger.debug(f"🎧 [Artist TTS] Generating MP3 for artist_id {artist_id}")
         generate_tts_mp3(artist_desc, out_path, VOICE_ID_INTRO, overwrite=overwrite, play=play)
         log_tts_action("Artist", artist_id, out_path, "✅ Generated", play)
         seen.add(artist_id)
         count += 1
 
+    logger.info(f"✅ [Artist TTS] Generated TTS for {count} unique artists")
     return {
         "message": f"✅ Generated TTS for {count} unique artists",
         "generated_count": count

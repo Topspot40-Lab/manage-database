@@ -51,7 +51,9 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
                 "genre": genre,
                 "track_name": t.get("track_name"),
                 "artist_name": t.get("artist_name"),
+                "album_name": t.get("album_name"),
             }
+
             if t.get("mode_flag_detail"):
                 entry["mode_flag_detail"] = t["mode_flag_detail"]
             formatted_input.append(entry)
@@ -64,23 +66,22 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
 
         if ENABLE_RANK_INTRO:
             requested_fields.append("intro")
-            instructions.append(
-                "• 'intro' must be ONE lively sentence (max 30 words). "
-                "Include rank, decade, genre, track_name, and artist_name. "
-                "If 'mode_flag_detail' is present, incorporate it naturally (e.g., 'joined by Willie Nelson'). "
-                "Vary the tone: sometimes playful, sometimes dramatic, sometimes trivia‑style. "
-                "Avoid starting more than two intros in a row with the same word."
-            )
+            "• 'intro' must be one or two lively sentences (max 35 words). "
+            "Include all of the following: rank, decade, genre, track_name, artist_name, and album_name. "
+            "If album_name is available, make sure to explicitly name it (e.g., 'from the album Hello Walls'). "
+            "If 'mode_flag_detail' is present, incorporate it naturally (e.g., 'joined by Willie Nelson'). "
+            "Vary the tone: sometimes playful, sometimes dramatic, sometimes trivia‑style. "
+            "Avoid starting more than two intros in a row with the same word."
 
         if ENABLE_TRACK_DESCRIPTION:
             requested_fields.append("detail")
             instructions.append(
-                # Rich Casey‑Kasem‑style narrative
-                "• 'detail' must be 2‑4 sentences (≈80‑120 words) in a warm Casey Kasem style. "
-                "⚠️ Do NOT repeat the rank, decade, genre, track name or artist name already stated in 'intro'. "
-                "Focus on songwriting history, chart performance, producer/session tidbits, cultural impact, or a light humorous anecdote. "
-                "Feel free to mention the songwriter(s), recording studio, or a quirky behind‑the‑scenes fact. "
-                "End with a radio‑DJ‑flair tagline (e.g., '…and that’s the magic that still spins on turntables today!')."
+                "• 'detail' must be 2–4 warm and engaging sentences (≈80–120 words) written in the style of Casey Kasem. "
+                "⚠️ Do NOT repeat any info from the intro — including rank, decade, genre, track name, artist name, or album name. "
+                "Instead, dive into songwriting origins, chart milestones, recording sessions, producer quirks, or the cultural backdrop of the time. "
+                "You can include relevant trivia, fun facts, or behind‑the‑scenes drama. "
+                "Mention the songwriter(s), the studio, or notable instrumentation if it adds flavor. "
+                "Wrap it up with a radio‑style flourish, like: '…and that’s the kind of tune that still echoes through jukeboxes and memories alike.'"
             )
 
         prompt = (
@@ -208,9 +209,11 @@ def get_artist_description(artist_name: str, language: str = "English") -> Optio
         return None
 
     prompt = (
-        f"Write a short artist biography in {language} for '{artist_name}'. "
-        "Include nationality, genre, early story, key achievements, and trivia. "
-        "Keep it short (2–3 sentences) with no formatting."
+        f"Write a short, engaging artist biography in {language} for '{artist_name}'. "
+        "Include their nationality, primary genre or musical style, and early beginnings. "
+        "Mention their biggest achievements or milestones, and include one interesting fact or piece of trivia. "
+        "If known, mention who influenced them musically — other artists, genres, or movements. "
+        "Use a warm, storytelling tone like a classic radio DJ. Keep it concise — 2 to 3 sentences, no formatting."
     )
 
     headers = {

@@ -10,8 +10,8 @@ load_dotenv()
 
 # config.py
 
-APP_VERSION = "1.0.6"
-LAST_UPDATED = "2025-07-06: 11:00 am"
+APP_VERSION = "1.0.7"
+LAST_UPDATED = "2025-07-18: 11:00 am"
 
 # -----------------------------------------------------------------------------
 # 📁 PATH SETTINGS
@@ -112,7 +112,7 @@ LOG_LEVEL_OVERRIDES = {
     # - Filters out invalid or duplicate entries
     # - Trims down to `num_tracks` unless in test mode
 
-    "STEP_1.C": "DEBUG",  # 🧹 STEP 1.C
+    "STEP_1.C": "INFO",  # 🧹 STEP 1.C
     # ────────────────────────────── STEP 2 ──────────────────────────────
     # ✍️ Description Generation — generates intros and details for each track
 
@@ -200,6 +200,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.validate_json": "INFO",
     "backend.utils.track_builder": "INFO",
     "backend.utils.normalize": "INFO",
+    "tts_logger": "DEBUG",  # ✅ Correct logger name
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",

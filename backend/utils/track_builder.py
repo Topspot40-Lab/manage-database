@@ -4,7 +4,7 @@ import json
 import logging
 import re  # make sure it's imported at top if not already
 from backend.services.spotify.track_search import get_spotify_artist_info
-
+from backend.utils.json_helpers import clean_text_field
 logger = logging.getLogger(__name__)
 
 from backend.utils.logger_factory import get_step_logger
@@ -26,6 +26,16 @@ logger_step4e = get_step_logger("STEP_4.E")
 #         "detail": base.get("detail"),
 #         **base  # Preserve any other existing fields
 #     }
+
+def clean_fallback_id(name: str) -> str:
+    base = normalize_name(name)
+    base = re.sub(r"\W+", "_", base)        # Replace non-word chars with _
+    base = re.sub(r"_+", "_", base)         # Collapse multiple underscores
+    base = base.strip("_")                  # Trim leading/trailing _
+    return f"test_{base}"
+
+
+
 def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
 
     logger_step4b.debug(f"[build_track_entry] incoming base keys: {list(base.keys())}")
@@ -93,6 +103,9 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     logger_step4b.debug(f"🎨 Display Name: {track_display_name}, Featured: {featured_artist_name_raw}")
     logger_step4b.debug(f"🖼️ Artist Display Name: {base.get('artist_display_name')}")
 
+    # Clean detail field
+    detail_cleaned = clean_text_field(base.get("detail"))
+
     result = {
         "rank": base.get("rank"),
         "track_name": track_name_clean,
@@ -105,21 +118,19 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
         "decade": request.decade,
         "spotify_track_id": spotify_data.get("spotify_track_id"),
         "spotify_artist_id": (
-            spotify_data.get("artist_id")
-            or base.get("artist_id")
-            or f"test_{re.sub(r'\W+', '_', normalize_name(artist_name_raw))}"
+                spotify_data.get("artist_id")
+                or base.get("artist_id")
+                or clean_fallback_id(artist_name_raw)
         ),
         "mode_flag": mode_flag.value,
         "duration_ms": spotify_data.get("duration_ms"),
         "popularity": spotify_data.get("popularity"),
         "album_artwork": spotify_data.get("album_artwork"),
+        "album_name": spotify_data.get("album_name"),  # ✅ added here
         "year_released": year_released,
         "is_explicit": False,
         "created_at": now,
-        "intro": base.get("intro"),
-        "detail": base.get("detail"),
-        "detail_mp3_url": base.get("detail_mp3_url"),
-        "not_on_spotify": spotify_data.get("not_on_spotify", False),
+        "detail": detail_cleaned
     }
 
     logger_step4b.debug(
@@ -141,6 +152,13 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         t for t in enriched_tracks
         if t.get("spotify_data") and t["spotify_data"].get("spotify_track_id")
     ]
+
+    # 🔍 Check for suspicious fields
+    for vt in valid_tracks:
+        tn = vt.get("track_name", "")
+        an = vt.get("artist_name", "")
+        if ".." in tn or ".." in an:
+            logger_step4a.warning(f"⚠️ Suspicious field: track_name='{tn}', artist_name='{an}'")
 
     # Optional: log dropped ones
     dropped = [t for t in enriched_tracks if t not in valid_tracks]
@@ -202,8 +220,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             "genre": request.genre,
             "decade": request.decade,
             "tracklist": "TopSpot Autogen",
-            "intro": track_entry.get("intro"),
-            "intro_mp3_url": track_entry.get("intro_mp3_url"),
+            "intro": clean_text_field(base.get("intro")),
             "ranking_date": now.split("T")[0],
         })
 
@@ -235,7 +252,6 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                     artist_info.get("artist_description")
                     if artist_info else base.get("artist_description") or spotify_data.get("artist_description")
                 ),
-                "artist_mp3_url": None,
                 "not_on_spotify": not bool(artist_info),
             })
 

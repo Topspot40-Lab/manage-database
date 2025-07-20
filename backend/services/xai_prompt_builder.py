@@ -5,7 +5,9 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
     prompt = (
         f"Using chart history and critical acclaim as your guide, generate a JSON array with exactly {prompted_num} of the most iconic and influential tracks in the {genre} genre during the {decade} decade. "
         f"Your selections should reflect actual popularity or historical recognition — prioritize songs that ranked high in Billboard charts, won awards, or defined the era. "
-        f"Use a mix of sources such as Billboard, Cashbox, Grammy archives, and music historians.\n\n"
+
+        f"For each track, also include the original album where it was first officially released — not a later compilation, remaster, or live album. "
+        f"Use a mix of sources such as Billboard, Cashbox, Grammy archives, and music historians to guide your selections.\n\n"
 
         f"Only include artists who were actively releasing **original music** during the {decade}. "
         f"EXCLUDE all songs and artists from later decades, even if they sound retro or nostalgic.\n\n"
@@ -23,6 +25,7 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
         "- rank (integer)\n"
         "- trackName (string)\n"
         "- artistName (string)\n"
+        "- albumName (string) ← original official album (not a compilation)\n"
         "- yearReleased (integer)\n\n"
 
         "🎤 **Artist Name Formatting Rules** (important for data accuracy):\n"

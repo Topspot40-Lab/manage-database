@@ -178,7 +178,6 @@ def get_spotify_data(track_name: str, artist_name: str):
                         f"✅ [STEP_3.A] Match found: '{t['name']}' by '{artist['name']}' → "
                         f"Track ID: {t['id']}, Duration: {round(t['duration_ms'] / 1000)}s, Popularity: {t['popularity']}"
                     )
-
                     return {
                         "spotify_track_id": t["id"],
                         "artist_id": artist_id,
@@ -187,6 +186,7 @@ def get_spotify_data(track_name: str, artist_name: str):
                         "mode_flag": None,
                         "duration_ms": t["duration_ms"],
                         "popularity": t["popularity"],
+                        "album_name": t["album"]["name"],
                         "album_artwork": t["album"]["images"][0]["url"] if t["album"]["images"] else None,
                         "artist_artwork": artist_image,
                         "track_name": t["name"],
