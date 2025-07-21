@@ -45,9 +45,10 @@ TEST_FILE_NUMBER = 1
 # -----------------------------------------------------------------------------
 # 📋 FEATURE FLAGS (Text Generation)
 # -----------------------------------------------------------------------------
-ENABLE_ARTIST_DESCRIPTION = True
-ENABLE_TRACK_DESCRIPTION = True
 ENABLE_RANK_INTRO = True
+ENABLE_TRACK_DETAIL = False
+ENABLE_ARTIST_DETAIL = False
+
 
 # config.py
 GENERATE_JSON_LOGGING_ENABLED = False  # ✅ Toggle logging of generate-json summary
@@ -113,22 +114,7 @@ LOG_LEVEL_OVERRIDES = {
     # - Trims down to `num_tracks` unless in test mode
 
     "STEP_1.C": "INFO",  # 🧹 STEP 1.C
-    # ────────────────────────────── STEP 2 ──────────────────────────────
-    # ✍️ Description Generation — generates intros and details for each track
-
-    "STEP_2":    "INFO",  # 🔁 Overall STEP 2 orchestration (XAI + bio)
-
-    "STEP_2.A":  "INFO",  # 🅰️ Rank intro generation
-    # Function: get_track_descriptions_from_xai(...)
-    # Handles: `intro` field (1-liner with rank, artist, genre, etc.)
-
-    "STEP_2.B":  "INFO",  # 🅱️ Track detail generation
-    # Handles: `detail` field (Casey Kasem-style narrative)
-
-    "STEP_2.C":  "DEBUG",  # 🎙️ Artist bio generation
-    # Handles: `artist_description` field (stored per artist)
-
-    # ────────────────────────────── STEP 3 ──────────────────────────────
+        # ────────────────────────────── STEP 3 ──────────────────────────────
     # 🎧 Spotify Enrichment Pipeline — enhances basic track data with Spotify metadata
 
     "STEP_3": "INFO",       # Top-level orchestration (called from generate_track_json)
@@ -177,7 +163,23 @@ LOG_LEVEL_OVERRIDES = {
     "STEP_6": "INFO",      # Remove tracks still missing Spotify data
     "STEP_7": "INFO",      # Add spare tracks
     "STEP_8": "INFO",      # Reassign ranks
-    "STEP_9": "INFO",      # Rebuild artist table
+
+    # ────────────────────────────── STEP 9 ──────────────────────────────
+    # ✍️ Description Generation — generates intros and details for each track
+
+    "STEP_9": "DEBUG",  # 🔁 Overall STEP 2 orchestration (XAI + bio)
+
+    "STEP_9.A": "DEBUG",  # 🅰️ Rank intro generation
+    # Function: get_track_descriptions_from_xai(...)
+    # Handles: `intro` field (1-liner with rank, artist, genre, etc.)
+
+    "STEP_9.B": "INFO",  # 🅱️ Track detail generation
+    # Handles: `detail` field (Casey Kasem-style narrative)
+
+    "STEP_9.C": "DEBUG",  # 🎙️ Artist bio generation
+    # Handles: `artist_description` field (stored per artist)
+
+    # "STEP_9": "INFO",      # Rebuild artist table
     "STEP_10": "INFO",     # Save final JSON to disk
     "STEP_11": "INFO"      # Print summary to terminal
 

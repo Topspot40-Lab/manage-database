@@ -2,7 +2,7 @@
   "language": "english",
   "category": "1960s",
   "genre": "country",
-  "generated_at": "2025-07-20T17:20:55.661213",
+  "generated_at": "2025-07-20T19:31:01.600060",
   "core_tables": {
     "genre": [
       {
@@ -19,21 +19,21 @@
         "artist_name": "johnny cash",
         "spotify_artist_id": "6kACVPfCOnqzgfEF5ryl0x",
         "artist_artwork": "https://i.scdn.co/image/ab6761610000e5eb94a8326675bfcafb20f0a235",
-        "artist_description": "Johnny Cash, born in the heart of Arkansas, emerged from humble beginnings to become a towering figure in American music. With his deep, resonant voice and a style that effortlessly blended country, rockabilly, and gospel, Cash carved out a unique niche that resonated with fans across genres. His career was studded with milestones, from the chart-topping success of \"Ring of Fire\" to his iconic performances at Folsom Prison, which not only showcased his talent but also his deep empathy for the marginalized. Cash's legacy is as much about his music as it is about his authenticity and integrity, traits that endeared him to millions. Did you know that Johnny Cash was also an amateur radio enthusiast, often using his skills to communicate with fans and friends around the world? His influence continues to inspire new generations of musicians, proving that true artistry transcends time.",
+        "artist_description": null,
         "not_on_spotify": false
       },
       {
         "artist_name": "tammy wynette",
         "spotify_artist_id": "1LFKKuzn302wp15dYH28id",
         "artist_artwork": "https://i.scdn.co/image/2c0e3299ce1b2644aee19974ad35d6b441aba6b7",
-        "artist_description": "Imagine stepping into a cozy, dimly lit room where the air hums with the soulful strains of country music, and there she is—Tammy Wynette, the First Lady of Country. Born in the small town of Tremont, Mississippi, Tammy's journey from a beauty school dropout to a country music icon is nothing short of remarkable. Her voice, a blend of heartache and hope, resonated with millions, especially through her signature hit, \"Stand by Your Man,\" which not only topped the charts but also stirred a whirlwind of controversy and conversation. Throughout her career, Tammy racked up numerous awards, including two Grammy Awards, and her influence stretched far beyond the country genre, touching the hearts of listeners worldwide. What many might not know is that Tammy was also a savvy businesswoman, owning a chain of beauty salons before her music career took off. Her legacy? A testament to resilience and the power of a song to heal and inspire, leaving an indelible mark on the tapestry of American music.",
+        "artist_description": null,
         "not_on_spotify": false
       },
       {
-        "artist_name": "faron young",
-        "spotify_artist_id": "6uvq6FeVsmhOWfJHxVNeBL",
-        "artist_artwork": "https://i.scdn.co/image/ab67616d0000b27331ad98dc9bfa9bed6bda112a",
-        "artist_description": "Faron Young, born in the heart of Shreveport, Louisiana, in 1932, was a true country music trailblazer whose voice echoed the soul of the South. From his early days on the Louisiana Hayride to becoming a Nashville icon, Faron's smooth, emotive baritone captured the hearts of fans worldwide. His breakout hit, \"Live Fast, Love Hard, Die Young,\" not only topped the charts but also became an anthem for living life to the fullest. Throughout his illustrious career, Faron racked up an impressive collection of hits like \"Hello Walls\" and \"It's Four in the Morning,\" cementing his place in country music history. What many don't know is that Faron was an avid pilot, often flying himself to gigs, adding a touch of adventure to his already colorful life. His legacy lives on, not just in his music, but in the way he inspired countless artists to embrace the wild, untamed spirit of country music.",
+        "artist_name": "marty robbins",
+        "spotify_artist_id": "0Xi59sEw38vRvwleSAVqoo",
+        "artist_artwork": "https://i.scdn.co/image/55992126e2a79d6dad67c4e9508811ba19abc586",
+        "artist_description": null,
         "not_on_spotify": false
       }
     ]
@@ -59,8 +59,8 @@
         "album_name": "Ring Of Fire: The Best Of Johnny Cash",
         "year_released": 1963,
         "is_explicit": false,
-        "created_at": "2025-07-20T17:20:55.661213",
-        "detail": "Did you know that 'Ring of Fire' was co-written by June Carter Cash and Merle Kilgore? The song's unique mariachi-style horn arrangement was inspired by a dream June had, where she heard the song being played in that style. It was recorded at the legendary Columbia Studio A in Nashville. The track hit number one on the Billboard country chart and even crossed over to the pop charts, a testament to its universal appeal. And that's the kind of tune that still echoes through jukeboxes and memories alike."
+        "created_at": "2025-07-20T19:31:01.600060",
+        "detail": null
       },
       {
         "rank": 2,
@@ -81,30 +81,30 @@
         "album_name": "Tears Of Fire: The 25th Anniversary Collection",
         "year_released": 1968,
         "is_explicit": false,
-        "created_at": "2025-07-20T17:20:55.661213",
-        "detail": "Tammy Wynette's 'Stand by Your Man' was penned by Wynette herself and Billy Sherrill, her producer. The song was recorded in just 15 minutes, a testament to Tammy's incredible talent. It became an instant classic, topping the country charts for three weeks and even reaching the pop top 20. The recording session was filled with a sense of urgency and excitement, capturing the raw emotion of the lyrics. And that's the kind of tune that still echoes through jukeboxes and memories alike."
+        "created_at": "2025-07-20T19:31:01.600060",
+        "detail": null
       },
       {
         "rank": 3,
-        "track_name": "hello walls",
-        "artist_name": "faron young",
-        "artist_display_name": "Faron Young",
+        "track_name": "el paso",
+        "artist_name": "marty robbins",
+        "artist_display_name": "Marty Robbins",
         "featured_artist": null,
         "featured_artist_id": null,
-        "track_display_name": "hello walls",
+        "track_display_name": "el paso",
         "genre": "country",
         "decade": "1960s",
-        "spotify_track_id": "4dim8F8t01qimHOmr6S3Gd",
-        "spotify_artist_id": "6uvq6FeVsmhOWfJHxVNeBL",
+        "spotify_track_id": "4f8hBeMXMvssn6HtFAtblo",
+        "spotify_artist_id": "0Xi59sEw38vRvwleSAVqoo",
         "mode_flag": "solo",
-        "duration_ms": 146840,
-        "popularity": 54,
-        "album_artwork": "https://i.scdn.co/image/ab67616d0000b27331ad98dc9bfa9bed6bda112a",
-        "album_name": "The Complete Capitol Hits Of Faron Young",
-        "year_released": 1961,
+        "duration_ms": 259306,
+        "popularity": 67,
+        "album_artwork": "https://i.scdn.co/image/ab67616d0000b273084051346f432cc68a1279cd",
+        "album_name": "Gunfighter Ballads And Trail Songs",
+        "year_released": 1960,
         "is_explicit": false,
-        "created_at": "2025-07-20T17:20:55.661213",
-        "detail": "Written by the legendary Willie Nelson, 'Hello Walls' was Faron Young's first number one hit. Recorded at the Bradley Film and Recording Studio in Nashville, the song's simple yet poignant lyrics struck a chord with listeners. It stayed at the top of the country charts for nine weeks, showcasing its enduring popularity. The recording session was intimate, with Willie playing guitar and Faron delivering the vocals with heartfelt sincerity. And that's the kind of tune that still echoes through jukeboxes and memories alike."
+        "created_at": "2025-07-20T19:31:01.600060",
+        "detail": null
       }
     ],
     "tracklist": [
@@ -114,7 +114,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for country - 1960s",
-        "created_at": "2025-07-20T17:20:55.661213"
+        "created_at": "2025-07-20T19:31:01.600060"
       }
     ]
   },
@@ -128,7 +128,7 @@
         "genre": "country",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number one, from the 1960s, in the country genre, we have 'Ring of Fire' by Johnny Cash.",
+        "intro": null,
         "ranking_date": "2025-07-20"
       },
       {
@@ -139,18 +139,18 @@
         "genre": "country",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number two, from the 1960s, in the country genre, we have 'Stand by Your Man' by Tammy Wynette.",
+        "intro": null,
         "ranking_date": "2025-07-20"
       },
       {
-        "track_id": "4dim8F8t01qimHOmr6S3Gd",
-        "track_name": "hello walls",
-        "artist_name": "faron young",
+        "track_id": "4f8hBeMXMvssn6HtFAtblo",
+        "track_name": "el paso",
+        "artist_name": "marty robbins",
         "rank": 3,
         "genre": "country",
         "decade": "1960s",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number three, from the 1960s, in the country genre, we have 'Hello Walls' by Faron Young.",
+        "intro": null,
         "ranking_date": "2025-07-20"
       }
     ]

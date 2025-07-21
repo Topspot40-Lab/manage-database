@@ -34,84 +34,7 @@ class TrackRequest(BaseModel):
     num_tracks: int = 1
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 🧠 FUNCTION FLOW OVERVIEW: generate_track_json()
-#
-# This endpoint generates a complete TopSpot-style track listing by calling XAI,
-# enriching with Spotify metadata, and assembling a structured JSON file.
-#
-# ─ STEP 1: Get initial track list from XAI or test file
-#     backend/services/xai_service.py → get_top_tracks_from_xai()
-#         ├── xai_prompt_builder.build_track_prompt()
-#         ├── xai_service.fetch_xai_tracks()
-#         └── xai_response_handler.parse_and_filter_tracks()
-#
-# ─ STEP 2: Add descriptions (intro + detail) using XAI
-#     backend/services/xai_service.py → get_track_descriptions_from_xai()
-#         ├── xai_prompt_builder.build_description_prompt()
-#         ├── xai_service.fetch_xai_descriptions()
-#         └── xai_response_handler.attach_descriptions_to_tracks()
-#
-# ─ STEP 3: Enrich with Spotify metadata (skipped if test mode)
-#     backend/services/track_generator.py → enrich_tracks_with_spotify()
-#         ├── spotify_service.get_spotify_data()
-#         └── track_builder.build_track_entry()
-#
-# ─ STEP 4: Build structured JSON (core_tables, track_tables, ranking_tables)
-#     backend/utils/track_builder.py → build_final_json()
-#         └── internally calls build_track_entry() per track
-#
-# ─ STEP 5: Replace any missing Spotify tracks
-#     backend/services/spotify_service.py → handle_missing_track()
-#
-# ─ STEP 6: Remove tracks still missing Spotify data
-#     Inline filtering with list comprehension:
-#         [t for t in tracks if t.get("spotify_track_id")]
-#
-# ─ STEP 7: Add spare tracks if final count < 40
-#     backend/utils/track_builder.py → build_track_entry()
-#         (called again to rebuild spares and assign rank)
-#
-# ─ STEP 8: Reassign ranks after cleanup/replacement
-#     backend/services/spotify_service.py → reassign_ranks()
-#
-# ─ STEP 9: Rebuild artist table from enriched tracks
-#     Inline logic inside generate_track_json() using:
-#         track["spotify_artist_id"] → artist_lookup[aid]
-#
-# ─ STEP 10: Save final JSON to disk
-#     shared/filepaths.py → get_json_path()
-#     → standard open() and json.dump() to file
-#
-# ─ STEP 11: Print summary to terminal
-#     backend/utils/log_helpers.py → log_generate_json_summary()
-# OUTPUT (wrapped dict):
-#   {
-#     "language": "english",
-#     "category": "1960s",
-#     "genre": "rock",
-#     "generated_at": "ISO timestamp",
-#     "tracks": [
-#         { "rank": 1, "trackName": "Tennessee Waltz", "artistName": "Patti Page" },
-#         ...
-#     ]
-#   }
-#
-# STORED IN:
-#   The variable name for this structure is `wrapped`, returned by get_top_tracks_from_xai().
-#   The cleaned track list used in later steps is accessed via:
-#       track_list = wrapped["tracks"]
-#
-#   ✅ This is the canonical track list for enrichment, Spotify lookup, and final output.
-#
-# ✅ Final return includes:
-#     {
-#       "message": "JSON created successfully",
-#       "file": <saved path>,
-#       "version": "v3-official",
-#       "track_count": <original XAI count>
-#     }
-# ─────────────────────────────────────────────────────────────────────────────
+
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 async def generate_track_json(
     request: TrackRequest,
@@ -140,17 +63,12 @@ async def generate_track_json(
             }
 
         logger.info("🛑 Step 1 ----- Complete")
+
         # ───────────────── STEP 2 ─────────────────
-        logger.debug("✍️ STEP 2: Enriching tracks with XAI descriptions")
-        enriched = get_track_descriptions_from_xai(
-            track_data=wrapped,
-            language=request.language,
-            decade=request.decade,
-            genre=request.genre
-        )
-        if not enriched or "tracks" not in enriched or len(enriched["tracks"]) != len(track_list):
-            raise HTTPException(status_code=500,
-                                detail="Mismatch or failure in track descriptions")
+        logger.debug("✍️ STEP 2: Skipped XAI description enrichment — moved to STEP 9")
+
+        # Just wrap raw track list for compatibility with STEP 3
+        enriched = {"tracks": track_list}
 
         if max_step == 2:
             logger.info("🛑 Stopping after STEP 2 as requested")
@@ -159,7 +77,9 @@ async def generate_track_json(
                 "track_count": len(enriched['tracks']),
                 "tracks": enriched["tracks"]
             }
+
         logger.info("🛑 Step 2 ----- Complete")
+
         # ───────────────── STEP 3 ─────────────────
         logger.debug("✍️ STEP 3: Enriching tracks with Spotify API")
         enriched["tracks"] = enrich_tracks_with_spotify(
@@ -265,6 +185,26 @@ async def generate_track_json(
 
         logger.info("🛑 Step 8 ----- Complete")
 
+        # ✍️ STEP 9: Add XAI descriptions *after* final rank assignment
+        logger.debug("✍️ STEP 9: Adding XAI descriptions after rank reassignment")
+
+        enriched_for_xai = {"tracks": tracks}  # Wrap list to match XAI input format
+
+        described = get_track_descriptions_from_xai(
+            track_data=enriched_for_xai,
+            language=request.language,
+            decade=request.decade,
+            genre=request.genre
+        )
+
+        if not described or "tracks" not in described or len(described["tracks"]) != len(tracks):
+            raise HTTPException(status_code=500, detail="Failed to generate final track descriptions")
+
+        # ✅ Replace track table with enriched version
+        final_json["track_tables"]["track"] = described["tracks"]
+
+        logger.info("🛑 Step 9 ----- Complete")
+
         # 👨‍🎤 STEP 9: Rebuilding artist table from track data
         # logger.debug("👨‍🎤 STEP 9: Rebuilding artist table from track data")
         # artist_lookup = {}
@@ -283,7 +223,7 @@ async def generate_track_json(
         #         }
         # final_json["core_tables"]["artist"] = list(artist_lookup.values())
         #
-        logger.info("🛑 Step 9 ----- Complete")
+        # logger.info("🛑 Step 9 ----- Complete")
 
         # 💾 STEP 10: Saving final JSON to file
         filepath = get_json_path(request.decade, request.genre, request.language[:2])
@@ -317,7 +257,7 @@ async def generate_track_json(
         # Save the full final_json to the file
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(final_json, f, indent=2, ensure_ascii=False)
-        logger.info(f"✅ JSON saved to {filepath}")
+        logger.debug(f"✅ JSON saved to {filepath}")
 
         logger.info("🛑 Step 11 ----- JSON Creation Complete")
 

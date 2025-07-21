@@ -7,7 +7,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pathlib import Path
 import re
-import json
 import difflib
 from backend.utils.json_helpers import normalize_name
 from backend.utils.logger_factory import get_step_logger
@@ -369,7 +368,6 @@ def enrich_track_from_spotify(track_id: str) -> dict:
 
 
 def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -> list[dict]:
-
     """
     Enrich each XAI-generated track with Spotify metadata using get_spotify_data.
     Adds a 'spotify_data' field to each track dict.
@@ -411,5 +409,22 @@ def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -
 
     match_count = sum(1 for t in tracks if "spotify_data" in t)
     logger_step3.debug(f"🔢 [STEP_3] {match_count} of {len(tracks)} tracks successfully matched with Spotify.")
+
+    # 🧾 Optional summary log for every track
+    for t in tracks:
+        rank = t.get("rank")
+        tn = t.get("trackName") or t.get("track_name")
+        an = t.get("artistName") or t.get("artist_name")
+        sd = t.get("spotify_data", {})
+
+        logger_spotify.debug(
+            f"🎵 Rank {rank}: '{tn}' by '{an}'\n"
+            f"   • Track ID: {sd.get('spotify_track_id', '❌')}\n"
+            f"   • Artist ID: {sd.get('artist_id', '❌')}\n"
+            f"   • Duration: {sd.get('duration_ms', '❌')} ms\n"
+            f"   • Popularity: {sd.get('popularity', '❌')}\n"
+            f"   • Album Art: {'✔️' if sd.get('album_artwork') else '❌'}\n"
+            f"   • Artist Art: {'✔️' if sd.get('artist_artwork') else '❌'}"
+        )
 
     return tracks

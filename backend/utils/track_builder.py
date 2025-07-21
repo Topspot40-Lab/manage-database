@@ -236,7 +236,9 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             f"id={main_artist_id}, seen={main_artist_id in seen_artists}"
         )
 
-        if norm_main_artist_name and norm_main_artist_name not in seen_artists:
+        artist_key = (norm_main_artist_name, main_artist_id or "unknown")
+
+        if norm_main_artist_name and artist_key not in seen_artists:
             artist_info = get_spotify_artist_info(norm_main_artist_name)
 
             if not artist_info:
@@ -255,8 +257,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 "not_on_spotify": not bool(artist_info),
             })
 
-            seen_artists.add(norm_main_artist_name)
-
+            seen_artists.add(artist_key)
         # ─────────────────────────────────────────────────────────────────────────────
         # 👤 STEP 4.D — Add FEATURED artist if present
         # ─────────────────────────────────────────────────────────────────────────────
@@ -264,12 +265,14 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         norm_feat_name = normalize_name(raw_feat_name) if raw_feat_name else None
         feat_artist_id = track_entry.get("featured_artist_id")
 
+        artist_key = (norm_feat_name, feat_artist_id or "unknown")
+
         logger_step4d.debug(
             f"👤 FEATURED ARTIST check: raw={raw_feat_name}, normalized={norm_feat_name}, "
-            f"id={feat_artist_id}, seen={feat_artist_id in seen_artists}"
+            f"id={feat_artist_id}, seen={artist_key in seen_artists}"
         )
 
-        if norm_feat_name and feat_artist_id and feat_artist_id not in seen_artists:
+        if norm_feat_name and feat_artist_id and artist_key not in seen_artists:
             artist_info = get_spotify_artist_info(norm_feat_name)
 
             if not artist_info:
@@ -286,7 +289,8 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 "not_on_spotify": not bool(artist_info),
             })
 
-            seen_artists.add(norm_feat_name)
+            seen_artists.add(artist_key)
+
             logger_step4d.debug(
                 f"🧾 Artist list so far (Rank {base.get('rank')}): {[a['artist_name'] for a in artists]}"
             )
