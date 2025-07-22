@@ -201,6 +201,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.logging.track_logging": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.utils.track_builder": "DEBUG",
+    "Validation": "DEBUG",
     "backend.utils.normalize": "INFO",
     "tts_logger": "DEBUG",  # ✅ Correct logger name
     "spotipy": "WARNING",

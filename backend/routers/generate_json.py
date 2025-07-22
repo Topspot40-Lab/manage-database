@@ -261,14 +261,23 @@ async def generate_track_json(
 
         decade = request.decade.lower()
         genre = request.genre.lower()
-        filename = f"{decade}_{genre}_en.json"
+
+        # Use timestamped filename if running in test mode
+        if is_test_mode:
+            filename = f"{decade}_{genre}_en_test_{now_dt.strftime('%Y%m%d_%H%M%S')}.json"
+        else:
+            filename = f"{decade}_{genre}_en.json"
+
+        # Optional sanity check
+        track_list = final_json.get("track_tables", {}).get("track", [])
+        logger.info(f"🧮 Saving {len(track_list)} track(s) to {filename}")
+        assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
 
         save_full_json_file(
             payload=final_json,
             decade=decade,
             filename=filename
         )
-
 
         logger.info("🛑 Step 10 ----- Complete")
 

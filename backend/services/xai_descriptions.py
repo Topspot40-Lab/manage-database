@@ -34,9 +34,9 @@ def get_track_descriptions_from_xai(track_data, language, decade, genre):
             logger.debug(f"📋 track_ranking found with {len(track_ranking)} rows")
 
             intro_map = {
-                (intro["track_id"], intro["rank"]): intro["intro"]
-                for intro in intros
-                if intro.get("track_id") and intro.get("intro")
+                (track["spotify_track_id"], track["rank"]): track["intro"]
+                for track in intros.get("tracks", [])
+                if track.get("spotify_track_id") and track.get("intro")
             }
 
             logger.debug(f"🎯 Intro map keys: {list(intro_map.keys())}")
