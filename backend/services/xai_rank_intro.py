@@ -1,5 +1,3 @@
-# backend/services/xai_rank_intro.py
-
 import json
 import logging
 from backend.services.xai_common import query_xai
@@ -9,11 +7,12 @@ logger = logging.getLogger("STEP_9.RankIntro")
 
 def get_rank_intros_from_xai(tracks, language, decade, genre):
     """
-    Adds 'intro' field to each track's ranking based on XAI prompt response.
-    Validates required fields are present.
+    Returns a list of intro summaries for each track, mapped by track_id and rank.
+    Each item includes track_id, rank, genre, decade, and the generated intro text.
     """
     batch_size = 10
     total = len(tracks)
+    all_intros = []
 
     for batch_start in range(0, total, batch_size):
         batch = tracks[batch_start:batch_start + batch_size]
@@ -52,9 +51,18 @@ def get_rank_intros_from_xai(tracks, language, decade, genre):
         for i, desc in enumerate(responses):
             track = tracks[batch_start + i]
             intro = desc.get("intro")
-            track["intro"] = intro
+            track_id = track.get("spotify_track_id")
 
-            # ✅ Validate intro content
+            entry = {
+                "track_id": track_id,
+                "rank": track.get("rank"),
+                "intro": intro,
+                "genre": genre,
+                "decade": decade,
+            }
+            all_intros.append(entry)
+
+            # 🔍 Optional validation
             if intro and not is_valid_intro(
                 intro,
                 track_name=track.get("track_name", ""),
@@ -66,3 +74,5 @@ def get_rank_intros_from_xai(tracks, language, decade, genre):
                 logger.warning(f"⚠️ Rank {track.get('rank')} intro failed validation:\n{intro}")
             else:
                 logger.debug(f"🟢 Rank {track.get('rank')} intro: {intro}")
+
+    return all_intros

@@ -2,7 +2,7 @@
   "language": "english",
   "category": "test",
   "genre": "1",
-  "generated_at": "2025-07-21T17:12:44.113036",
+  "generated_at": "2025-07-22T06:57:43.814828",
   "core_tables": {
     "genre": [
       {
@@ -19,7 +19,7 @@
         "artist_name": "simon and garfunkel",
         "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
         "artist_artwork": "https://i.scdn.co/image/afde2fdd14f8c8ca23393f257e3a369a234a24b6",
-        "artist_description": null,
+        "artist_description": "Simon and Garfunkel, an iconic American folk-rock duo, rose to fame in the 1960s with their harmonious vocals and poetic lyrics. Their album 'Bridge Over Troubled Water' won six Grammy Awards in 1971, including Album of the Year. Their songs like 'The Sound of Silence' and 'Mrs. Robinson' have left a lasting impact on music culture, influencing generations of musicians and continuing to resonate with audiences worldwide.",
         "not_on_spotify": false
       }
     ]
@@ -40,14 +40,13 @@
         "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
         "mode_flag": "group",
         "duration_ms": 185413,
-        "popularity": 74,
+        "popularity": 75,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b50c381e5f477c3cd066286",
         "album_name": "Wednesday Morning, 3 A.M.",
         "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-07-21T17:12:44.113036",
-        "detail": null,
-        "intro": "Kicking off the test decade at rank 1, 'The Sound of Silence' by Simon and Garfunkel, from the album Wednesday Morning, 3 A.M., sets a haunting tone in the genre 1."
+        "created_at": "2025-07-22T06:57:43.814828",
+        "detail": "Now, let's take a moment to appreciate the magic behind 'The Sound of Silence.' Did you know that Paul Simon wrote this masterpiece in the darkness of his bathroom, inspired by the solitude and quietness that enveloped him? The song's haunting acoustic guitar was recorded in one take, capturing the raw emotion that still resonates with listeners today. It's fascinating to think that this track, initially overlooked, soared to the top of the charts after being re-released with electric instrumentation. And that, my friends, is the power of perseverance and the beauty of music. Keep those radios tuned right here for more timeless classics!"
       }
     ],
     "tracklist": [
@@ -57,9 +56,10 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 1 - test",
-        "created_at": "2025-07-21T17:12:44.113036"
+        "created_at": "2025-07-22T06:57:43.814828"
       }
-    ]
+    ],
+    "artist_table": []
   },
   "ranking_tables": {
     "track_ranking": [
@@ -71,8 +71,8 @@
         "genre": "1",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": null,
-        "ranking_date": "2025-07-21"
+        "intro": "Kicking off at rank 1 in the 'test' decade, 'The Sound of Silence' by Simon and Garfunkel from the album Wednesday Morning, 3 A.M. sets a haunting tone in genre 1.",
+        "ranking_date": "2025-07-22"
       }
     ]
   }

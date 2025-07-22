@@ -8,8 +8,8 @@ logger = logging.getLogger("STEP_9.ArtistDetail")
 
 def get_artist_descriptions_from_xai(tracks, language):
     """
-    Adds 'artist_description' field to each track based on artist name.
-    Only queries unique artists once.
+    Returns a list of artist descriptions (1 per unique artist).
+    Each item has: artist_name, artist_description.
     """
     seen_artists = {}
     unique_input = []
@@ -22,7 +22,7 @@ def get_artist_descriptions_from_xai(tracks, language):
 
     if not unique_input:
         logger.warning("🚫 No unique artists found for description.")
-        return
+        return []
 
     prompt = (
         f"Generate the following fields in {language}: artist_description. "
@@ -34,14 +34,20 @@ def get_artist_descriptions_from_xai(tracks, language):
     responses = query_xai(prompt)
     if not responses:
         logger.warning("⚠️ Artist description query returned no results.")
-        return
+        return []
 
-    artist_map = {r["artist_name"].strip().lower(): r.get("artist_description") for r in responses}
+    artist_descriptions = []
 
-    for t in tracks:
-        name = t.get("artist_name", "").strip().lower()
-        if name in artist_map:
-            t["artist_description"] = artist_map[name]
+    for resp in responses:
+        name = resp.get("artist_name", "").strip()
+        desc = resp.get("artist_description")
+        if name and desc:
             logger.debug(f"🎙️ Artist '{name}' description added.")
+            artist_descriptions.append({
+                "artist_name": name,
+                "artist_description": desc
+            })
         else:
-            logger.warning(f"❌ No description returned for artist '{name}'")
+            logger.warning(f"❌ Missing description for response: {resp}")
+
+    return artist_descriptions

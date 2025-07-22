@@ -46,8 +46,8 @@ TEST_FILE_NUMBER = 1
 # 📋 FEATURE FLAGS (Text Generation)
 # -----------------------------------------------------------------------------
 ENABLE_RANK_INTRO = True
-ENABLE_TRACK_DETAIL = False
-ENABLE_ARTIST_DETAIL = False
+ENABLE_TRACK_DETAIL = True
+ENABLE_ARTIST_DETAIL = True
 
 
 # config.py
@@ -167,16 +167,16 @@ LOG_LEVEL_OVERRIDES = {
     # ────────────────────────────── STEP 9 ──────────────────────────────
     # ✍️ Description Generation — generates intros and details for each track
 
-    "STEP_9": "DEBUG",  # 🔁 Overall STEP 2 orchestration (XAI + bio)
+    "STEP_9": "INFO",  # 🔁 Overall STEP 2 orchestration (XAI + bio)
 
-    "STEP_9.A": "DEBUG",  # 🅰️ Rank intro generation
+    "STEP_9.A": "INFO",  # 🅰️ Rank intro generation
     # Function: get_track_descriptions_from_xai(...)
     # Handles: `intro` field (1-liner with rank, artist, genre, etc.)
 
     "STEP_9.B": "INFO",  # 🅱️ Track detail generation
     # Handles: `detail` field (Casey Kasem-style narrative)
 
-    "STEP_9.C": "DEBUG",  # 🎙️ Artist bio generation
+    "STEP_9.C": "INFO",  # 🎙️ Artist bio generation
     # Handles: `artist_description` field (stored per artist)
 
     # "STEP_9": "INFO",      # Rebuild artist table
@@ -200,7 +200,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.utils": "INFO",
     "backend.logging.track_logging": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.utils.track_builder": "INFO",
+    "backend.utils.track_builder": "DEBUG",
     "backend.utils.normalize": "INFO",
     "tts_logger": "DEBUG",  # ✅ Correct logger name
     "spotipy": "WARNING",

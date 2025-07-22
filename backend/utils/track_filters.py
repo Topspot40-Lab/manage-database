@@ -1,5 +1,7 @@
+# backend/utils/track_filters.py
+
 import logging
-from backend.config import ENABLE_TRACK_DESCRIPTION
+from backend.config import ENABLE_TRACK_DETAIL
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +12,7 @@ KNOWN_DUET_PAIRS = {
     "Simon & Garfunkel",
     "Johnny Cash & June Carter"
 }
+
 
 def analyze_artist_mode(artist_name: str) -> str:
     name = artist_name.lower()
@@ -63,9 +66,11 @@ def is_fake_mashup(track_name: str, artist_name: str) -> bool:
     ]
 
     for part1, part2, bad_artist in known_bad:
-        if part1 in title and part2 in title and bad_artist in artist:
-            logger.debug(f"[STEP_1.B] Rejected mashup/fake combo: '{track_name}' by '{artist_name}'")
-            return True
+        if part1 in title and bad_artist in artist:
+            if not part2 or part2 in title:
+                logger.debug(f"[STEP_1.B] Rejected mashup/fake combo: '{track_name}' by '{artist_name}'")
+                return True
+
     logger.debug(f"[STEP_1.B] is_fake_mashup('{track_name}', '{artist_name}') → False")
     return False
 
@@ -87,15 +92,15 @@ def classify_artist_type(artist_name: str, genre: str) -> str:
 
 
 def is_bad_track(track: dict) -> bool:
-    artist = track.get("artistName") or track.get("artist_name", "")
-    title = track.get("trackName") or track.get("track_name", "")
+    artist = (track.get("artistName") or track.get("artist_name") or "").strip()
+    title = (track.get("trackName") or track.get("track_name") or "").strip()
 
     if not artist or not title:
         logger.debug(f"[STEP_1.B] [INVALID] Missing artist or title in track: {track}")
         return True
 
-    if ENABLE_TRACK_DESCRIPTION and not track.get("detail"):
-        logger.debug(f"[STEP_1.B] [WARN] Missing track description: '{title}' by '{artist}' — Will enrich later.")
+    if ENABLE_TRACK_DETAIL and not track.get("detail"):
+        logger.debug(f"[STEP_1.B] [WARN] Missing track detail: '{title}' by '{artist}' — Will enrich later.")
 
     if is_modern_artist(artist):
         return True
@@ -104,7 +109,7 @@ def is_bad_track(track: dict) -> bool:
         return True
 
     placeholder_titles = {"unknown", "track name", "song title"}
-    title_lower = title.strip().lower()
+    title_lower = title.lower()
     if title_lower in placeholder_titles or "example" in title_lower or "placeholder" in title_lower:
         logger.debug(f"[STEP_1.B] [REJECTED] Placeholder title: '{title}'")
         return True

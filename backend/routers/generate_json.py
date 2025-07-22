@@ -14,6 +14,7 @@ from backend.utils.track_builder import build_track_entry, build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
 from backend.services.xai_descriptions import get_track_descriptions_from_xai
+from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 from backend.utils.json_helpers import save_full_json_file
 from shared.filepaths import get_json_path
 from pydantic import BaseModel
@@ -34,7 +35,7 @@ class TrackRequest(BaseModel):
     num_tracks: int = 1
 
 
-
+# noinspection PyTypeChecker
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
 async def generate_track_json(
     request: TrackRequest,
@@ -185,11 +186,17 @@ async def generate_track_json(
 
         logger.info("🛑 Step 8 ----- Complete")
 
-        # ✍️ STEP 9: Add XAI descriptions *after* final rank assignment
+        # ✅ STEP 9: Add XAI descriptions after final rank assignment
         logger.debug("✍️ STEP 9: Adding XAI descriptions after rank reassignment")
 
-        enriched_for_xai = {"tracks": tracks}  # Wrap list to match XAI input format
+        # 👇 Prepare enriched_for_xai with ranking + artist table for proper merging
+        enriched_for_xai = {
+            "tracks": tracks,
+            "track_ranking": final_json["ranking_tables"].get("track_ranking", []),
+            "artist_table": final_json["track_tables"].get("artist_table", [])
+        }
 
+        # 🎯 Generate descriptions and apply them to appropriate tables
         described = get_track_descriptions_from_xai(
             track_data=enriched_for_xai,
             language=request.language,
@@ -197,11 +204,34 @@ async def generate_track_json(
             genre=request.genre
         )
 
+        # 🧪 Validate response
         if not described or "tracks" not in described or len(described["tracks"]) != len(tracks):
             raise HTTPException(status_code=500, detail="Failed to generate final track descriptions")
 
-        # ✅ Replace track table with enriched version
+        # ✅ Update final_json with enriched outputs
         final_json["track_tables"]["track"] = described["tracks"]
+        final_json["ranking_tables"]["track_ranking"] = described.get("track_ranking", [])
+        final_json["track_tables"]["artist_table"] = described.get("artist_table", [])
+
+        # 🎙️ STEP 9.B: Add artist_description using XAI
+
+        core_artists = final_json["core_tables"].get("artist", [])
+
+        if core_artists:
+            artist_described = get_artist_descriptions_from_xai(core_artists, request.language)
+            desc_map = {
+                a["artist_name"].strip().lower(): a["artist_description"]
+                for a in artist_described
+                if a.get("artist_description")
+            }
+
+            for artist in core_artists:
+                name = artist.get("artist_name", "").strip().lower()
+                if name in desc_map:
+                    artist["artist_description"] = desc_map[name]
+                    logger.debug(f"✅ Merged artist_description for '{artist.get('artist_name')}'")
+                else:
+                    logger.warning(f"⚠️ No artist_description found for '{artist.get('artist_name')}'")
 
         logger.info("🛑 Step 9 ----- Complete")
 
