@@ -9,7 +9,6 @@ from backend.services.spotify.missing_log import (
     reassign_ranks,
 )
 
-from backend.utils.logger_factory import get_step_logger
 from backend.utils.track_builder import build_track_entry, build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
@@ -22,7 +21,7 @@ from pydantic import BaseModel
 from backend.utils.log_helpers import log_generate_json_summary
 
 logger = logging.getLogger(__name__)
-logger_step4e = get_step_logger("STEP_4.E")
+logger.debug("📦 Final step message...")
 
 router = APIRouter()
 
@@ -86,6 +85,18 @@ async def generate_track_json(
         enriched["tracks"] = enrich_tracks_with_spotify(
             enriched["tracks"], is_test_mode=(test_file_number > 0)
         )
+
+        logger.debug(f"🔎 Enriched tracks after STEP 3: {len(enriched['tracks'])}")
+        for t in enriched["tracks"]:
+            logger.debug(
+                f"   🎵 {t.get('track_name')} by {t.get('artist_name')} - track_id: {t.get('spotify_track_id')}")
+
+        # ✅ Filter out tracks with no Spotify match
+        before = len(enriched["tracks"])
+        enriched["tracks"] = [t for t in enriched["tracks"] if t.get("spotify_track_id")]
+        after = len(enriched["tracks"])
+        logger.info(f"🧹 STEP 3: Filtered out {before - after} tracks with no Spotify match")
+
         logger.info("🛑 Step 3 ----- Complete")
 
         if max_step == 3:
@@ -112,13 +123,14 @@ async def generate_track_json(
             artist = t.get("artistName") or t.get("artist_name")
             track_id = t.get("spotify_track_id")
             if track_id:
-                logger.debug(f"   #{rank:02d} — {name} by {artist} 🎧 {track_id}")
+                pass
+                # logger.debug(f"   #{rank:02d} — {name} by {artist} 🎧 {track_id}")
             else:
                 logger.warning(f"   #{rank:02d} — {name} by {artist} ❌ MISSING Spotify ID")
 
 
-        logger_step4e.debug("🧾 STEP 4.E: Final JSON preview (pretty-printed)")
-        logger_step4e.debug(json.dumps(final_json, indent=2, ensure_ascii=False))
+        # logger.debug("🧾 STEP 4.E: Final JSON preview (pretty-printed)")
+        # logger.debug(json.dumps(final_json, indent=2, ensure_ascii=False))
 
         logger.info("🛑 Step 4 ----- Complete")
 
@@ -229,9 +241,9 @@ async def generate_track_json(
                 name = artist.get("artist_name", "").strip().lower()
                 if name in desc_map:
                     artist["artist_description"] = desc_map[name]
-                    logger.debug(f"✅ Merged artist_description for '{artist.get('artist_name')}'")
+                    logger.debug(f"✅ Step 9.B Merged artist_description for '{artist.get('artist_name')}'")
                 else:
-                    logger.warning(f"⚠️ No artist_description found for '{artist.get('artist_name')}'")
+                    logger.warning(f"⚠️ Step 9.BNo artist_description found for '{artist.get('artist_name')}'")
 
         logger.info("🛑 Step 9 ----- Complete")
 
@@ -270,8 +282,26 @@ async def generate_track_json(
 
         # Optional sanity check
         track_list = final_json.get("track_tables", {}).get("track", [])
-        logger.info(f"🧮 Saving {len(track_list)} track(s) to {filename}")
+        logger.info(f"🧮 STEP 10: Saving {len(track_list)} track(s) to {filename}")
         assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
+
+        # 🕵️ Log final JSON tables before saving
+        # 🕵️ Log final JSON tables before saving
+        track_list = final_json.get("track_tables", {}).get("track", [])
+        ranking_list = final_json.get("ranking_tables", {}).get("track_ranking", [])
+        artist_list = final_json.get("track_tables", {}).get("artist_table", [])
+
+        logger.debug(
+            f"📂 STEP 10: FINAL JSON CONTENT PREVIEW:\n"
+            f"🧾 track_tables.track ({len(track_list)} entries):\n" +
+            "\n".join([f"   - #{t.get('rank')}: {t.get('track_name')} by {t.get('artist_name')}" for t in
+                       track_list]) + "\n" +
+            f"🧾 ranking_tables.track_ranking ({len(ranking_list)} entries):\n" +
+            "\n".join([f"   - #{r.get('rank')}: {r.get('track_name')} by {r.get('artist_name')}" for r in
+                       ranking_list]) + "\n" +
+            f"🧾 track_tables.artist_table ({len(artist_list)} entries):\n" +
+            "\n".join([f"   - {a.get('artist_name')} ({a.get('spotify_artist_id')})" for a in artist_list])
+        )
 
         save_full_json_file(
             payload=final_json,

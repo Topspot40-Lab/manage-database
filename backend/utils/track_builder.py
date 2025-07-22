@@ -246,18 +246,27 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
 
             logger_step4d.debug(f"🎤 Adding main artist: {norm_main_artist_name} ({main_artist_id})")
 
-            artists.append({
-                "artist_name": norm_main_artist_name,
-                "spotify_artist_id": main_artist_id,
-                "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                "artist_description": (
-                    artist_info.get("artist_description")
-                    if artist_info else base.get("artist_description") or spotify_data.get("artist_description")
-                ),
-                "not_on_spotify": not bool(artist_info),
-            })
+            # Normalize name and build a deduplication key
+            norm_main_artist_name = normalize_name(base.get("artist_name"))
+            main_artist_id = spotify_data.get("spotify_artist_id")
+            if norm_main_artist_name and main_artist_id:
+                artist_key = f"{norm_main_artist_name.lower()}::{main_artist_id}"
+            else:
+                artist_key = norm_main_artist_name.lower()  # fallback if no Spotify ID
 
-            seen_artists.add(artist_key)
+            if artist_key not in seen_artists:
+                artists.append({
+                    "artist_name": norm_main_artist_name,
+                    "spotify_artist_id": main_artist_id,
+                    "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
+                    "artist_description": (
+                        artist_info.get("artist_description")
+                        if artist_info else base.get("artist_description") or spotify_data.get("artist_description")
+                    ),
+                    "not_on_spotify": not bool(artist_info),
+                })
+                seen_artists.add(artist_key)
+
         # ─────────────────────────────────────────────────────────────────────────────
         # 👤 STEP 4.D — Add FEATURED artist if present
         # ─────────────────────────────────────────────────────────────────────────────

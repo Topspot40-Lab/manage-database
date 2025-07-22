@@ -393,13 +393,25 @@ def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -
 
             if spotify_data:
                 t["spotify_data"] = spotify_data
+
+                # ✅ Unpack to top-level fields
+                t["spotify_track_id"] = spotify_data.get("spotify_track_id")
+                t["spotify_artist_id"] = spotify_data.get("artist_id")
+                t["duration_ms"] = spotify_data.get("duration_ms")
+                t["album_name"] = spotify_data.get("album_name")
+                t["track_image"] = spotify_data.get("album_artwork")
+                t["artist_artwork"] = spotify_data.get("artist_artwork")
+                t["popularity"] = spotify_data.get("popularity")
+                t["featured_artist_name"] = spotify_data.get("featured_artist_name")
+                t["featured_artist_id"] = spotify_data.get("featured_artist_id")
+                t["mode_flag"] = spotify_data.get("mode_flag")
+
                 logger_spotify.debug(
-                    f"✅ [STEP_3.A] Rank {rank}: Match found → "
-                    f"Track ID: {spotify_data.get('spotify_track_id')}, "
-                    f"Artist ID: {spotify_data.get('artist_id')}, "
-                    f"Duration: {spotify_data.get('duration_ms')}ms, "
-                    f"Popularity: {spotify_data.get('popularity')}"
+                    f"✅ [STEP_3.A] Rank {rank}: Unpacked and enriched → "
+                    f"Track ID: {t.get('spotify_track_id')}, "
+                    f"Artist ID: {t.get('spotify_artist_id')}"
                 )
+
             else:
                 logger_spotify.warning(
                     f"❌ [STEP_3.A] Rank {rank}: No match found for '{tn}' by '{an}'")

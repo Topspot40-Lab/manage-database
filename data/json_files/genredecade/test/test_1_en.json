@@ -2,7 +2,7 @@
   "language": "english",
   "category": "test",
   "genre": "1",
-  "generated_at": "2025-07-22T09:12:16.035655",
+  "generated_at": "2025-07-22T16:40:18.191231",
   "core_tables": {
     "genre": [
       {
@@ -17,30 +17,16 @@
     "artist": [
       {
         "artist_name": "hank snow",
-        "spotify_artist_id": "4F2Wz6nsyGRJWISzANL6vQ",
+        "spotify_artist_id": null,
         "artist_artwork": "https://i.scdn.co/image/ef29bf97f6e45a57de49e29a4f6f01913db7ab9c",
-        "artist_description": "Hank Snow, born Clarence Eugene Snow, was a Canadian country music artist known for his yodeling and distinctive voice. He achieved significant success in the United States, becoming a member of the Grand Ole Opry and influencing future generations of country musicians. One of his most famous songs, 'I'm Moving On,' became a crossover hit and solidified his place in country music history.",
-        "not_on_spotify": false
-      },
-      {
-        "artist_name": "hank snow",
-        "spotify_artist_id": "3fq6r0bSIm4McymHKNMk4S",
-        "artist_artwork": "https://i.scdn.co/image/ef29bf97f6e45a57de49e29a4f6f01913db7ab9c",
-        "artist_description": "Hank Snow, born Clarence Eugene Snow, was a Canadian country music artist known for his yodeling and distinctive voice. He achieved significant success in the United States, becoming a member of the Grand Ole Opry and influencing future generations of country musicians. One of his most famous songs, 'I'm Moving On,' became a crossover hit and solidified his place in country music history.",
-        "not_on_spotify": false
-      },
-      {
-        "artist_name": "hank snow",
-        "spotify_artist_id": "test_artist_3",
-        "artist_artwork": "https://i.scdn.co/image/ef29bf97f6e45a57de49e29a4f6f01913db7ab9c",
-        "artist_description": "Hank Snow, born Clarence Eugene Snow, was a Canadian country music artist known for his yodeling and distinctive voice. He achieved significant success in the United States, becoming a member of the Grand Ole Opry and influencing future generations of country musicians. One of his most famous songs, 'I'm Moving On,' became a crossover hit and solidified his place in country music history.",
+        "artist_description": "Hank Snow, born Clarence Eugene Snow, was a Canadian country music artist known for his yodeling and rich baritone voice. He gained fame with hits like 'I'm Moving On' and 'The Golden Rocket,' significantly influencing the genre. Snow was inducted into the Country Music Hall of Fame in 1979, reflecting his lasting impact on country music.",
         "not_on_spotify": false
       },
       {
         "artist_name": "simon and garfunkel",
-        "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
+        "spotify_artist_id": null,
         "artist_artwork": "https://i.scdn.co/image/afde2fdd14f8c8ca23393f257e3a369a234a24b6",
-        "artist_description": "Simon & Garfunkel, the folk rock duo consisting of Paul Simon and Art Garfunkel, rose to fame in the 1960s with their harmonious vocals and poetic lyrics. Their album 'Bridge Over Troubled Water' won multiple Grammy Awards, including Album of the Year, and their song 'The Sound of Silence' became an anthem for a generation. Their music continues to influence contemporary artists and remains a staple in the folk rock genre.",
+        "artist_description": "Simon & Garfunkel, consisting of Paul Simon and Art Garfunkel, were an iconic folk rock duo from the 1960s. They are best known for songs like 'The Sound of Silence' and 'Bridge Over Troubled Water,' which have become cultural staples. Their harmonious vocals and thoughtful lyrics earned them multiple Grammy Awards and a place in the Rock and Roll Hall of Fame.",
         "not_on_spotify": false
       }
     ]
@@ -59,16 +45,16 @@
         "decade": "test",
         "spotify_track_id": "446eGf6Afa6PuZYTsF19U1",
         "spotify_artist_id": "4F2Wz6nsyGRJWISzANL6vQ",
-        "mode_flag": "solo",
+        "mode_flag": "unknown",
         "duration_ms": 167920,
         "popularity": 36,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273ee00d9d467fd5a45808c062b",
         "album_name": "Super Hits",
         "year_released": 1961,
         "is_explicit": false,
-        "created_at": "2025-07-22T09:12:16.035655",
-        "detail": "Now, let's dive into the story behind 'I'm Movin' On' by Hank Snow. This classic was penned by Snow himself during a train journey, capturing the essence of motion and change. Recorded in the legendary RCA Studio B in Nashville, the song's steel guitar, played by the masterful Don Helms, adds a hauntingly beautiful touch. It wasn't just a hit; it became the first song to ever reach number one on the Billboard country chart and stayed there for a record-breaking 21 weeks! And remember, folks, in the world of music, every journey has its own rhythm. Keep movin' on!",
-        "intro": "Ranked #1 in the test decade, 'Im Movin On' by Hank Snow from the album Super Hits kicks off with a genre 1 flair that's irresistibly upbeat!"
+        "created_at": "2025-07-22T16:40:18.191231",
+        "detail": "Now, let's take a moment to appreciate the songwriting genius behind 'I'm Movin' On'. Hank Snow penned this classic while on a train, inspired by the rhythmic chug of the locomotive. It's a testament to how the world around us can spark creativity. The song became a juggernaut, holding the number one spot on the country charts for an astonishing 21 weeks! That's right, 21 weeks at the top, folks! And did you know, the steel guitar in the track was played by none other than Hank's good friend, Tommy Sargent? It's these little touches that make the song so special. So, keep movin' on with us, as we continue our journey through the greatest hits!",
+        "intro": "Ranked #1 in the test decade, 'I'm Movin' On' by Hank Snow from the album Super Hits kicks off with a bang in genre 1!"
       },
       {
         "rank": 2,
@@ -82,42 +68,19 @@
         "decade": "test",
         "spotify_track_id": "5jcprGzyDUAq25Babtyuei",
         "spotify_artist_id": "3fq6r0bSIm4McymHKNMk4S",
-        "mode_flag": "solo",
+        "mode_flag": "unknown",
         "duration_ms": 165453,
         "popularity": 33,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27393f781ab38f717efc7a13f73",
         "album_name": "The Essential Hank Snow",
         "year_released": 1967,
         "is_explicit": false,
-        "created_at": "2025-07-22T09:12:16.035655",
-        "detail": "Alright, music lovers, let's take a closer look at 'The Golden Rocket' by Hank Snow. This track was inspired by Snow's fascination with trains, a theme that runs deep in his catalog. Did you know that the song was recorded with a unique blend of instruments, including a harmonica that gives it that extra chug-chug feel? It soared to the top of the charts in 1950, marking another milestone in Snow's illustrious career. And as we ride the rails of music history, let's keep our ears open for the next golden hit. Stay tuned!",
-        "intro": "Dive into the dramatic #2 hit of the test decade, 'The Golden Rocket' by Hank Snow, soaring from The Essential Hank Snow with its genre 1 charm."
+        "created_at": "2025-07-22T16:40:18.191231",
+        "detail": "Let's dive into the story behind 'The Golden Rocket'. This song was a tribute to the legendary steam locomotive, and Hank Snow's love for trains shines through every note. Recorded in the cozy confines of RCA Studio B in Nashville, the session was filled with laughter and camaraderie. The song's success was meteoric, climbing to the top of the charts and staying there for 11 weeks. That's right, 11 weeks at number one! And here's a fun fact for you: the sound of the train whistle you hear? That was Hank himself, adding that personal touch. So, keep your ears tuned to the golden sounds of yesteryear, right here on your favorite station!",
+        "intro": "Dive into the #2 spot with 'The Golden Rocket' by Hank Snow, soaring from The Essential Hank Snow, a gem in genre 1 of the test decade."
       },
       {
         "rank": 3,
-        "track_name": "i dont hurt anymore",
-        "artist_name": "hank snow",
-        "artist_display_name": "Hank Snow",
-        "featured_artist": null,
-        "featured_artist_id": null,
-        "track_display_name": "i dont hurt anymore",
-        "genre": "1",
-        "decade": "test",
-        "spotify_track_id": "test_track_3",
-        "spotify_artist_id": "test_artist_3",
-        "mode_flag": "solo",
-        "duration_ms": 180000,
-        "popularity": 55,
-        "album_artwork": null,
-        "album_name": null,
-        "year_released": 1966,
-        "is_explicit": false,
-        "created_at": "2025-07-22T09:12:16.035655",
-        "detail": "Hey there, it's time to explore the heart of 'I Don't Hurt Anymore' by Hank Snow. This poignant ballad was co-written by Don Robertson and Jack Rollins, and it's said that Snow poured his soul into every note during the recording session. The song's emotional depth resonated with listeners, climbing to the top of the charts in 1954. Interestingly, it was one of the first country songs to be covered by pop artists, showcasing its universal appeal. So, let's take a moment to appreciate the healing power of music. Keep listening, and let the melodies mend your heart!",
-        "intro": "Did you know? 'I Dont Hurt Anymore' by Hank Snow, ranking #3 in the test decade, is a genre 1 classic that's both soothing and powerful."
-      },
-      {
-        "rank": 4,
         "track_name": "the sound of silence",
         "artist_name": "simon and garfunkel",
         "artist_display_name": "Simon and Garfunkel",
@@ -128,16 +91,16 @@
         "decade": "test",
         "spotify_track_id": "5y788ya4NvwhBznoDIcXwK",
         "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
-        "mode_flag": "group",
+        "mode_flag": "unknown",
         "duration_ms": 185413,
         "popularity": 75,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b50c381e5f477c3cd066286",
         "album_name": "Wednesday Morning, 3 A.M.",
         "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-07-22T09:12:16.035655",
-        "detail": "Alright, let's delve into the magic of 'The Sound of Silence' by Simon and Garfunkel. This iconic track was born out of Paul Simon's frustration with the world's indifference, written in the quiet of his bathroom. The song's haunting acoustic guitar, played by Simon, was recorded in a single take, adding to its raw authenticity. Initially a flop, it soared to fame after being re-recorded with electric instruments, hitting number one in 1966. And as we embrace the silence, let's remember that sometimes, the quietest moments speak the loudest. Keep your radios tuned for more timeless classics!",
-        "intro": "Experience the haunting beauty of 'The Sound of Silence' by Simon and Garfunkel, a #4 hit from the test decade, featured on Wednesday Morning, 3 A.M., encapsulating genre 1's essence."
+        "created_at": "2025-07-22T16:40:18.191231",
+        "detail": "Now, let's uncover the magic behind 'The Sound of Silence'. Written by Paul Simon in the quiet of his bathroom, the song's haunting melody was inspired by the echo of his own voice. Initially, it was a folk tune that didn't make much noise, but then, producer Tom Wilson added electric guitars and transformed it into a rock masterpiece. The result? A number one hit that resonated with a generation. And here's a bit of trivia: the song was used in the opening scene of the film 'The Graduate', catapulting it to even greater fame. So, let the sound of silence fill your heart, as we keep the music playing, right here on your radio dial!",
+        "intro": "At #3, 'The Sound of Silence' by Simon and Garfunkel, from Wednesday Morning, 3 A.M., whispers its way into the hearts of genre 1 fans in the test decade."
       }
     ],
     "tracklist": [
@@ -147,7 +110,7 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 1 - test",
-        "created_at": "2025-07-22T09:12:16.035655"
+        "created_at": "2025-07-22T16:40:18.191231"
       }
     ],
     "artist_table": []
@@ -162,7 +125,7 @@
         "genre": "1",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Ranked #1 in the test decade, 'Im Movin On' by Hank Snow from the album Super Hits kicks off with a genre 1 flair that's irresistibly upbeat!",
+        "intro": "Ranked #1 in the test decade, 'I'm Movin' On' by Hank Snow from the album Super Hits kicks off with a bang in genre 1!",
         "ranking_date": "2025-07-22"
       },
       {
@@ -173,29 +136,18 @@
         "genre": "1",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Dive into the dramatic #2 hit of the test decade, 'The Golden Rocket' by Hank Snow, soaring from The Essential Hank Snow with its genre 1 charm.",
-        "ranking_date": "2025-07-22"
-      },
-      {
-        "track_id": "test_track_3",
-        "track_name": "i dont hurt anymore",
-        "artist_name": "hank snow",
-        "rank": 3,
-        "genre": "1",
-        "decade": "test",
-        "tracklist": "TopSpot Autogen",
-        "intro": "Did you know? 'I Dont Hurt Anymore' by Hank Snow, ranking #3 in the test decade, is a genre 1 classic that's both soothing and powerful.",
+        "intro": "Dive into the #2 spot with 'The Golden Rocket' by Hank Snow, soaring from The Essential Hank Snow, a gem in genre 1 of the test decade.",
         "ranking_date": "2025-07-22"
       },
       {
         "track_id": "5y788ya4NvwhBznoDIcXwK",
         "track_name": "the sound of silence",
         "artist_name": "simon and garfunkel",
-        "rank": 4,
+        "rank": 3,
         "genre": "1",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Experience the haunting beauty of 'The Sound of Silence' by Simon and Garfunkel, a #4 hit from the test decade, featured on Wednesday Morning, 3 A.M., encapsulating genre 1's essence.",
+        "intro": "At #3, 'The Sound of Silence' by Simon and Garfunkel, from Wednesday Morning, 3 A.M., whispers its way into the hearts of genre 1 fans in the test decade.",
         "ranking_date": "2025-07-22"
       }
     ]
