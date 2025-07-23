@@ -2,7 +2,7 @@
   "language": "english",
   "category": "test",
   "genre": "31",
-  "generated_at": "2025-07-11T19:58:41.399778",
+  "generated_at": "2025-07-22T19:31:35.889027",
   "core_tables": {
     "genre": [
       {
@@ -18,17 +18,15 @@
       {
         "artist_name": "hank snow",
         "spotify_artist_id": "4F2Wz6nsyGRJWISzANL6vQ",
-        "artist_artwork": "https://i.scdn.co/image/ef29bf97f6e45a57de49e29a4f6f01913db7ab9c",
-        "artist_description": "Hank Snow was a Canadian country music artist born in 1914 in Nova Scotia. He began performing at a young age and rose to fame with hits like \"I'm Moving On\" and \"The Golden Rocket,\" becoming a member of the Grand Ole Opry in 1950. Snow was known for his yodeling and had a significant influence on Elvis Presley, who opened for him early in his career.",
-        "artist_mp3_url": null,
+        "artist_artwork": null,
+        "artist_description": "Hank Snow was a Canadian country music artist known for his yodeling and smooth vocals. He had a prolific career spanning over 50 years, with hits like 'I'm Moving On' and 'The Golden Rocket.' Snow was inducted into the Country Music Hall of Fame in 1979, reflecting his significant influence on the genre.",
         "not_on_spotify": false
       },
       {
         "artist_name": "simon and garfunkel",
         "spotify_artist_id": "70cRZdQywnSFp9pnc2WTCE",
-        "artist_artwork": "https://i.scdn.co/image/afde2fdd14f8c8ca23393f257e3a369a234a24b6",
-        "artist_description": "Simon & Garfunkel, an American folk rock duo formed in 1957 in Queens, New York, consists of Paul Simon and Art Garfunkel. They rose to fame in the 1960s with hits like \"The Sound of Silence\" and \"Bridge Over Troubled Water,\" the latter earning them six Grammy Awards including Album of the Year. A notable trivia is that their song \"Mrs. Robinson\" was featured prominently in the 1967 film \"The Graduate.\"",
-        "artist_mp3_url": null,
+        "artist_artwork": null,
+        "artist_description": "Simon & Garfunkel, the iconic folk-rock duo, are celebrated for their harmonious vocals and poetic lyrics. Their album 'Bridge Over Troubled Water' won multiple Grammy Awards, including Album of the Year in 1971. Their songs like 'The Sound of Silence' and 'Mrs. Robinson' have left a lasting cultural impact, resonating with audiences across generations.",
         "not_on_spotify": false
       }
     ]
@@ -51,13 +49,12 @@
         "duration_ms": 167920,
         "popularity": 36,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b273ee00d9d467fd5a45808c062b",
+        "album_name": "Super Hits",
         "year_released": 1961,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "Kicking off at number one in the test decade, this genre 31 track by an unnamed artist is the ultimate chart-topper!",
-        "detail": "This song was crafted in a small studio where the magic of music truly comes alive. The songwriter, a relatively unknown talent at the time, poured their heart into every lyric, hoping to capture the essence of the era. It's fascinating to note that this track was recorded in one take, a testament to the artist's skill and the producer's vision. And that's the magic that still spins on turntables today!",
-        "detail_mp3_url": null,
-        "not_on_spotify": false
+        "created_at": "2025-07-22T19:31:35.889027",
+        "detail": "Now, let's dive into the story behind 'I'm Movin' On' by Hank Snow. This classic tune was penned by Snow himself, inspired by the rhythm of a train he heard while traveling. It's a testament to his songwriting prowess that the song not only topped the charts for 21 weeks but also became the first song to reach number one on the Billboard country chart. Recorded in the legendary RCA Studio B in Nashville, the session was filled with the energy of a moving train, thanks to the skilled musicians who brought Snow's vision to life. And remember, folks, in the world of music, it's all about keeping the rhythm and moving on to new horizons. Keep those dials tuned right here!",
+        "intro": "Ranked #1 in the test decade, 'Im Movin On' by Hank Snow from the album Super Hits is a genre 31 classic that'll get you moving!"
       },
       {
         "rank": 2,
@@ -75,40 +72,15 @@
         "duration_ms": 165453,
         "popularity": 33,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b27393f781ab38f717efc7a13f73",
+        "album_name": "The Essential Hank Snow",
         "year_released": 1967,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "At number two, dive into the vibrant sounds of the test decade with this genre 31 gem from an artist who remains a mystery!",
-        "detail": "The creation of this song involved a unique collaboration between the songwriter and a local band, blending different musical influences into a harmonious masterpiece. It quickly climbed the charts, resonating with listeners across the nation. There's a fun story about how the recording session was interrupted by a power outage, yet it only added to the song's charm. Keep those records spinning, and enjoy the timeless tunes!",
-        "detail_mp3_url": null,
-        "not_on_spotify": false
+        "created_at": "2025-07-22T19:31:35.889027",
+        "detail": "Let's take a closer look at 'The Golden Rocket' by Hank Snow. This song, another gem from Snow's catalog, was inspired by his love for trains and the freedom they represent. Did you know that 'The Golden Rocket' was recorded in one take, showcasing Snow's incredible talent and the seamless collaboration with his band? The song's success helped cement Snow's status as a country music legend, and its influence can still be heard in the genre today. The recording session at RCA Studio B was filled with excitement, as everyone felt they were part of something special. So, keep your ears on the tracks, and let the golden rocket of music take you on a journey. Stay tuned, music lovers!",
+        "intro": "Dive into the dramatic #2 hit of the test decade, 'The Golden Rocket' by Hank Snow, from The Essential Hank Snow, a must-listen in genre 31."
       },
       {
         "rank": 3,
-        "track_name": "i dont hurt anymore",
-        "artist_name": "hank snow",
-        "artist_display_name": "Hank Snow",
-        "featured_artist": null,
-        "featured_artist_id": null,
-        "track_display_name": "i dont hurt anymore",
-        "genre": "31",
-        "decade": "test",
-        "spotify_track_id": "test_track_3",
-        "spotify_artist_id": "test_artist_3",
-        "mode_flag": "solo",
-        "duration_ms": 180000,
-        "popularity": 55,
-        "album_artwork": null,
-        "year_released": 1966,
-        "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "Did you know? At number three, this genre 31 track from the test decade by an unnamed artist is a hidden treasure!",
-        "detail": "Behind the scenes, the song's writer was inspired by a personal journey that reflects in the song's poignant lyrics. It achieved moderate success on the charts but has since become a cult classic among fans. Interestingly, the recording took place in a converted barn, adding a rustic feel to the production. So, keep your ears open for this gem, and let the music take you on a journey!",
-        "detail_mp3_url": null,
-        "not_on_spotify": false
-      },
-      {
-        "rank": 4,
         "track_name": "the sound of silence",
         "artist_name": "simon and garfunkel",
         "artist_display_name": "Simon and Garfunkel",
@@ -123,13 +95,12 @@
         "duration_ms": 185413,
         "popularity": 75,
         "album_artwork": "https://i.scdn.co/image/ab67616d0000b2733b50c381e5f477c3cd066286",
+        "album_name": "Wednesday Morning, 3 A.M.",
         "year_released": 1965,
         "is_explicit": false,
-        "created_at": "2025-07-11T19:58:41.399778",
-        "intro": "Brace yourself for number four, where the test decade's genre 31 vibes meet an artist's anonymity in a thrilling musical adventure!",
-        "detail": "This track's songwriter drew inspiration from the bustling city life, which you can hear in the energetic rhythm and catchy hooks. It made a notable impact on the charts, becoming a favorite at dance clubs. A quirky fact is that the lead instrument was accidentally damaged during recording, yet it added a unique sound that fans adore. And that's the beat that keeps the party going, even today!",
-        "detail_mp3_url": null,
-        "not_on_spotify": false
+        "created_at": "2025-07-22T19:31:35.889027",
+        "detail": "Now, let's explore the fascinating story behind 'The Sound of Silence' by Simon and Garfunkel. Originally written by Paul Simon in his bathroom, the song's haunting lyrics were inspired by his feelings of isolation in a bustling city. The initial recording was a folk version, but it was the electrified version produced by Tom Wilson that catapulted the song to fame. Interestingly, Simon and Garfunkel were not even present for the overdub session that transformed their song into a rock classic. 'The Sound of Silence' became an anthem for a generation, reflecting the cultural shifts of the 1960s. So, keep listening, and let the sound of silence fill your heart with its timeless message. This is your friend, signing off for now!",
+        "intro": "Did you know? 'The Sound of Silence' by Simon and Garfunkel, from Wednesday Morning, 3 A.M., hit #3 in the test decade, a genre 31 gem."
       }
     ],
     "tracklist": [
@@ -139,9 +110,10 @@
         "is_official": true,
         "language": "en",
         "notes": "Generated for 31 - test",
-        "created_at": "2025-07-11T19:58:41.399778"
+        "created_at": "2025-07-22T19:31:35.889027"
       }
-    ]
+    ],
+    "artist_table": []
   },
   "ranking_tables": {
     "track_ranking": [
@@ -153,9 +125,8 @@
         "genre": "31",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Kicking off at number one in the test decade, this genre 31 track by an unnamed artist is the ultimate chart-topper!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-07-11"
+        "intro": "Ranked #1 in the test decade, 'Im Movin On' by Hank Snow from the album Super Hits is a genre 31 classic that'll get you moving!",
+        "ranking_date": "2025-07-22"
       },
       {
         "track_id": "5jcprGzyDUAq25Babtyuei",
@@ -165,33 +136,19 @@
         "genre": "31",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "At number two, dive into the vibrant sounds of the test decade with this genre 31 gem from an artist who remains a mystery!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-07-11"
-      },
-      {
-        "track_id": "test_track_3",
-        "track_name": "i dont hurt anymore",
-        "artist_name": "hank snow",
-        "rank": 3,
-        "genre": "31",
-        "decade": "test",
-        "tracklist": "TopSpot Autogen",
-        "intro": "Did you know? At number three, this genre 31 track from the test decade by an unnamed artist is a hidden treasure!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-07-11"
+        "intro": "Dive into the dramatic #2 hit of the test decade, 'The Golden Rocket' by Hank Snow, from The Essential Hank Snow, a must-listen in genre 31.",
+        "ranking_date": "2025-07-22"
       },
       {
         "track_id": "5y788ya4NvwhBznoDIcXwK",
         "track_name": "the sound of silence",
         "artist_name": "simon and garfunkel",
-        "rank": 4,
+        "rank": 3,
         "genre": "31",
         "decade": "test",
         "tracklist": "TopSpot Autogen",
-        "intro": "Brace yourself for number four, where the test decade's genre 31 vibes meet an artist's anonymity in a thrilling musical adventure!",
-        "intro_mp3_url": null,
-        "ranking_date": "2025-07-11"
+        "intro": "Did you know? 'The Sound of Silence' by Simon and Garfunkel, from Wednesday Morning, 3 A.M., hit #3 in the test decade, a genre 31 gem.",
+        "ranking_date": "2025-07-22"
       }
     ]
   }

@@ -404,7 +404,7 @@ def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -
                 t["popularity"] = spotify_data.get("popularity")
                 t["featured_artist_name"] = spotify_data.get("featured_artist_name")
                 t["featured_artist_id"] = spotify_data.get("featured_artist_id")
-                t["mode_flag"] = spotify_data.get("mode_flag")
+                t["mode_flag"] = t.get("mode_flag", "unknown")
 
                 logger_spotify.debug(
                     f"✅ [STEP_3.A] Rank {rank}: Unpacked and enriched → "

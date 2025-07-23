@@ -193,17 +193,17 @@ STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
 # These work independently of STEP loggers.
 # ---------------------------------------------------------------------------
 LOG_LEVELS_BY_MODULE = {
-    "backend.routers.generate_json": "DEBUG",
+    "backend.routers.generate_json": "INFO",
     "backend.services.xai_service": "INFO",
     "backend.services.spotify_service": "INFO",
     "backend.services.track_generator": "INFO",
     "backend.services.utils": "INFO",
     "backend.logging.track_logging": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.utils.track_builder": "DEBUG",
-    "Validation": "DEBUG",
+    "backend.utils.track_builder": "INFO",
+    "Validation": "INFO",
     "backend.utils.normalize": "INFO",
-    "tts_logger": "DEBUG",  # ✅ Correct logger name
+    "tts_logger": "INFO",  # ✅ Correct logger name
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",

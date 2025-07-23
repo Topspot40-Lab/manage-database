@@ -167,7 +167,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             f"🗑️ Dropped from final: '{d.get('track_name')}' by '{d.get('artist_name')}' — missing Spotify ID"
         )
 
-    # 🔢 Reassign rank 1..N
+    # 🔢 Reassign rank 1. .N
     for i, t in enumerate(valid_tracks, start=1):
         t["rank"] = i
 
@@ -255,17 +255,20 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 artist_key = norm_main_artist_name.lower()  # fallback if no Spotify ID
 
             if artist_key not in seen_artists:
-                artists.append({
-                    "artist_name": norm_main_artist_name,
-                    "spotify_artist_id": main_artist_id,
-                    "artist_artwork": artist_info.get("artist_artwork") if artist_info else None,
-                    "artist_description": (
-                        artist_info.get("artist_description")
-                        if artist_info else base.get("artist_description") or spotify_data.get("artist_description")
-                    ),
-                    "not_on_spotify": not bool(artist_info),
-                })
-                seen_artists.add(artist_key)
+                # ✅ Build artist table from enriched track data
+                seen_artists = {}
+                for track in tracks:
+                    norm_artist_name = track["artist_name"].strip().lower()
+                    if norm_artist_name not in seen_artists:
+                        seen_artists[norm_artist_name] = {
+                            "artist_name": track["artist_name"],
+                            "spotify_artist_id": track.get("spotify_artist_id"),
+                            "artist_artwork": track.get("artist_artwork"),
+                            "artist_description": track.get("artist_description"),
+                            "not_on_spotify": track.get("not_on_spotify", False)
+                        }
+
+                artists = list(seen_artists.values())
 
         # ─────────────────────────────────────────────────────────────────────────────
         # 👤 STEP 4.D — Add FEATURED artist if present
@@ -298,7 +301,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
                 "not_on_spotify": not bool(artist_info),
             })
 
-            seen_artists.add(artist_key)
+            # seen_artists.add(artist_key)
 
             logger_step4d.debug(
                 f"🧾 Artist list so far (Rank {base.get('rank')}): {[a['artist_name'] for a in artists]}"

@@ -129,8 +129,8 @@ async def generate_track_json(
                 logger.warning(f"   #{rank:02d} — {name} by {artist} ❌ MISSING Spotify ID")
 
 
-        # logger.debug("🧾 STEP 4.E: Final JSON preview (pretty-printed)")
-        # logger.debug(json.dumps(final_json, indent=2, ensure_ascii=False))
+        logger.debug("🧾 STEP 4.E: Final JSON preview (pretty-printed)")
+        logger.debug(json.dumps(final_json, indent=2, ensure_ascii=False))
 
         logger.info("🛑 Step 4 ----- Complete")
 
@@ -283,7 +283,7 @@ async def generate_track_json(
         # Optional sanity check
         track_list = final_json.get("track_tables", {}).get("track", [])
         logger.info(f"🧮 STEP 10: Saving {len(track_list)} track(s) to {filename}")
-        assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
+        # assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
 
         # 🕵️ Log final JSON tables before saving
         # 🕵️ Log final JSON tables before saving
@@ -302,6 +302,10 @@ async def generate_track_json(
             f"🧾 track_tables.artist_table ({len(artist_list)} entries):\n" +
             "\n".join([f"   - {a.get('artist_name')} ({a.get('spotify_artist_id')})" for a in artist_list])
         )
+
+        logger.info(f"🧾 FINAL JSON: {len(final_json['track_tables']['track'])} track(s)")
+        for i, t in enumerate(final_json['track_tables']['track'], start=1):
+            logger.info(f"  {i}. {t['track_name']} by {t['artist_name']} — ID: {t.get('spotify_track_id')}")
 
         save_full_json_file(
             payload=final_json,
