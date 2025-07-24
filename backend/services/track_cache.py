@@ -40,7 +40,26 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
 
         track_cache["filename"] = filename
         track_cache["tracks"] = tracks
-        track_cache["rankings"] = rankings  # ✅ New
+        # Merge matching track info into each ranking row by rank
+        track_by_rank = {t.get("rank"): t for t in tracks}
+        merged_rankings = []
+
+        for r in rankings:
+            rank = r.get("rank")
+            t = track_by_rank.get(rank, {})
+            merged = {
+                **r,
+                "track_id": t.get("spotify_track_id"),
+                "detail": t.get("detail"),
+                "track_name": t.get("track_name"),
+                "artist_name": t.get("artist_name"),
+                "genre": t.get("genre"),
+                "decade": t.get("decade"),
+            }
+            merged_rankings.append(merged)
+
+        track_cache["rankings"] = merged_rankings
+
         track_cache["last_played_rank"] = None
 
         logger_step1c.info(f"✅ Cached {len(tracks)} tracks and {len(rankings)} rankings from {filename}")

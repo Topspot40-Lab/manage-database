@@ -285,7 +285,7 @@ async def generate_track_json(
         logger.info(f"🧮 STEP 10: Saving {len(track_list)} track(s) to {filename}")
         # assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
 
-        # 🕵️ Log final JSON tables before saving
+
         # 🕵️ Log final JSON tables before saving
         track_list = final_json.get("track_tables", {}).get("track", [])
         ranking_list = final_json.get("ranking_tables", {}).get("track_ranking", [])
@@ -328,9 +328,9 @@ async def generate_track_json(
         )
 
         # Save the full final_json to the file
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(final_json, f, indent=2, ensure_ascii=False)
-        logger.debug(f"✅ JSON saved to {filepath}")
+        # with open(filepath, "w", encoding="utf-8") as f:
+        #     json.dump(final_json, f, indent=2, ensure_ascii=False)
+        # logger.debug(f"✅ JSON saved to {filepath}")
 
         logger.info("🛑 Step 11 ----- JSON Creation Complete")
 

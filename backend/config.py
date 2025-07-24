@@ -77,6 +77,7 @@ SKIP_TTS_IF_EXISTS = os.getenv("SKIP_TTS_IF_EXISTS", "true").strip().lower() == 
 VOICE_PREVIEW_ENABLED = os.getenv("VOICE_PREVIEW_ENABLED", "false").strip().lower() == "true"
 DEFAULT_TTS_LANGUAGE = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
 
+SPOTIFY_BLACKLIST = {"garth brooks", "chris gaines", "bob seger", "king crimson", "joanna newsom"}
 
 
 
@@ -203,7 +204,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.utils.track_builder": "INFO",
     "Validation": "INFO",
     "backend.utils.normalize": "INFO",
-    "tts_logger": "INFO",  # ✅ Correct logger name
+    "tts_logger": "DEBUG",  # ✅ Correct logger name
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",

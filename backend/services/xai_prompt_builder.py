@@ -1,4 +1,6 @@
 import logging
+from backend.config import SPOTIFY_BLACKLIST
+
 logger = logging.getLogger("STEP_1.A" or "STEP_1")
 def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
     prompted_num = num_tracks + buffer_size
@@ -43,12 +45,14 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
             "- Inventing artist combinations or ambiguous formatting.\n\n"
         )
 
+    blacklist_line = ", ".join(name.title() for name in sorted(SPOTIFY_BLACKLIST))
     prompt += (
         "\n\n🚫 **Exclusions (Spotify availability warning):**\n"
-        "- Do NOT include artists whose catalogs are missing from Spotify. Examples: Garth Brooks, Bob Seger, King Crimson, and Joanna Newsom.\n"
-        "- If in doubt, skip artists known to limit streaming availability or who are not reliably playable.\n"
+        "- Do NOT include any artist whose catalog is missing or restricted on Spotify.\n"
+        f"- Exclude these known unavailable artists: {blacklist_line}.\n"
+        "- These artists are strictly banned from this list, even if historically relevant.\n"
+        "- When in doubt, omit artists that do not reliably appear in Spotify search or are unavailable for playback.\n"
     )
-
 
     prompt += (
         "🎯 Your goal is to recreate a realistic and accurate list that could appear in a retrospective music documentary.\n"

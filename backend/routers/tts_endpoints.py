@@ -4,6 +4,11 @@ from backend.services.track_cache import get_all_rank_entries
 from backend.services.tts.elevenlabs_tts import generate_tts_mp3
 from backend.config import VOICE_ID_INTRO, VOICE_ID_TRACK, VOICE_ID_ARTIST
 import logging
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+
+
+
 logger = logging.getLogger("tts_logger")
 
 
@@ -71,6 +76,13 @@ def generate_track_detail_tts_by_rank(
         return {"error": "Start rank must be <= end rank"}
 
     rankings = get_all_rank_entries()
+    if not rankings:
+        logger.warning(
+            "⚠️ [Track Detail TTS] No track data loaded. Did you forget to call /json/load-json-track-file first?")
+        return {
+            "error": "No track data loaded. Please load a JSON track file first using /json/load-json-track-file?genre=...&decade=..."
+        }
+
     logger.debug(f"📋 [Track Detail TTS] Loaded {len(rankings)} track entries")
 
     output_dir = Path("data/mp3_files/track_detail_mp3_files")
@@ -80,16 +92,18 @@ def generate_track_detail_tts_by_rank(
 
     for entry in rankings:
         rank = entry.get("rank")
+        # logger.debug(f"🔍 Full entry for rank {rank}: {entry}")
+
         if rank is None or not (start_rank <= rank <= end_rank):
             continue
 
-        intro = entry.get("intro", "").strip()
         detail = entry.get("detail", "").strip()
-        if not intro and not detail:
-            logger.debug(f"⚠️ [Track Detail TTS] No text for rank {rank}, skipping")
+        logger.debug(f"🔍 Detail Field {detail}")
+        if not detail:
+            logger.debug(f"⚠️ [Track Detail TTS] No detail text for rank {rank}, skipping")
             continue
 
-        track_id = entry.get("spotify_track_id")
+        track_id = entry.get("track_id")
         if not track_id:
             logger.warning(f"⚠️ [Track Detail TTS] Missing track ID for rank {rank}, skipping")
             continue
@@ -105,6 +119,14 @@ def generate_track_detail_tts_by_rank(
         else:
             logger.debug(f"🎧 [Track Detail TTS] Generating MP3: {out_path}")
             generate_tts_mp3(full_text, out_path, VOICE_ID_TRACK, overwrite=overwrite, play=play)
+            # Add metadata from ranking entry
+            track_name = entry.get("track_name", "Unknown Track")
+            artist_name = entry.get("artist_name", "Unknown Artist")
+            album_name = entry.get("album_name", "Unknown Album")
+
+            add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
+
+
             log_tts_action("Track", track_id, out_path, "✅ Generated", play)
 
         generated_files.append(str(out_path))
@@ -232,3 +254,15 @@ def generate_all_artist_tts(
         "message": f"✅ Generated TTS for {count} unique artists",
         "generated_count": count
     }
+def add_metadata_to_mp3(mp3_path: Path, track_name: str, artist_name: str, album_name: str):
+    try:
+        audio = MP3(mp3_path, ID3=EasyID3)
+        audio["title"] = track_name
+        audio["artist"] = artist_name
+        audio["album"] = album_name
+        audio.save()
+        logger.debug(
+            f"🔖 [TTS Metadata] Tagged '{mp3_path.name}' → Title: '{track_name}' | Artist: '{artist_name}' | Album: '{album_name}'"
+        )
+    except Exception as e:
+        logger.warning(f"❌ [TTS Metadata] Failed to tag {mp3_path.name}: {e}")

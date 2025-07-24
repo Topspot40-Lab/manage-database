@@ -163,6 +163,27 @@ def run(request: TrackRequest, *, test_file_number: int = 0) -> dict:
         language=request.language,
         test_file_number=test_file_number
     )
+    from backend.config import SPOTIFY_BLACKLIST
+
+    raw_tracks = wrapped["tracks"]
+
+    filtered_tracks = [
+        t for t in raw_tracks
+        if t.get("artistName", "").strip().lower() not in SPOTIFY_BLACKLIST
+    ]
+
+    # 🧪 Optional: log any filtered artists
+    if len(filtered_tracks) < len(raw_tracks):
+        removed = [
+            t for t in raw_tracks
+            if t["artistName"].strip().lower() in SPOTIFY_BLACKLIST
+        ]
+        for r in removed:
+            logger.warning(f"🚫 Removed blacklisted artist: {r['artistName']} – '{r['trackName']}'")
+
+    # 🧼 Replace with filtered list
+    wrapped["tracks"] = filtered_tracks
+
     if not wrapped or "tracks" not in wrapped:
         raise HTTPException(status_code=500,
                             detail="Failed to retrieve track list from XAI")
