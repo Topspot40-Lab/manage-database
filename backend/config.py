@@ -145,7 +145,7 @@ LOG_LEVEL_OVERRIDES = {
                             # - Converts one enriched track into a row for the track table
                             # - Logs duration, artwork, and ID fields
 
-    "STEP_4.C": "DEBUG",    # 🎙️ STEP 4.C — Build Artist Table Entries
+    "STEP_4.C": "INFO",    # 🎙️ STEP 4.C — Build Artist Table Entries
                             # Function: build_artist_entry(...) — likely inside build_final_json
                             # - Deduplicates artists and creates a record for each
                             # - Optionally includes Spotify ID, description, and artwork

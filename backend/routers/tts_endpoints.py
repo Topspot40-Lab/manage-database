@@ -55,6 +55,13 @@ def generate_intro_tts_by_rank(
 
         logger.debug(f"🎧 [Intro TTS] Generating MP3: {out_path}")
         generate_tts_mp3(intro_text, out_path, VOICE_ID_INTRO, overwrite=True)
+
+        # ⬇️ NEW: Add metadata
+        track_name = entry.get("track_name", "Unknown Track")
+        artist_name = entry.get("artist_name", "Unknown Artist")
+        album_name = "TopSpot40 Intro Tracks"
+        add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
+
         generated_files.append(str(out_path))
 
     logger.info(f"✅ [Intro TTS] Generated {len(generated_files)} files")
@@ -62,6 +69,7 @@ def generate_intro_tts_by_rank(
         "message": f"✅ Generated {len(generated_files)} intro TTS files",
         "files": generated_files
     }
+
 @router.post("/tts/generate-track-detail-tts-by-rank")
 def generate_track_detail_tts_by_rank(
     start_rank: int = Query(..., ge=1),
@@ -122,7 +130,11 @@ def generate_track_detail_tts_by_rank(
             # Add metadata from ranking entry
             track_name = entry.get("track_name", "Unknown Track")
             artist_name = entry.get("artist_name", "Unknown Artist")
-            album_name = entry.get("album_name", "Unknown Album")
+            album_name = (
+                    entry.get("album_name") or
+                    entry.get("spotify_data", {}).get("album_name") or
+                    "Unknown Album"
+            )
 
             add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
 
@@ -137,38 +149,6 @@ def generate_track_detail_tts_by_rank(
         "files": generated_files
     }
 
-@router.get("/tts/generate-artist-tts-by-rank")
-def generate_artist_tts_by_rank(
-    rank: int = Query(..., ge=1),
-    overwrite: bool = Query(False),
-    play: bool = Query(False)
-):
-    rankings = get_all_rank_entries()
-    match = next((t for t in rankings if t.get("rank") == rank), None)
-    if not match:
-        return {"error": f"No track found with rank {rank}"}
-
-    artist_desc = match.get("artist_description", "").strip()
-    if not artist_desc:
-        return {"error": "No artist description available for TTS."}
-
-    artist_id = match.get("spotify_artist_id")
-    if not artist_id:
-        return {"error": "Missing spotify_artist_id for filename generation."}
-
-    out_path = Path("data/mp3_files/artist_mp3_files") / f"{artist_id}.mp3"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if out_path.exists() and not overwrite:
-        log_tts_action("Artist", artist_id, out_path, "⏭️ Skipped (exists)", play)
-    else:
-        generate_tts_mp3(artist_desc, out_path, VOICE_ID_ARTIST, overwrite=overwrite, play=play)
-        log_tts_action("Artist", artist_id, out_path, "✅ Generated", play)
-
-    return {
-        "message": f"✅ Artist TTS generated for rank {rank}",
-        "file": str(out_path)
-    }
 @router.post("/tts/generate-all-track-detail-tts")
 def generate_all_track_detail_tts(
     overwrite: bool = Query(False),
@@ -206,7 +186,9 @@ def generate_all_track_detail_tts(
         count += 1
 
     logger.info(f"✅ [Track Detail TTS] Generated TTS for {count} tracks")
-    return {"message": f"✅ Generated TTS for {count} tracks"}
+    return {"message": f"✅ Generated TTS fo"
+                       f"r {count} tracks"}
+
 @router.post("/tts/generate-all-artist-tts")
 def generate_all_artist_tts(
     overwrite: bool = Query(False),
@@ -245,6 +227,13 @@ def generate_all_artist_tts(
 
         logger.debug(f"🎧 [Artist TTS] Generating MP3 for artist_id {artist_id}")
         generate_tts_mp3(artist_desc, out_path, VOICE_ID_INTRO, overwrite=overwrite, play=play)
+
+        # ⬇️ NEW: Add metadata tags
+        artist_name = track.get("artist_name", "Unknown Artist")
+        track_name = f"Artist Bio: {artist_name}"
+        album_name = "TopSpot40 Artist Bios"
+        add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
+
         log_tts_action("Artist", artist_id, out_path, "✅ Generated", play)
         seen.add(artist_id)
         count += 1
@@ -254,6 +243,7 @@ def generate_all_artist_tts(
         "message": f"✅ Generated TTS for {count} unique artists",
         "generated_count": count
     }
+
 def add_metadata_to_mp3(mp3_path: Path, track_name: str, artist_name: str, album_name: str):
     try:
         audio = MP3(mp3_path, ID3=EasyID3)
@@ -266,3 +256,74 @@ def add_metadata_to_mp3(mp3_path: Path, track_name: str, artist_name: str, album
         )
     except Exception as e:
         logger.warning(f"❌ [TTS Metadata] Failed to tag {mp3_path.name}: {e}")
+
+@router.get("/tts/list-unique-artists")
+def list_unique_artists():
+    """
+    Returns a numbered list of unique artists with available descriptions.
+    """
+    rankings = get_all_rank_entries()
+
+    seen = set()
+    unique_artists = []
+    for track in rankings:
+        artist_id = track.get("spotify_artist_id")
+        artist_name = track.get("artist_name", "Unknown Artist")
+        artist_desc = track.get("artist_description", "").strip()
+
+        if artist_id and artist_desc and artist_id not in seen:
+            seen.add(artist_id)
+            unique_artists.append({
+                "index": len(unique_artists) + 1,
+                "artist_id": artist_id,
+                "artist_name": artist_name,
+                "has_description": True
+            })
+
+    return {"total": len(unique_artists), "artists": unique_artists}
+
+@router.post("/tts/generate-artist-tts-descriptions")
+def generate_artist_tts_descriptions(
+    start_index: int = Query(..., ge=1),
+    end_index: int = Query(..., ge=1),
+    overwrite: bool = Query(False),
+    play: bool = Query(False)
+):
+    rankings = get_all_rank_entries()
+
+    seen = {}
+    for track in rankings:
+        aid = track.get("spotify_artist_id")
+        if aid and track.get("artist_description") and aid not in seen:
+            seen[aid] = track
+
+    unique_tracks = list(seen.values())
+    selected = unique_tracks[start_index - 1:end_index]
+
+    output_dir = Path("data/mp3_files/artist_mp3_files")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    generated = []
+    for track in selected:
+        artist_id = track.get("spotify_artist_id")
+        artist_name = track.get("artist_name", "Unknown Artist")
+        artist_desc = track.get("artist_description", "")
+        out_path = output_dir / f"{artist_id}.mp3"
+
+        if out_path.exists() and not overwrite:
+            log_tts_action("Artist", artist_id, out_path, "⏭️ Skipped (exists)", play)
+            continue
+
+        generate_tts_mp3(artist_desc, out_path, VOICE_ID_ARTIST, overwrite=overwrite, play=play)
+
+        track_name = f"Artist Bio: {artist_name}"
+        album_name = "TopSpot40 Artist Bios"
+        add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
+
+        log_tts_action("Artist", artist_id, out_path, "✅ Generated", play)
+        generated.append(str(out_path))
+
+    return {
+        "message": f"✅ Generated {len(generated)} artist TTS files",
+        "files": generated
+    }
