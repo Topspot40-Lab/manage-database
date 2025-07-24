@@ -9,7 +9,8 @@ from backend.services.spotify.missing_log import (
     reassign_ranks,
 )
 
-from backend.utils.track_builder import build_track_entry, build_final_json
+from backend.builders.track_builder import build_track_entry
+from backend.builders.json_builder import build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
 from backend.services.xai_descriptions import get_track_descriptions_from_xai

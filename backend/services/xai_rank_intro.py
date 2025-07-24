@@ -49,7 +49,7 @@ def get_rank_intros_from_xai(tracks, language, decade, genre):
         for i, desc in enumerate(responses):
             track = tracks[batch_start + i]
             intro = desc.get("intro", "")
-            track["intro"] = intro  # ✅ Inject into original track
+            track["_xai_intro"] = intro  # or return it separately
 
             if intro:
                 logger.debug(f"🟢 Rank {track.get('rank')} intro: {intro}")
