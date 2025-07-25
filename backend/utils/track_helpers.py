@@ -169,7 +169,7 @@ def set_mode_fields(track: dict, logger) -> dict:
     track["main_artist_name"] = main_raw
     track["featured_artist_name"] = feat_raw
     track["artist_display_name"] = display
-    track["mode_flag"] = mode_enum.value
+    track["mode_flag"] = mode_enum.name  # e.g., "SOLO"
     track["mode_label"] = mode_enum.name
     track["mode_flag_detail"] = get_mode_flag_detail_for_tts(track)
 

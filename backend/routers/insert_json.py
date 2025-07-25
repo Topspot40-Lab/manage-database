@@ -167,7 +167,7 @@ async def insert_json_to_db(
                     created_at=t["created_at"],
                     detail=t.get("detail"),
                     album_name=t.get("album_name"),
-                    mode_flag=parsed_flag
+                    mode_flag=parse_mode_flag(t.get("mode_flag"))  # 👈 THIS is the fix
                 )
 
                 db.add(track)
