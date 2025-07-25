@@ -10,6 +10,7 @@ import re
 import difflib
 from backend.utils.json_helpers import normalize_name
 from backend.utils.logger_factory import get_step_logger
+from backend.models.enums import ModeFlag
 
 
 logger_step3 = get_step_logger("STEP_3")         # General Step 3
@@ -66,13 +67,6 @@ def clean_track_title(title: str) -> str:
     return re.sub(r"\s*\(.*?\)", "", title).strip()
 
 
-
-# ✅ Define ModeFlag enum locally if not imported
-class ModeFlag(Enum):
-    SOLO = 0
-    GROUP = 1
-    DUET = 2
-    FEATURED = 3
 
 # ✅ Format the track display name based on mode_flag
 def format_track_display_name(track_name: str, featured_artist_name: Optional[str], mode_flag: int) -> str:

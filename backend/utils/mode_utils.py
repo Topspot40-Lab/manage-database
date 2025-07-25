@@ -1,13 +1,10 @@
 from enum import Enum
 from typing import List, Optional, Tuple
+from backend.models.enums import ModeFlag
 
+import logging
+logger = logging.getLogger(__name__)
 
-class ModeFlag(str, Enum):
-    SOLO = "solo"
-    DUET = "duet"
-    FEATURED = "featured"
-    GROUP = "group"
-    UNKNOWN = "unknown"  # ✅ Add this if missing
 
 # NOTE: Only used during Spotify enrichment when determining featured artist ID
 # DO NOT use in general track processing — use get_mode_flag() instead
@@ -40,3 +37,16 @@ def determine_mode_flag_basic(artist_name: str) -> ModeFlag:
     elif " with " in name_lower or " and " in name_lower:
         return ModeFlag.DUET
     return ModeFlag.SOLO
+
+
+
+def parse_mode_flag(raw_flag: Optional[str]) -> ModeFlag:
+    """Safely parse a raw string (e.g., from JSON) into a ModeFlag enum."""
+    if not raw_flag:
+        return ModeFlag.SOLO
+
+    try:
+        return ModeFlag(raw_flag.upper())  # <-- FIXED CASE
+    except ValueError:
+        logger.warning(f"⚠️ Invalid mode_flag '{raw_flag}', defaulting to ModeFlag.SOLO")
+        return ModeFlag.SOLO

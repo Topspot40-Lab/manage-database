@@ -2,15 +2,15 @@ from fastapi import APIRouter, HTTPException, Path, Depends
 from sqlmodel import Session, select
 import logging
 import sqlalchemy
-
+from typing import cast
+from sqlmodel.sql.expression import SelectOfScalar
+from backend.utils.mode_utils import parse_mode_flag
 from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
 from backend.utils.json_helpers import load_full_json_file
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["json-insert"])
-
 
 @router.post("/insert-json-to-db/{decade}/{genre}")
 async def insert_json_to_db(
@@ -36,6 +36,7 @@ async def insert_json_to_db(
         decade_name = data["core_tables"]["decade"][0]["decade_name"]
         logger.info(f"Genre: {genre_name}, Decade: {decade_name}")
 
+        # noinspection PyTypeChecker
         genre = db.exec(select(Genre).where(Genre.genre_name == genre_name)).first()
         if not genre:
             genre = Genre(genre_name=genre_name)
@@ -44,6 +45,7 @@ async def insert_json_to_db(
             db.refresh(genre)
             logger.info(f"Added new genre: {genre_name}")
 
+        # noinspection PyTypeChecker
         decade = db.exec(select(Decade).where(Decade.decade_name == decade_name)).first()
         if not decade:
             decade = Decade(decade_name=decade_name)
@@ -52,6 +54,7 @@ async def insert_json_to_db(
             db.refresh(decade)
             logger.info(f"Added new decade: {decade_name}")
 
+        # noinspection PyTypeChecker
         decade_genre = db.exec(
             select(DecadeGenre).where(
                 DecadeGenre.decade_id == decade.id,
@@ -66,186 +69,159 @@ async def insert_json_to_db(
             logger.info("Linked DecadeGenre")
 
         # Deduplicate artists
-        unique_artists = []
-        seen_keys = set()
-        for a in data["core_tables"]["artist"]:
-            sid = a.get("spotify_artist_id")
-            name = a["artist_name"]
-            key = sid if sid else name
-            if key not in seen_keys:
-                unique_artists.append(a)
-                seen_keys.add(key)
-        data["core_tables"]["artist"] = unique_artists
-
-        # Insert artists
-        artist_names_in_json = [a["artist_name"] for a in data["core_tables"]["artist"]]
-        spotify_ids_in_json = [a["spotify_artist_id"] for a in data["core_tables"]["artist"] if a.get("spotify_artist_id")]
-
-        existing_artists = db.exec(
-            select(Artist).where(
-                (Artist.artist_name.in_(artist_names_in_json)) |
-                (Artist.spotify_artist_id.in_(spotify_ids_in_json))
-            )
-        ).all()
-
         artist_map = {}
-        for artist in existing_artists:
-            key = artist.spotify_artist_id if artist.spotify_artist_id else artist.artist_name
-            artist_map[key] = artist.id
-
         for a in data["core_tables"]["artist"]:
-            artist_name = a["artist_name"].strip()
             sid = a.get("spotify_artist_id")
-            key_id = sid if sid else None
-            key_name = artist_name
+            name = a["artist_name"].strip()
 
-            if (key_id and key_id in artist_map) or (key_name in artist_map):
-                continue
-
-            if not sid and not a.get("not_on_spotify", False):
-                logger.warning(f"Missing spotify_artist_id for artist: {artist_name}")
-                raise HTTPException(400, f"Missing spotify_artist_id for artist: {artist_name}")
-
-            artist = Artist(
-                artist_name=artist_name,
-                spotify_artist_id=sid,
-                artist_artwork=a.get("artist_artwork"),
-                artist_description=a.get("artist_description"),
-                not_on_spotify=a.get("not_on_spotify", False)
-            )
-            db.add(artist)
-            db.commit()
-            db.refresh(artist)
-            logger.info(f"Added artist: {artist_name}")
-
-            key = sid if sid else artist_name
-            artist_map[artist_name] = artist.id
+            # Safer and clearer artist lookup logic
             if sid:
-                artist_map[sid] = artist.id
-            artist_map[key] = artist.id
+                stmt = select(Artist).where(Artist.spotify_artist_id == sid)
+            else:
+                stmt = cast(SelectOfScalar[Artist], select(Artist).where(Artist.spotify_artist_id == sid))
 
-        for key, artist_id in artist_map.items():
-            artist_genre = db.exec(
-                select(ArtistGenre).where(
-                    ArtistGenre.artist_id == artist_id,
-                    ArtistGenre.genre_id == genre.id
+            existing_artist = db.exec(stmt).first()
+
+            if not existing_artist:
+                logger.warning(f"🧨 Artist not found: sid='{sid}', name='{name}'")
+
+            if existing_artist:
+                artist_id = existing_artist.id
+            else:
+                artist = Artist(
+                    artist_name=name,
+                    spotify_artist_id=sid,
+                    artist_artwork=a.get("artist_artwork"),
+                    artist_description=a.get("artist_description"),
+                    not_on_spotify=a.get("not_on_spotify", False)
                 )
-            ).first()
-            if not artist_genre:
+                db.add(artist)
+                db.commit()
+                db.refresh(artist)
+                artist_id = artist.id
+                logger.info(f"Added artist: {name}")
+
+            artist_map[sid or name] = artist_id
+
+            # noinspection PyTypeChecker
+            if not db.exec(select(ArtistGenre).where(
+                ArtistGenre.artist_id == artist_id,
+                ArtistGenre.genre_id == genre.id
+            )).first():
                 db.add(ArtistGenre(artist_id=artist_id, genre_id=genre.id))
 
         db.commit()
 
         # Insert tracks
+        track_map = {}
         for t in data["track_tables"]["track"]:
-            sid = t.get("spotify_artist_id")
-            artist_key = sid or t["artist_name"]
+            sid = t.get("spotify_track_id")
+            artist_sid = t.get("spotify_artist_id")
+            artist_id = artist_map.get(artist_sid or t["artist_name"].strip())
 
-            artist_id = artist_map.get(artist_key)
-            if not artist_id:
-                raise HTTPException(500, f"Artist ID not found for track: {t['track_name']}")
+            # noinspection PyTypeChecker
+            track = db.exec(
+                select(Track).where(Track.spotify_track_id == sid)
+            ).first() if sid else db.exec(
+                select(Track).where(
+                    Track.track_name == t["track_name"],
+                    Track.artist_id == artist_id
+                )
+            ).first()
 
-            spotify_tid = t.get("spotify_track_id")
-            if not spotify_tid and not t.get("not_on_spotify", False):
-                raise HTTPException(400, f"Missing spotify_track_id for track: {t['track_name']}")
-
-            if spotify_tid:
-                existing_track = db.exec(
-                    select(Track).where(Track.spotify_track_id == spotify_tid)
-                ).first()
-            else:
-                existing_track = db.exec(
-                    select(Track).where(
-                        Track.track_name == t["track_name"],
-                        Track.artist_id == artist_id
-                    )
-                ).first()
-
-            if existing_track:
+            if track:
                 logger.info(f"Updating track: {t['track_name']}")
-                existing_track.track_name = t["track_name"]
-                existing_track.artist_display_name = t.get("artist_display_name")
-                existing_track.artist_id = artist_id
-                existing_track.duration_ms = t["duration_ms"]
-                existing_track.popularity = t["popularity"]
-                existing_track.album_artwork = t["album_artwork"]
-                existing_track.year_released = t["year_released"]
-                existing_track.is_explicit = t["is_explicit"]
-                existing_track.created_at = t["created_at"]
-                existing_track.not_on_spotify = t.get("not_on_spotify", False)
-                existing_track.detail = t.get("detail")
-                existing_track.detail_mp3_url = t.get("detail_mp3_url")
+                track.track_name = t["track_name"]
+                track.artist_display_name = t.get("artist_display_name")
+                track.artist_id = artist_id
+                track.duration_ms = t["duration_ms"]
+                track.popularity = t["popularity"]
+                track.album_artwork = t["album_artwork"]
+                track.year_released = t["year_released"]
+                track.is_explicit = t["is_explicit"]
+                track.created_at = t["created_at"]
+                track.detail = t.get("detail")
+                track.album_name = t.get("album_name")  # ✅ Added this field
+                raw_flag = t.get("mode_flag")
+                parsed_flag = parse_mode_flag(raw_flag)
+                logger.info(f"🎛️ Mode flag '{raw_flag}' parsed as → {parsed_flag}")
+                track.mode_flag = parsed_flag
+
+
+
             else:
-                logger.info(f"Adding track: {t['track_name']}")
-                db.add(Track(
+                raw_flag = t.get("mode_flag")
+                parsed_flag = parse_mode_flag(raw_flag)
+                logger.info(f"🎛️ Mode flag '{raw_flag}' parsed as → {parsed_flag}")
+
+                track = Track(
                     track_name=t["track_name"],
                     artist_display_name=t.get("artist_display_name"),
                     artist_id=artist_id,
-                    spotify_track_id=spotify_tid,
+                    spotify_track_id=sid,
                     duration_ms=t["duration_ms"],
                     popularity=t["popularity"],
                     album_artwork=t["album_artwork"],
                     year_released=t["year_released"],
                     is_explicit=t["is_explicit"],
-                    not_on_spotify=t.get("not_on_spotify", False),
                     created_at=t["created_at"],
                     detail=t.get("detail"),
-                    detail_mp3_url=t.get("detail_mp3_url")
-                ))
+                    album_name=t.get("album_name"),
+                    mode_flag=parsed_flag
+                )
+
+                db.add(track)
+                db.commit()
+                db.refresh(track)
+
+            track_map[(track.track_name, artist_id)] = track.id
 
         db.commit()
 
         # Insert rankings
         for r in data["ranking_tables"]["track_ranking"]:
-            track = None
-            spotify_tid = r.get("spotify_track_id")
-            artist_key = r.get("spotify_artist_id") or r["artist_name"]
+            spotify_tid = r.get("track_id")
+            if not spotify_tid:
+                logger.error(f"🚫 No spotify_track_id in ranking entry: {r}")
+                raise HTTPException(500, f"No Spotify track ID for: {r.get('track_name')}")
 
-            if spotify_tid:
-                track = db.exec(
-                    select(Track).where(Track.spotify_track_id == spotify_tid)
-                ).first()
+            # ✅ Fix 1: Use proper Select from SQLAlchemy
+            stmt_track = select(Track).where(Track.spotify_track_id == spotify_tid)
+            track_obj = db.exec(stmt_track).first()
 
-            if not track:
-                track = db.exec(
-                    select(Track).where(
-                        Track.track_name == r["track_name"],
-                        Track.artist_id == artist_map.get(artist_key)
-                    )
-                ).first()
+            if not track_obj:
+                logger.error(f"🚫 Track not found in DB with Spotify ID: {spotify_tid}")
+                raise HTTPException(500, f"Track not found for Spotify ID: {spotify_tid}")
 
-            if not track:
-                logger.error(f"Track not found for ranking: {r['track_name']}")
-                raise HTTPException(500, f"Track not found for ranking: {r['track_name']}")
+            tid = track_obj.id
+            # ⚠️ artist_id is unused, so it's removed
 
-            existing_ranking = db.exec(
-                select(TrackRanking).where(
-                    TrackRanking.track_id == track.id,
-                    TrackRanking.decade_genre_id == decade_genre.id,
-                    TrackRanking.tracklist_id == 1
-                )
-            ).first()
+            # ✅ Fix 2: Use proper Select for ranking
+            stmt_ranking = select(TrackRanking).where(
+                TrackRanking.track_id == tid,
+                TrackRanking.decade_genre_id == decade_genre.id,
+                TrackRanking.tracklist_id == 1
+            )
+            ranking = db.exec(stmt_ranking).first()
 
-            if existing_ranking:
-                logger.info(f"Updating ranking for: {r['track_name']}")
-                existing_ranking.ranking = r["rank"]
-                existing_ranking.intro = r.get("intro")
-                existing_ranking.intro_mp3_url = r.get("intro_mp3_url")
-                existing_ranking.ranking_date = r["ranking_date"]
+            if ranking:
+                ranking.ranking = r["rank"]
+                ranking.intro = r.get("intro")
+                ranking.ranking_date = r["ranking_date"]
+                logger.info(f"📝 Updated ranking for: {track_obj.track_name}")
             else:
                 db.add(TrackRanking(
-                    track_id=track.id,
+                    track_id=tid,
                     decade_genre_id=decade_genre.id,
                     tracklist_id=1,
                     ranking=r["rank"],
                     intro=r.get("intro"),
-                    intro_mp3_url=r.get("intro_mp3_url"),
                     ranking_date=r["ranking_date"]
                 ))
-
-            logger.info(f"Ranked track: {r['track_name']} → #{r['rank']}")
+                logger.info(f"✅ Added ranking for: {track_obj.track_name}")
 
         db.commit()
+
 
         logger.info("JSON import complete.")
         return {"status": "success", "message": f"Inserted {filename}"}

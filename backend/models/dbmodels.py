@@ -30,7 +30,6 @@ class Artist(SQLModel, table=True):
     spotify_artist_id: Optional[str] = Field(default=None, nullable=True)
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
-    artist_mp3_url: Optional[str] = Field(default=None)
     not_on_spotify: bool = Field(default=False)  # ✅ Add this line
 
 
@@ -143,7 +142,6 @@ class TrackRanking(SQLModel, table=True):
     tracklist_id: int
     ranking: int
     intro: Optional[str] = None
-    intro_mp3_url: Optional[str] = None
     ranking_date: Optional[str] = None
 
 
@@ -166,6 +164,7 @@ class Track(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     track_name: str = Field(nullable=False)
+    album_name: Optional[str] = Field(default=None)  # ✅ New field
     artist_display_name: Optional[str] = Field(default=None)  # ✅ NEW: replaces `track_display_name`
     spotify_track_id: str = Field(nullable=False)
     mode_flag: ModeFlag = Field(default=ModeFlag.SOLO)
@@ -178,5 +177,4 @@ class Track(SQLModel, table=True):
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
-    detail_mp3_url: Optional[str] = Field(default=None)
-    not_on_spotify: Optional[bool] = Field(default=False)
+

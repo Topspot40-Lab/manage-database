@@ -1,14 +1,9 @@
 import re
 from backend.utils.json_helpers import normalize_name
-from enum import IntEnum
+from backend.models.enums import ModeFlag
 
 NON_WORD = re.compile(r"\W+")
 
-class ModeFlag(IntEnum):
-    SOLO = 0
-    GROUP = 1
-    DUET = 2
-    FEATURED = 3
 
 def safe_slug(text: str) -> str:
     return NON_WORD.sub("_", normalize_name(text))

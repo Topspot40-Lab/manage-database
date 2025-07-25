@@ -1,8 +1,8 @@
-# backend/models/enums.py
+from enum import Enum
 
-from enum import IntEnum
-
-class ModeFlag(IntEnum):
-    SOLO = 0
-    DUET = 1
-    FEATURED = 2
+class ModeFlag(str, Enum):
+    SOLO = "SOLO"
+    DUET = "DUET"
+    FEATURED = "FEATURED"
+    GROUP = "GROUP"
+    UNKNOWN = "UNKNOWN"

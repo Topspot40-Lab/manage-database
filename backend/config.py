@@ -13,6 +13,10 @@ load_dotenv()
 APP_VERSION = "1.0.7"
 LAST_UPDATED = "2025-07-18: 11:00 am"
 
+# ---------------------------------------------------------------------
+# 🎧 TRACK LIMIT CONFIG
+# ---------------------------------------------------------------------
+
 # -----------------------------------------------------------------------------
 # 📁 PATH SETTINGS
 # -----------------------------------------------------------------------------
@@ -204,11 +208,13 @@ LOG_LEVELS_BY_MODULE = {
     "backend.utils.track_builder": "INFO",
     "Validation": "INFO",
     "backend.utils.normalize": "INFO",
-    "tts_logger": "DEBUG",  # ✅ Correct logger name
+    "tts_logger": "INFO",  # ✅ Correct logger name
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",
     "httpx": "WARNING",
+    "backend.routers.insert_json": "DEBUG"
+
 }
 
 # ---------------------------------------------------------------------------

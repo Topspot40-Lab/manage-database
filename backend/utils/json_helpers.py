@@ -108,11 +108,20 @@ KNOWN_DUET_PAIRS = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 import re
+import re
 
 def clean_text_field(text: str) -> str:
-    """Clean up spacing and punctuation in generated text fields."""
+    """Clean up spacing, punctuation, and special characters in generated text fields."""
     if not text:
         return text
+
+    # Replace smart quotes and apostrophes with standard ones
+    text = (
+        text.replace("’", "'")
+            .replace("‘", "'")
+            .replace("“", '"')
+            .replace("”", '"')
+    )
 
     # Remove leading/trailing whitespace
     text = text.strip()
