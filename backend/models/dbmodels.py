@@ -2,6 +2,7 @@ from typing import Optional
 from datetime import datetime, UTC
 from sqlmodel import SQLModel, Field, UniqueConstraint
 from backend.models.enums import ModeFlag
+from sqlalchemy import Column, Enum as SqlEnum  # 👈 Needed for proper SQL enum mapping
 
 
 
@@ -84,8 +85,6 @@ class DecadeGenre(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     decade_id: Optional[int] = Field(default=None, foreign_key="core_tables.decade.id")
     genre_id: Optional[int] = Field(default=None, foreign_key="core_tables.genre.id")
-    decade_genre_intro: Optional[str] = None
-    intro_mp3_url: Optional[str] = None
 
 
 class TrackGenre(SQLModel, table=True):
@@ -167,7 +166,11 @@ class Track(SQLModel, table=True):
     album_name: Optional[str] = Field(default=None)  # ✅ New field
     artist_display_name: Optional[str] = Field(default=None)  # ✅ NEW: replaces `track_display_name`
     spotify_track_id: str = Field(nullable=False)
-    mode_flag: ModeFlag = Field(default=ModeFlag.SOLO)
+    mode_flag: ModeFlag = Field(
+        sa_column=Column(SqlEnum(ModeFlag, name="modeflag", create_constraint=True)),
+        default=ModeFlag.SOLO
+    )
+
     duration_ms: Optional[int] = Field(default=None)
     popularity: Optional[int] = Field(default=None)
     album_artwork: Optional[str] = Field(default=None)

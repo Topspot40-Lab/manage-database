@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Path, Depends
 from sqlmodel import Session, select
 import logging
 import sqlalchemy
-from typing import cast
-from sqlmodel.sql.expression import SelectOfScalar
+from backend.utils.mode_utils import ModeFlag
+from sqlalchemy import and_
+
 from backend.utils.mode_utils import parse_mode_flag
 from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
@@ -57,8 +58,10 @@ async def insert_json_to_db(
         # noinspection PyTypeChecker
         decade_genre = db.exec(
             select(DecadeGenre).where(
-                DecadeGenre.decade_id == decade.id,
-                DecadeGenre.genre_id == genre.id
+                and_(
+                    DecadeGenre.decade_id == decade.id,
+                    DecadeGenre.genre_id == genre.id
+                )
             )
         ).first()
         if not decade_genre:
@@ -78,7 +81,7 @@ async def insert_json_to_db(
             if sid:
                 stmt = select(Artist).where(Artist.spotify_artist_id == sid)
             else:
-                stmt = cast(SelectOfScalar[Artist], select(Artist).where(Artist.spotify_artist_id == sid))
+                stmt = select(Artist).where(Artist.artist_name == name)
 
             existing_artist = db.exec(stmt).first()
 
@@ -119,18 +122,45 @@ async def insert_json_to_db(
             artist_sid = t.get("spotify_artist_id")
             artist_id = artist_map.get(artist_sid or t["artist_name"].strip())
 
-            # noinspection PyTypeChecker
-            track = db.exec(
-                select(Track).where(Track.spotify_track_id == sid)
-            ).first() if sid else db.exec(
-                select(Track).where(
-                    Track.track_name == t["track_name"],
-                    Track.artist_id == artist_id
-                )
-            ).first()
+            logger.debug("🧪 In the loop")
+
+            # 🔍 Add this line just below
+            logger.debug(f"🧪 Inserting track: {t.get('track_name')} | raw_flag: {t.get('mode_flag')}")
+
+            # ───── Step 1: Get and parse the mode flag ─────
+            raw_flag = t.get("mode_flag")
+            parsed_flag = parse_mode_flag(raw_flag)
+
+            logger.debug(f"👀 Raw mode_flag from JSON: {raw_flag}")
+            logger.debug(f"✅ Parsed mode_flag: {parsed_flag}")
+
+            # 🛡️ Sanity check
+            if not isinstance(parsed_flag, ModeFlag):
+                logger.error(f"🚨 parsed_flag is not a ModeFlag! Got: {parsed_flag} (type={type(parsed_flag)})")
+
+            # ───── Step 2: Lookup track ─────
+            try:
+                with db.no_autoflush:
+                    track = db.exec(
+                        select(Track).where(Track.spotify_track_id == sid)
+                    ).first() if sid else db.exec(
+                        select(Track).where(
+                            Track.track_name == t["track_name"],
+                            Track.artist_id == artist_id
+                        )
+                    ).first()
+
+                logger.debug(f"🧪 After db.exec → Track: {track}")
+
+            except Exception as e:
+                logger.error(f"🔥 Exception during db.exec: {e}")
+                logger.error(f"❗ t['track_name'] = {t.get('track_name')}, artist_id = {artist_id}, sid = {sid}")
+                raise
+
+            logger.debug(f"🔎 Looking for track to update: {t['track_name']}")
 
             if track:
-                logger.info(f"Updating track: {t['track_name']}")
+                logger.info(f"🔁 Updating track: {t['track_name']}")
                 track.track_name = t["track_name"]
                 track.artist_display_name = t.get("artist_display_name")
                 track.artist_id = artist_id
@@ -141,19 +171,10 @@ async def insert_json_to_db(
                 track.is_explicit = t["is_explicit"]
                 track.created_at = t["created_at"]
                 track.detail = t.get("detail")
-                track.album_name = t.get("album_name")  # ✅ Added this field
-                raw_flag = t.get("mode_flag")
-                parsed_flag = parse_mode_flag(raw_flag)
-                logger.info(f"🎛️ Mode flag '{raw_flag}' parsed as → {parsed_flag}")
-                track.mode_flag = parsed_flag
-
-
-
+                track.album_name = t.get("album_name")
+                track.mode_flag = parsed_flag  # ✅ Use parsed enum value
             else:
-                raw_flag = t.get("mode_flag")
-                parsed_flag = parse_mode_flag(raw_flag)
-                logger.info(f"🎛️ Mode flag '{raw_flag}' parsed as → {parsed_flag}")
-
+                logger.info(f"➕ Creating new track: {t['track_name']}")
                 track = Track(
                     track_name=t["track_name"],
                     artist_display_name=t.get("artist_display_name"),
@@ -167,10 +188,11 @@ async def insert_json_to_db(
                     created_at=t["created_at"],
                     detail=t.get("detail"),
                     album_name=t.get("album_name"),
-                    mode_flag=parse_mode_flag(t.get("mode_flag"))  # 👈 THIS is the fix
-                )
+                    mode_flag=parsed_flag.value  # ✅ Ensures uppercase string like "SOLO"
 
+                )
                 db.add(track)
+
                 db.commit()
                 db.refresh(track)
 
