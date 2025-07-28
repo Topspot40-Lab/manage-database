@@ -17,7 +17,7 @@ REQUIRED_FIELDS_TRACK_RANKING = [
     "decade",
     "rank",
     # "intro",
-    "ranking_date"
+    "created_at"
 ]
 
 @router.get("/validate-json/{decade}/{genre}")

@@ -108,7 +108,7 @@
               "tracklist": { "type": "string" },
               "rank": { "type": "integer", "minimum": 1 },
               "intro": { "type": ["string", "null"] },
-              "ranking_date": { "type": "string", "format": "date" }
+              "created_at": { "type": "string", "format": "date" }
             }
           }
         }

@@ -37,7 +37,6 @@ async def insert_json_to_db(
             data["artist"] = [data["artist"]]
 
     except FileNotFoundError:
-
         logger.error("JSON file not found")
         raise HTTPException(404, "JSON file not found")
     except Exception as e:
@@ -45,8 +44,12 @@ async def insert_json_to_db(
         raise HTTPException(500, f"Read error: {e}")
 
     try:
-        genre_name = data["genre"][0]["genre_name"]
-        decade_name = data["decade"][0]["decade_name"]
+        # genre_name = data["genre"][0]["genre_name"]
+        # decade_name = data["decade"][0]["decade_name"]
+
+        genre_name = data["genre"]
+        decade_name = data["category"]
+
         logger.info(f"Genre: {genre_name}, Decade: {decade_name}")
 
         # noinspection PyTypeChecker
@@ -255,7 +258,7 @@ async def insert_json_to_db(
             if ranking:
                 ranking.ranking = r["rank"]
                 ranking.intro = r.get("intro")
-                ranking.ranking_date = r["ranking_date"]
+                ranking.created_at = r["created_at"]
                 logger.info(f"📝 Updated ranking for: {track_obj.track_name}")
             else:
                 db.add(TrackRanking(
@@ -264,7 +267,7 @@ async def insert_json_to_db(
                     tracklist_id=1,
                     ranking=r["rank"],
                     intro=r.get("intro"),
-                    ranking_date=r["ranking_date"]
+                    created_at=r["created_at"]
                 ))
                 logger.info(f"✅ Added ranking for: {track_obj.track_name}")
 

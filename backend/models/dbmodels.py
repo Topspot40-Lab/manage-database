@@ -102,7 +102,7 @@ class SpecialtyRanking(SQLModel, table=True):
     detail: Optional[str] = Field(default=None)
     intro_mp3_url: Optional[str] = Field(default=None)
     artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")
-    ranking_date: Optional[datetime] = Field(default=None)
+    created_at: Optional[datetime] = Field(default=None)
 
 
 class Top40GenreRanking(SQLModel, table=True):
@@ -116,7 +116,7 @@ class Top40GenreRanking(SQLModel, table=True):
     ranking: int = Field(nullable=False)
     info: Optional[str] = Field(default=None)
     detail: Optional[str] = Field(default=None)
-    ranking_date: Optional[datetime] = Field(default=None)
+    created_at: Optional[datetime] = Field(default=None)
     intro_mp3_url: Optional[str] = Field(default=None)
 
 
@@ -134,7 +134,7 @@ class TrackRanking(SQLModel, table=True):
     tracklist_id: int
     ranking: int
     intro: Optional[str] = None
-    ranking_date: Optional[str] = None
+    created_at: Optional[str] = None
 
 
 class Tracklist(SQLModel, table=True):
