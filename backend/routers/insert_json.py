@@ -25,7 +25,19 @@ async def insert_json_to_db(
         filename = f"{decade}_{genre}_en.json"
         data = load_full_json_file(decade, filename)
         logger.info(f"Loaded JSON file: {filename}")
+
+        # 🔍 Log the raw structure of the JSON
+        logger.debug(f"🧩 Raw JSON keys: {list(data.keys())}")
+        logger.debug(f"🧩 type(data['artist']) = {type(data.get('artist'))}")
+        logger.debug(f"🧩 data['artist'] (first 100 chars): {str(data.get('artist'))[:100]}")
+
+        # 🛠️ PATCH: Ensure artist block is always a list
+        if isinstance(data.get("artist"), dict):
+            logger.warning("⚠️ Patching artist field from dict to list")
+            data["artist"] = [data["artist"]]
+
     except FileNotFoundError:
+
         logger.error("JSON file not found")
         raise HTTPException(404, "JSON file not found")
     except Exception as e:
@@ -71,6 +83,9 @@ async def insert_json_to_db(
             db.refresh(decade_genre)
             logger.info("Linked DecadeGenre")
 
+        logger.debug(f"type(data['artist']) = {type(data['artist'])}")
+        logger.debug(f"data['artist'][:1] = {data['artist'][:1]}")
+
         # Deduplicate artists
         artist_map = {}
         for a in data["artist"]:
@@ -115,6 +130,10 @@ async def insert_json_to_db(
 
         db.commit()
 
+        logger.debug(f"🔍 type(data['track']) = {type(data.get('track'))}")
+        logger.debug(
+            f"🔍 data['track'] (first item) = {data['track'][0] if isinstance(data['track'], list) and data['track'] else 'EMPTY'}")
+
         # Insert tracks
         track_map = {}
         for t in data["track"]:
@@ -140,13 +159,15 @@ async def insert_json_to_db(
 
             # ───── Step 2: Lookup track ─────
             try:
+                logger.debug(f"📦 Track candidate t = {t} (type: {type(t)})")
+
                 with db.no_autoflush:
                     track = db.exec(
                         select(Track).where(Track.spotify_track_id == sid)
                     ).first() if sid else db.exec(
                         select(Track).where(
-                            Track.track_name == t["track_name"],
-                            Track.artist_id == artist_id
+                            (Track.track_name == t["track_name"]) &
+                            (Track.artist_id == artist_id)
                         )
                     ).first()
 
@@ -200,29 +221,34 @@ async def insert_json_to_db(
 
         db.commit()
 
+        logger.debug(f"✅ type(data['track_ranking']): {type(data['track_ranking'])}")
+        logger.debug(f"✅ data['track_ranking']: {data['track_ranking']}")
         # Insert rankings
-        for r in data["track_ranking"]:
+        for i, r in enumerate(data.get("track_ranking", [])):
+            logger.debug(f"🧪 Ranking #{i}: {r} (type: {type(r)})")
+
+            if not isinstance(r, dict):
+                logger.error(f"🚫 Malformed ranking entry (not a dict): {r}")
+                continue  # Skip this one
+
             spotify_tid = r.get("track_id")
             if not spotify_tid:
                 logger.error(f"🚫 No spotify_track_id in ranking entry: {r}")
-                raise HTTPException(500, f"No Spotify track ID for: {r.get('track_name')}")
+                continue
 
-            # ✅ Fix 1: Use proper Select from SQLAlchemy
             stmt_track = select(Track).where(Track.spotify_track_id == spotify_tid)
             track_obj = db.exec(stmt_track).first()
 
             if not track_obj:
                 logger.error(f"🚫 Track not found in DB with Spotify ID: {spotify_tid}")
-                raise HTTPException(500, f"Track not found for Spotify ID: {spotify_tid}")
+                continue
 
             tid = track_obj.id
-            # ⚠️ artist_id is unused, so it's removed
 
-            # ✅ Fix 2: Use proper Select for ranking
             stmt_ranking = select(TrackRanking).where(
-                TrackRanking.track_id == tid,
-                TrackRanking.decade_genre_id == decade_genre.id,
-                TrackRanking.tracklist_id == 1
+                (TrackRanking.track_id == tid) &
+                (TrackRanking.decade_genre_id == decade_genre.id) &
+                (TrackRanking.tracklist_id == 1)
             )
             ranking = db.exec(stmt_ranking).first()
 

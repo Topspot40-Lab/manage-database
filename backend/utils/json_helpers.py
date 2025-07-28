@@ -108,7 +108,6 @@ KNOWN_DUET_PAIRS = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 import re
-import re
 
 def clean_text_field(text: str) -> str:
     """Clean up spacing, punctuation, and special characters in generated text fields."""
@@ -196,6 +195,7 @@ def load_full_json_file(decade: Optional[str] = None, filename: Optional[str] = 
       - `file_path`, or
       - `decade` + `filename` from the known genredecade directory
     """
+
     if file_path:
         path = file_path
         context = f"[Direct path: {file_path.name}]"
@@ -204,6 +204,7 @@ def load_full_json_file(decade: Optional[str] = None, filename: Optional[str] = 
         context = f"[From decade: {decade}, file: {filename}]"
     else:
         raise ValueError("Must provide either file_path or (decade and filename)")
+
 
     logger_step1b.info(f"📁 Loading JSON {context}")
     logger_step1b.debug(f"🔍 Full path: {path.resolve()}")
@@ -216,7 +217,8 @@ def load_full_json_file(decade: Optional[str] = None, filename: Optional[str] = 
         data = json.load(f)
 
     top_keys = list(data.keys())
-    track_count = len(data.get("ranking_tables", {}).get("track_ranking", []))
+    track_count = len(data.get("track", []))
+
     logger_step1b.info(f"✅ Loaded JSON: {len(top_keys)} top-level keys, {track_count} track(s)")
 
     tracks = data.get("track", [])
