@@ -112,25 +112,19 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
         "category": request.decade,
         "genre": request.genre,
         "generated_at": now,
-        "core_tables": {
-            "genre": [{"genre_name": request.genre}],
-            "decade": [{"decade_name": request.decade}],
-            "artist": artists,
-        },
-        "track_tables": {
-            "track": tracks,
-            "tracklist": [{
-                "name": "TopSpot Autogen",
-                "curator": "Mr. Ed",
-                "is_official": True,
-                "language": request.language[:2],
-                "notes": f"Generated for {request.genre} - {request.decade}",
-                "created_at": now,
-            }],
-        },
-        "ranking_tables": {
-            "track_ranking": rankings
-        }
+        "genre_table": [{"genre_name": request.genre}],
+        "decade": [{"decade_name": request.decade}],
+        "artist": artists,
+        "track": tracks,
+        "tracklist": [{
+            "name": "TopSpot Autogen",
+            "curator": "Mr. Ed",
+            "is_official": True,
+            "language": request.language[:2],
+            "notes": f"Generated for {request.genre} - {request.decade}",
+            "created_at": now,
+        }],
+        "track_ranking": rankings
     }
 
     logger_step4e.debug(

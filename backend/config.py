@@ -160,7 +160,7 @@ LOG_LEVEL_OVERRIDES = {
 
     "STEP_4.E": "INFO",    # 📦 STEP 4.E — Final JSON Assembly
                             # Function: build_final_json(...) — final return step
-                            # - Combines all tables: core_tables, track_tables, ranking_tables
+                            # - Combines all tables:
                             # - Outputs full JSON object and summary log
 
 

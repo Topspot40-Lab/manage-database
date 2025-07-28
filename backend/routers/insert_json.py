@@ -33,8 +33,8 @@ async def insert_json_to_db(
         raise HTTPException(500, f"Read error: {e}")
 
     try:
-        genre_name = data["core_tables"]["genre"][0]["genre_name"]
-        decade_name = data["core_tables"]["decade"][0]["decade_name"]
+        genre_name = data["genre"][0]["genre_name"]
+        decade_name = data["decade"][0]["decade_name"]
         logger.info(f"Genre: {genre_name}, Decade: {decade_name}")
 
         # noinspection PyTypeChecker
@@ -73,7 +73,7 @@ async def insert_json_to_db(
 
         # Deduplicate artists
         artist_map = {}
-        for a in data["core_tables"]["artist"]:
+        for a in data["artist"]:
             sid = a.get("spotify_artist_id")
             name = a["artist_name"].strip()
 
@@ -117,7 +117,7 @@ async def insert_json_to_db(
 
         # Insert tracks
         track_map = {}
-        for t in data["track_tables"]["track"]:
+        for t in data["track"]:
             sid = t.get("spotify_track_id")
             artist_sid = t.get("spotify_artist_id")
             artist_id = artist_map.get(artist_sid or t["artist_name"].strip())
@@ -201,7 +201,7 @@ async def insert_json_to_db(
         db.commit()
 
         # Insert rankings
-        for r in data["ranking_tables"]["track_ranking"]:
+        for r in data["track_ranking"]:
             spotify_tid = r.get("track_id")
             if not spotify_tid:
                 logger.error(f"🚫 No spotify_track_id in ranking entry: {r}")

@@ -30,7 +30,8 @@ def load_json_track_file(genre: str, decade: str) -> list:
     with file_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
-    tracks = data.get("track_tables", {}).get("track", [])
+    tracks = data.get("track", [])
+
     if not tracks:
         raise ValueError(f"No tracks found in file: {file_path}")
 

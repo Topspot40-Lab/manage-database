@@ -35,7 +35,8 @@ def validate_json(
     try:
         data = load_full_json_file(...)  # instead of load_json(...)
 
-        tracks = data.get("ranking_tables", {}).get("track_ranking", [])
+        tracks = data.get("track_ranking", [])
+
         logger.info(f"📄 Loaded {len(tracks)} track(s) for validation.")
     except FileNotFoundError:
         logger.error(f"❌ File not found: {filename}")

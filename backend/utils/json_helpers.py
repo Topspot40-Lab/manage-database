@@ -219,7 +219,8 @@ def load_full_json_file(decade: Optional[str] = None, filename: Optional[str] = 
     track_count = len(data.get("ranking_tables", {}).get("track_ranking", []))
     logger_step1b.info(f"✅ Loaded JSON: {len(top_keys)} top-level keys, {track_count} track(s)")
 
-    tracks = data.get("track_tables", {}).get("track", [])
+    tracks = data.get("track", [])
+
     if tracks:
         logger_step1b.debug(f"🧪 Sample intro (rank {tracks[0].get('rank')}): {tracks[0].get('intro')}")
 

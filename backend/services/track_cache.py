@@ -26,11 +26,8 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
             logger_step1c.error(f"❌ Unexpected data format. Expected dict, got {type(data)}")
             return False
 
-        track_tables = data.get("track_tables", {})
-        tracks = track_tables.get("track", [])
-
-        ranking_tables = data.get("ranking_tables", {})
-        rankings = ranking_tables.get("track_ranking", [])
+        tracks = data.get("track", [])
+        rankings = data.get("track_ranking", [])
 
         if not isinstance(tracks, list):
             logger_step1c.error("❌ 'track' is not a list.")
@@ -62,7 +59,8 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
 
         track_cache["last_played_rank"] = None
 
-        logger_step1c.info(f"✅ Cached {len(tracks)} tracks and {len(rankings)} rankings from {filename}")
+        logger_step1c.info(f"✅ Cached {len(tracks)} tracks and {len(merged_rankings)} rankings from {filename}")
+
         return True
 
     except Exception as e:

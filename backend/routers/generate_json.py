@@ -117,7 +117,7 @@ async def generate_track_json(
 
         # ✅ STEP 4 Summary Output
         logger.debug("📋 STEP 4 SUMMARY: Track Listing")
-        tracks = final_json["track_tables"]["track"]
+        tracks = final_json["track"]
         for t in tracks:
             rank = t.get("rank")
             name = t.get("trackName") or t.get("track_name")
@@ -151,7 +151,7 @@ async def generate_track_json(
 
         # 🧹 STEP 5: Handling tracks with missing Spotify IDs
         logger.debug("🧹 STEP 5: Handling tracks with missing Spotify IDs")
-        tracks = final_json["track_tables"]["track"]
+        tracks = final_json["track"]
         spare_tracks = final_json.get("spares", [])
 
         for track in tracks[:]:
@@ -195,7 +195,7 @@ async def generate_track_json(
         # 🔢 STEP 8: Reassigning ranks and finalizing track table
         logger.debug("🔢 STEP 8: Reassigning ranks and finalizing track table")
         reassign_ranks(tracks)
-        final_json["track_tables"]["track"] = tracks
+        final_json["track"] = tracks
 
         logger.info("🛑 Step 8 ----- Complete")
 
@@ -205,8 +205,8 @@ async def generate_track_json(
         # 👇 Prepare enriched_for_xai with ranking + artist table for proper merging
         enriched_for_xai = {
             "tracks": tracks,
-            "track_ranking": final_json["ranking_tables"].get("track_ranking", []),
-            "artist_table": final_json["track_tables"].get("artist_table", [])
+            "track_ranking": final_json.get("track_ranking", []),
+            "artist_table": final_json.get("artist_table", [])
         }
 
         # 🎯 Generate descriptions and apply them to appropriate tables
@@ -222,13 +222,16 @@ async def generate_track_json(
             raise HTTPException(status_code=500, detail="Failed to generate final track descriptions")
 
         # ✅ Update final_json with enriched outputs
-        final_json["track_tables"]["track"] = described["tracks"]
-        final_json["ranking_tables"]["track_ranking"] = described.get("track_ranking", [])
-        final_json["track_tables"]["artist_table"] = described.get("artist_table", [])
+        final_json["track"] = described["tracks"]
+        final_json.update({
+            "track_ranking": described.get("track_ranking", [])
+        })
+
+        final_json["artist_table"] = described.get("artist_table", [])
 
         # 🎙️ STEP 9.B: Add artist_description using XAI
 
-        core_artists = final_json["core_tables"].get("artist", [])
+        core_artists = final_json.get("artist", [])
 
         if core_artists:
             artist_described = get_artist_descriptions_from_xai(core_artists, request.language)
@@ -264,7 +267,7 @@ async def generate_track_json(
         #             "artist_mp3_url": None,
         #             "not_on_spotify": t.get("not_on_spotify", False)
         #         }
-        # final_json["core_tables"]["artist"] = list(artist_lookup.values())
+        # final_json[["artist"] = list(artist_lookup.values())
         #
         # logger.info("🛑 Step 9 ----- Complete")
 
@@ -281,32 +284,28 @@ async def generate_track_json(
         else:
             filename = f"{decade}_{genre}_en.json"
 
-        # Optional sanity check
-        track_list = final_json.get("track_tables", {}).get("track", [])
         logger.info(f"🧮 STEP 10: Saving {len(track_list)} track(s) to {filename}")
         # assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
 
 
         # 🕵️ Log final JSON tables before saving
-        track_list = final_json.get("track_tables", {}).get("track", [])
-        ranking_list = final_json.get("ranking_tables", {}).get("track_ranking", [])
-        artist_list = final_json.get("track_tables", {}).get("artist_table", [])
+        track_list = final_json.get("track", [])
+        ranking_list = final_json.get("track_ranking", [])
+        artist_list = final_json.get("artist", [])
 
         logger.debug(
             f"📂 STEP 10: FINAL JSON CONTENT PREVIEW:\n"
-            f"🧾 track_tables.track ({len(track_list)} entries):\n" +
+            f"🧾 track ({len(track_list)} entries):\n" +
             "\n".join([f"   - #{t.get('rank')}: {t.get('track_name')} by {t.get('artist_name')}" for t in
                        track_list]) + "\n" +
-            f"🧾 ranking_tables.track_ranking ({len(ranking_list)} entries):\n" +
+            f"🧾 track_ranking ({len(ranking_list)} entries):\n" +
             "\n".join([f"   - #{r.get('rank')}: {r.get('track_name')} by {r.get('artist_name')}" for r in
                        ranking_list]) + "\n" +
-            f"🧾 track_tables.artist_table ({len(artist_list)} entries):\n" +
+            f"🧾 artist ({len(artist_list)} entries):\n" +
             "\n".join([f"   - {a.get('artist_name')} ({a.get('spotify_artist_id')})" for a in artist_list])
         )
 
-        logger.info(f"🧾 FINAL JSON: {len(final_json['track_tables']['track'])} track(s)")
-        for i, t in enumerate(final_json['track_tables']['track'], start=1):
-            logger.info(f"  {i}. {t['track_name']} by {t['artist_name']} — ID: {t.get('spotify_track_id')}")
+        logger.info(f"🧾 FINAL JSON: {len(track_list)} track(s)")
 
         save_full_json_file(
             payload=final_json,
