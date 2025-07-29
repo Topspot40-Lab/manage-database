@@ -18,8 +18,11 @@ class FileLoadRequest(BaseModel):
 
 @router.post("/load-json-track-file")
 def load_json_track_file(request: FileLoadRequest):
-    decade = request.decade.lower()
+
+    print(f"🧭 Entering load_json_track_file endpoint")
     genre = request.genre.lower()
+    decade = request.decade.lower()
+
     filename = f"{decade}_{genre}_en.json"
 
     file_path = (

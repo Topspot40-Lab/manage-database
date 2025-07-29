@@ -208,13 +208,13 @@ LOG_LEVELS_BY_MODULE = {
     "backend.utils.track_builder": "INFO",
     "Validation": "INFO",
     "backend.utils.normalize": "INFO",
-    "tts_logger": "INFO",  # ✅ Correct logger name
+    "tts_logger": "DEBUG",  # ✅ Correct logger name
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",
     "httpx": "WARNING",
-    "backend.routers.insert_json": "DEBUG"
-
+    "backend.routers.insert_json": "INFO",
+    "backend.routers.load_json_track_file": "DEBUG"
 }
 
 # ---------------------------------------------------------------------------

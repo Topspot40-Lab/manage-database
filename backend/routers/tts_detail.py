@@ -1,5 +1,3 @@
-# backend/routers/tts_detail.py
-
 from fastapi import APIRouter, Query
 from pathlib import Path
 import logging
@@ -11,6 +9,7 @@ from backend.routers.tts_shared import add_metadata_to_mp3, log_tts_action
 
 logger = logging.getLogger("tts_logger")
 
+# === Track Detail TTS ===
 detail_router = APIRouter(
     prefix="/tts/detail",
     tags=["TTS - Track Detail"]
@@ -18,18 +17,18 @@ detail_router = APIRouter(
 
 @detail_router.post("/by-rank")
 def generate_track_detail_tts_by_rank(
-    start: int = Query(..., ge=1),
-    end: int = Query(..., ge=1),
+    start_rank: int = Query(..., ge=1),
+    end_rank: int = Query(..., ge=1),
     overwrite: bool = Query(False),
     play: bool = Query(False)
 ):
     """
     Generate TTS for the 'detail' field of ranked tracks in the specified range.
     """
-    logger.debug(f"🎙️ [Track Detail TTS] Requested ranks {start} to {end} | overwrite={overwrite} | play={play}")
+    logger.debug(f"🎙️ [Track Detail TTS] Requested ranks {start_rank} to {end_rank} | overwrite={overwrite} | play={play}")
 
-    if start > end:
-        return {"error": "Start rank must be less than or equal to end rank"}
+    if start_rank > end_rank:
+        return {"error": "Start rank must be less than or equal to end rank."}
 
     rankings = get_all_rank_entries()
     output_dir = Path("data/mp3_files/track_detail_mp3_files")
@@ -38,7 +37,7 @@ def generate_track_detail_tts_by_rank(
     generated = []
     for track in rankings:
         rank = track.get("rank")
-        if not rank or not (start <= rank <= end):
+        if not rank or not (start_rank <= rank <= end_rank):
             continue
 
         detail = track.get("detail", "").strip()
@@ -65,7 +64,7 @@ def generate_track_detail_tts_by_rank(
         log_tts_action("Track Detail", track_id, out_path, "✅ Generated", play)
         generated.append(str(out_path))
 
-    logger.info(f"✅ [Track Detail TTS] Generated {len(generated)} files")
+    logger.info(f"✅ [Track Detail TTS] Generated {len(generated)} detail files")
     return {
         "message": f"✅ Generated {len(generated)} track detail TTS files",
         "files": generated

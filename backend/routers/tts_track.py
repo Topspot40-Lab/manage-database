@@ -26,7 +26,7 @@ def generate_intro_tts_by_rank(
     """
     Generate TTS for the 'intro' field of ranked tracks in the specified range.
     """
-    logger.debug(f"🎙️ [Intro TTS] Requested ranks {start_rank} to {end_rank} | overwrite={overwrite} | play={play}")
+    logger.debug(f"🎙️ Mr. Big Ed [Intro TTS] Requested ranks {start_rank} to {end_rank} | overwrite={overwrite} | play={play}")
 
     if start_rank > end_rank:
         return {"error": "Start rank must be less than or equal to end rank."}

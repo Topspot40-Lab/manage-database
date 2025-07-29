@@ -48,11 +48,13 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
                 **r,
                 "track_id": t.get("spotify_track_id"),
                 "detail": t.get("detail"),
+                "intro": r.get("intro"),  # ✅ ← Add this line
                 "track_name": t.get("track_name"),
                 "artist_name": t.get("artist_name"),
                 "genre": t.get("genre"),
                 "decade": t.get("decade"),
             }
+
             merged_rankings.append(merged)
 
         track_cache["rankings"] = merged_rankings

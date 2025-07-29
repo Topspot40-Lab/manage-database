@@ -9,13 +9,13 @@ from backend.routers.tts_artist import artist_router
 from backend.routers.play_json_track_by_rank import router as playback_router
 from fastapi import Query
 import logging
-from backend.routers.tts_endpoints import router as tts_router
+
 from backend import config
 from fastapi import FastAPI
 from backend.logging_setup import setup_logging
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
-from backend.routers.tts_track import router as tts_track_router
+# from backend.routers.tts_track import router as tts_track_router
 
 
 
@@ -74,8 +74,8 @@ def auth_callback(code: str = Query(...)):
 app.include_router(json_router)
 app.include_router(save_router)
 app.include_router(playback_router, prefix="/json")
-app.include_router(tts_router)
-app.include_router(tts_track_router)
+# app.include_router(tts_router)
+# app.include_router(tts_track_router)
 
 app.include_router(intro_router)
 app.include_router(detail_router)
