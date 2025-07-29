@@ -7,9 +7,13 @@ import logging
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 
-
-
 logger = logging.getLogger("tts_logger")
+
+
+router = APIRouter(
+    prefix="/tts",
+    tags=["TTS"]
+)
 
 
 def log_tts_action(context: str, identifier: str, path: Path, action: str, play: bool):
@@ -17,9 +21,8 @@ def log_tts_action(context: str, identifier: str, path: Path, action: str, play:
     if play:
         logger.info(f"[{context}] 🔊 Playback triggered for: {path}")
 
-router = APIRouter()
+@router.post("/intro/by-rank")
 
-@router.post("/tts/generate-intro-tts-by-rank")
 def generate_intro_tts_by_rank(
     start_rank: int = Query(..., ge=1),
     end_rank: int = Query(..., ge=1)
@@ -70,7 +73,8 @@ def generate_intro_tts_by_rank(
         "files": generated_files
     }
 
-@router.post("/tts/generate-track-detail-tts-by-rank")
+@router.post("/generate-track-detail-tts-by-rank")
+
 def generate_track_detail_tts_by_rank(
     start_rank: int = Query(..., ge=1),
     end_rank: int = Query(..., ge=1),
@@ -186,8 +190,8 @@ def generate_all_track_detail_tts(
         count += 1
 
     logger.info(f"✅ [Track Detail TTS] Generated TTS for {count} tracks")
-    return {"message": f"✅ Generated TTS fo"
-                       f"r {count} tracks"}
+    return {"message": f"✅ Generated TTS for {count} tracks"}
+
 
 @router.post("/tts/generate-all-artist-tts")
 def generate_all_artist_tts(
@@ -257,8 +261,10 @@ def add_metadata_to_mp3(mp3_path: Path, track_name: str, artist_name: str, album
     except Exception as e:
         logger.warning(f"❌ [TTS Metadata] Failed to tag {mp3_path.name}: {e}")
 
-@router.get("/tts/list-unique-artists")
+# === ARTIST TTS ===
+@router.get("/artist/list")
 def list_unique_artists():
+    ...
     """
     Returns a numbered list of unique artists with available descriptions.
     """
@@ -282,7 +288,7 @@ def list_unique_artists():
 
     return {"total": len(unique_artists), "artists": unique_artists}
 
-@router.post("/tts/generate-artist-tts-descriptions")
+@router.post("/artist/by-description-range")
 def generate_artist_tts_descriptions(
     start_index: int = Query(..., ge=1),
     end_index: int = Query(..., ge=1),
@@ -325,5 +331,59 @@ def generate_artist_tts_descriptions(
 
     return {
         "message": f"✅ Generated {len(generated)} artist TTS files",
+        "files": generated
+    }
+@router.post("/artist/by-range")
+def generate_artist_tts_range(
+    start: int = Query(..., ge=1),
+    end: int = Query(..., ge=1),
+    overwrite: bool = Query(False),
+    play: bool = Query(False)
+):
+    """Generate artist TTS for a specific range of unique artist indexes."""
+    logger.debug(f"🎙️ [Artist TTS] Generating artists from index {start} to {end} | overwrite={overwrite} | play={play}")
+
+    unique_artists = list_unique_artists()["artists"]
+    selected = unique_artists[start - 1:end]  # 1-based indexing adjustment
+
+    rankings = get_all_rank_entries()
+    artist_lookup = {
+        track.get("spotify_artist_id"): track
+        for track in rankings
+        if track.get("spotify_artist_id") and track.get("artist_description")
+    }
+
+    output_dir = Path("data/mp3_files/artist_mp3_files")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    generated = []
+    for artist in selected:
+        artist_id = artist["artist_id"]
+        artist_name = artist["artist_name"]
+        track = artist_lookup.get(artist_id)
+
+        if not track:
+            logger.debug(f"⚠️ [Artist TTS] No valid track found for artist_id: {artist_id}, skipping")
+            continue
+
+        artist_desc = track["artist_description"].strip()
+        out_path = output_dir / f"{artist_id}.mp3"
+
+        if out_path.exists() and not overwrite:
+            log_tts_action("Artist", artist_id, out_path, "⏭️ Skipped (exists)", play)
+            continue
+
+        generate_tts_mp3(artist_desc, out_path, VOICE_ID_ARTIST, overwrite=overwrite, play=play)
+
+        track_name = f"Artist Bio: {artist_name}"
+        album_name = "TopSpot40 Artist Bios"
+        add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
+
+        log_tts_action("Artist", artist_id, out_path, "✅ Generated", play)
+        generated.append(str(out_path))
+
+    logger.info(f"✅ [Artist TTS] Generated TTS for {len(generated)} artists in range {start}-{end}")
+    return {
+        "message": f"✅ Generated {len(generated)} artist TTS files in range {start}-{end}",
         "files": generated
     }

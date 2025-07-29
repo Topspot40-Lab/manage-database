@@ -69,7 +69,7 @@ def build_final_json(enriched_tracks, request, now, is_test_mode=False):
             "decade": request.decade,
             "tracklist": "TopSpot Autogen",
             "intro": clean_text_field(base.get("intro")),
-            "ranking_date": now.split("T")[0],
+            "created_at": now.split("T")[0],
         })
 
         # Add main artist
