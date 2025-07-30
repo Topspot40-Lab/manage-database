@@ -51,7 +51,9 @@ def generate_intro_tts_by_rank(
             logger.warning(f"⚠️ No track_id for rank {rank} — skipping TTS")
             continue
 
-        out_path = output_dir / f"{track_id}.mp3"
+        decade = track.get("decade", "unknown")
+        genre = track.get("genre", "unknown")
+        out_path = output_dir / f"{decade}_{genre}_{rank}.mp3"
 
         if out_path.exists() and not overwrite:
             logger.debug(f"⏭️ MP3 exists and overwrite=False for {track_id}")

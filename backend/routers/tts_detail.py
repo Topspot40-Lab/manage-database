@@ -37,6 +37,8 @@ def generate_track_detail_tts_by_rank(
     generated = []
     for track in rankings:
         rank = track.get("rank")
+        print(f"Rank: {rank}")
+
         if not rank or not (start_rank <= rank <= end_rank):
             continue
 
@@ -44,7 +46,7 @@ def generate_track_detail_tts_by_rank(
         if not detail:
             continue
 
-        track_id = track.get("spotify_track_id")
+        track_id = track.get("track_id")
         if not track_id:
             continue
 
