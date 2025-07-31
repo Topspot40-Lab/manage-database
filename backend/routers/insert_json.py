@@ -144,26 +144,14 @@ async def insert_json_to_db(
             artist_sid = t.get("spotify_artist_id")
             artist_id = artist_map.get(artist_sid or t["artist_name"].strip())
 
-            logger.debug("🧪 In the loop")
-
-            # 🔍 Add this line just below
             logger.debug(f"🧪 Inserting track: {t.get('track_name')} | raw_flag: {t.get('mode_flag')}")
 
-            # ───── Step 1: Get and parse the mode flag ─────
+            # ───── Step 1: Parse the mode flag ─────
             raw_flag = t.get("mode_flag")
             parsed_flag = parse_mode_flag(raw_flag)
 
-            logger.debug(f"👀 Raw mode_flag from JSON: {raw_flag}")
-            logger.debug(f"✅ Parsed mode_flag: {parsed_flag}")
-
-            # 🛡️ Sanity check
-            if not isinstance(parsed_flag, ModeFlag):
-                logger.error(f"🚨 parsed_flag is not a ModeFlag! Got: {parsed_flag} (type={type(parsed_flag)})")
-
-            # ───── Step 2: Lookup track ─────
+            # ───── Step 2: Lookup existing track ─────
             try:
-                logger.debug(f"📦 Track candidate t = {t} (type: {type(t)})")
-
                 with db.no_autoflush:
                     track = db.exec(
                         select(Track).where(Track.spotify_track_id == sid)
@@ -173,21 +161,30 @@ async def insert_json_to_db(
                             (Track.artist_id == artist_id)
                         )
                     ).first()
-
-                logger.debug(f"🧪 After db.exec → Track: {track}")
-
             except Exception as e:
                 logger.error(f"🔥 Exception during db.exec: {e}")
                 logger.error(f"❗ t['track_name'] = {t.get('track_name')}, artist_id = {artist_id}, sid = {sid}")
                 raise
 
-            logger.debug(f"🔎 Looking for track to update: {t['track_name']}")
+            # ───── Step 3: Determine featured_artist_id if needed ─────
+            featured_artist_id = None
+            if parsed_flag in (ModeFlag.DUET, ModeFlag.FEATURED):
+                feat_sid = t.get("featured_artist_sid")
+                feat_name = t.get("featured_artist_name", "").strip()
+                featured_artist_id = artist_map.get(feat_sid or feat_name)
+                if not featured_artist_id:
+                    logger.warning(
+                        f"⚠️ Could not resolve featured artist for track: {t['track_name']} | SID: {feat_sid} | Name: {feat_name}")
 
+            logger.debug(f"🎤 Mode: {parsed_flag} | Featured ID: {featured_artist_id}")
+
+            # ───── Step 4: Create or update the track ─────
             if track:
                 logger.info(f"🔁 Updating track: {t['track_name']}")
                 track.track_name = t["track_name"]
                 track.artist_display_name = t.get("artist_display_name")
                 track.artist_id = artist_id
+                track.featured_artist_id = featured_artist_id  # ✅ NEW
                 track.duration_ms = t["duration_ms"]
                 track.popularity = t["popularity"]
                 track.album_artwork = t["album_artwork"]
@@ -196,13 +193,14 @@ async def insert_json_to_db(
                 track.created_at = t["created_at"]
                 track.detail = t.get("detail")
                 track.album_name = t.get("album_name")
-                track.mode_flag = parsed_flag  # ✅ Use parsed enum value
+                track.mode_flag = parsed_flag.value
             else:
                 logger.info(f"➕ Creating new track: {t['track_name']}")
                 track = Track(
                     track_name=t["track_name"],
                     artist_display_name=t.get("artist_display_name"),
                     artist_id=artist_id,
+                    featured_artist_id=featured_artist_id,  # ✅ NEW
                     spotify_track_id=sid,
                     duration_ms=t["duration_ms"],
                     popularity=t["popularity"],
@@ -212,11 +210,9 @@ async def insert_json_to_db(
                     created_at=t["created_at"],
                     detail=t.get("detail"),
                     album_name=t.get("album_name"),
-                    mode_flag=parsed_flag.value  # ✅ Ensures uppercase string like "SOLO"
-
+                    mode_flag=parsed_flag.value
                 )
                 db.add(track)
-
                 db.commit()
                 db.refresh(track)
 

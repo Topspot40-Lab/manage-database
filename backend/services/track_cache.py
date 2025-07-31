@@ -61,7 +61,7 @@ def load_tracks_from_file(filename: str, full_path: Path) -> bool:
 
         track_cache["last_played_rank"] = None
 
-        logger_step1c.info(f"✅ Cached {len(tracks)} tracks and {len(merged_rankings)} rankings from {filename}")
+        logger_step1c.debug(f"✅ Cached {len(tracks)} tracks and {len(merged_rankings)} rankings from {filename}")
 
         return True
 

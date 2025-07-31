@@ -198,23 +198,47 @@ STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
 # These work independently of STEP loggers.
 # ---------------------------------------------------------------------------
 LOG_LEVELS_BY_MODULE = {
-    "backend.routers.generate_json": "INFO",
-    "backend.services.xai_service": "INFO",
+    # ─────────────────────────────
+    # 🧩 Core Backend Services
+    # ─────────────────────────────
     "backend.services.spotify_service": "INFO",
     "backend.services.track_generator": "INFO",
     "backend.services.utils": "INFO",
-    "backend.logging.track_logging": "INFO",
+    "backend.services.xai_service": "INFO",
+
+    # ─────────────────────────────
+    # 🧱 Routers
+    # ─────────────────────────────
+    "backend.routers.generate_json": "INFO",
+    "backend.routers.insert_json": "INFO",
+    "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.utils.track_builder": "INFO",
-    "Validation": "INFO",
+    "backend.routers.supabase_summary": "INFO",        # ✅ Added
+    "backend.routers.tts_intro": "INFO",                # Optional if you log in intro/detail
+    "backend.routers.tts_detail": "INFO",               # Optional
+
+    # ─────────────────────────────
+    # 🧰 Utility Modules
+    # ─────────────────────────────
     "backend.utils.normalize": "INFO",
-    "tts_logger": "DEBUG",  # ✅ Correct logger name
+    "backend.utils.track_builder": "INFO",
+    "backend.utils.tts_diagnostics": "INFO",            # ✅ Added
+
+    # ─────────────────────────────
+    # 🪵 Custom Loggers
+    # ─────────────────────────────
+    "backend.logging.track_logging": "INFO",
+    "tts_logger": "DEBUG",
+    "supabase_summary": "INFO",                         # ✅ If used directly with `getLogger("supabase_summary")`
+    "tts_diagnostics": "DEBUG",                         # ✅ If used directly
+
+    # ─────────────────────────────
+    # 🌐 Third-party Libraries
+    # ─────────────────────────────
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",
-    "httpx": "WARNING",
-    "backend.routers.insert_json": "INFO",
-    "backend.routers.load_json_track_file": "DEBUG"
+    "httpx": "WARNING"
 }
 
 # ---------------------------------------------------------------------------
