@@ -36,11 +36,27 @@ def get_summary(db_name: str = Query(...), db: Session = Depends(get_db)):
 
 # 🧠 TTS diagnostics summary
 @router.get("/tts/diagnostics")
-def run_diagnostics(
+async def run_diagnostics(
     db: Session = Depends(get_db),
-    show_samples: bool = Query(default=False, description="Include sample missing entries")
+    show_samples: bool = Query(False, description="Include sample missing entries"),
+    check_intro_mp3: bool = Query(False, description="Check for missing intro MP3 files"),
+    check_detail_mp3: bool = Query(False, description="Check for missing detail MP3 files"),
+    check_artist_mp3: bool = Query(False, description="Check for missing artist MP3 files"),
 ):
-    result = get_missing_tts_info(db)
+    logger.info(
+        f"🧠 Starting TTS diagnostics summary... | "
+        f"show_samples={show_samples}, "
+        f"check_intro_mp3={check_intro_mp3}, "
+        f"check_detail_mp3={check_detail_mp3}, "
+        f"check_artist_mp3={check_artist_mp3}"
+    )
+
+    result = await get_missing_tts_info(
+        db,
+        check_intro_mp3=check_intro_mp3,
+        check_detail_mp3=check_detail_mp3,
+        check_artist_mp3=check_artist_mp3,
+    )
     ranking_summary = get_decade_genre_ranking_summary(db)
 
     response = {
@@ -67,7 +83,6 @@ def run_diagnostics(
         }
 
     return response
-
 # 🧾 Full diagnostics (raw data for deep dive or dev use)
 @router.get("/diagnostics")
 def full_diagnostics(db: Session = Depends(get_db)):

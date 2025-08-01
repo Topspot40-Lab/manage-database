@@ -16,6 +16,8 @@ LAST_UPDATED = "2025-07-18: 11:00 am"
 # ---------------------------------------------------------------------
 # 🎧 TRACK LIMIT CONFIG
 # ---------------------------------------------------------------------
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 # -----------------------------------------------------------------------------
 # 📁 PATH SETTINGS
@@ -229,7 +231,7 @@ LOG_LEVELS_BY_MODULE = {
     # ─────────────────────────────
     "backend.logging.track_logging": "INFO",
     "tts_logger": "DEBUG",
-    "supabase_summary": "INFO",                         # ✅ If used directly with `getLogger("supabase_summary")`
+    "supabase_summary": "DEBUG",                         # ✅ If used directly with `getLogger("supabase_summary")`
     "tts_diagnostics": "DEBUG",                         # ✅ If used directly
 
     # ─────────────────────────────

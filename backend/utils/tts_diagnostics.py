@@ -1,100 +1,136 @@
-from fastapi import APIRouter, Depends
-from sqlmodel import Session, select, func
-import os
+# backend/utils/tts_diagnostics.py
+
 import logging
+import os
+import time
+from sqlmodel import Session, select, func
+from backend.models import Track, Artist, TrackRanking, DecadeGenre, Decade, Genre
 
-from backend.database import get_db
-from backend.models import (
-    Track, Artist, TrackRanking, DecadeGenre, Decade, Genre
-)
-from supabase import create_client
-
-# 🪵 Logger
 logger = logging.getLogger("tts_diagnostics")
 
-# 📦 Supabase setup
+# Supabase creds
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-# 🚀 Supabase bucket constants (must use dash-case, not underscores)
+# Buckets
 BUCKET_TRACK_INTRO = "track-intro-mp3-files"
 BUCKET_TRACK_DETAIL = "track-detail-mp3-files"
 BUCKET_ARTIST = "artist-mp3-files"
 
-# 🚦 FastAPI Router
-router = APIRouter(
-    prefix="/supabase",
-    tags=["Supabase Summary"]
-)
+import httpx
+import asyncio
+from backend.config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
-def file_exists(bucket: str, path: str) -> bool:
+async def file_exists_async(bucket: str, path: str, client: httpx.AsyncClient) -> bool:
     try:
-        directory = path.rsplit("/", 1)[0]
-        filename = path.rsplit("/", 1)[-1]
-        files = supabase.storage.from_(bucket).list(path=directory)
-        return any(f["name"] == filename for f in files)
+        url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{path}"
+        headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"}
+        response = await client.head(url, headers=headers, timeout=5.0)
+        return response.status_code == 200
     except Exception as e:
         logger.warning(f"⚠️ Failed to check {bucket}/{path}: {e}")
         return False
 
 
-def get_missing_tts_info(db: Session):
+async def get_missing_tts_info(
+    db: Session,
+    check_intro_mp3: bool = False,
+    check_detail_mp3: bool = False,
+    check_artist_mp3: bool = False
+):
     tracks = db.exec(select(Track)).all()
     artists = db.exec(select(Artist)).all()
     rankings = db.exec(select(TrackRanking)).all()
 
-    missing_detail_text = []
+    missing_detail_text = [t for t in tracks if not t.detail or not t.detail.strip()]
+    missing_artist_desc = [a for a in artists if not a.artist_description or not a.artist_description.strip()]
+    missing_intro_text = [r for r in rankings if not r.intro or not r.intro.strip()]
+
     missing_intro_mp3 = []
     missing_detail_mp3 = []
-
-    for t in tracks:
-        sid = t.spotify_track_id
-        if not t.detail or not t.detail.strip():
-            missing_detail_text.append(t)
-        if sid:
-            if not file_exists(BUCKET_TRACK_INTRO, f"{sid}.mp3"):
-                missing_intro_mp3.append(t)
-            if not file_exists(BUCKET_TRACK_DETAIL, f"{sid}.mp3"):
-                missing_detail_mp3.append(t)
-
-    missing_artist_desc = []
     missing_artist_mp3 = []
-    for a in artists:
-        if not a.artist_description or not a.artist_description.strip():
-            missing_artist_desc.append(a)
-        if a.spotify_artist_id:
-            if not file_exists(BUCKET_ARTIST, f"{a.spotify_artist_id}.mp3"):
-                missing_artist_mp3.append(a)
 
-    missing_intro_text = []
-    for r in rankings:
-        if not r.intro or not r.intro.strip():
-            missing_intro_text.append(r)
+    async with httpx.AsyncClient() as client:
+        if check_intro_mp3:
+            logger.debug("🎧 Starting check: intro MP3s (from track_ranking)")
 
-    logger.info(
-        "\n📊 Missing TTS Summary:\n"
-        f"   🧾 Track detail text missing .... {len(missing_detail_text):3d}\n"
-        f"   🎙️ Track intro MP3 missing ...... {len(missing_intro_mp3):3d}\n"
-        f"   🎙️ Track detail MP3 missing ..... {len(missing_detail_mp3):3d}\n"
-        f"   👤 Artist description missing ... {len(missing_artist_desc):3d}\n"
-        f"   🎧 Artist MP3 missing ........... {len(missing_artist_mp3):3d}\n"
-        f"   🏆 Ranking intro missing ........ {len(missing_intro_text):3d}"
-    )
+            stmt = (
+                select(TrackRanking, Decade.decade_name, Genre.genre_name)
+                .join(DecadeGenre, TrackRanking.decade_genre_id == DecadeGenre.id)
+                .join(Decade, DecadeGenre.decade_id == Decade.id)
+                .join(Genre, DecadeGenre.genre_id == Genre.id)
+            )
+
+            result = db.exec(stmt).all()
+
+            # 🎧 Construct MP3 filenames based on ranking data
+            intro_keys = [
+                f"{decade}_{genre}_{getattr(ranking, 'ranking', 0):02}.mp3"
+                for ranking, decade, genre in result
+            ]
+
+            logger.debug(f"🎧 Total track_ranking entries to check: {len(intro_keys)}")
+
+            intro_tasks = [
+                file_exists_async(BUCKET_TRACK_INTRO, file_key, client)
+                for file_key in intro_keys
+            ]
+            intro_results = await asyncio.gather(*intro_tasks)
+
+            missing_intro_mp3 = [file_key for file_key, exists in zip(intro_keys, intro_results) if not exists]
+
+            logger.debug(f"🎧 Intro MP3s missing: {len(missing_intro_mp3)}")
+
+            if missing_intro_mp3:
+                logger.debug(f"📂 Missing intro examples: {missing_intro_mp3[:5]}")
+
+        if check_detail_mp3:
+            logger.debug("🎶 Starting check: detail MP3s")
+            start = time.time()
+
+            detail_tracks = [t for t in tracks if t.spotify_track_id]
+            detail_tasks = [
+                file_exists_async(BUCKET_TRACK_DETAIL, f"{t.spotify_track_id}.mp3", client)
+                for t in detail_tracks
+            ]
+            detail_results = await asyncio.gather(*detail_tasks)
+            missing_detail_mp3 = [t for t, exists in zip(detail_tracks, detail_results) if not exists]
+
+            for file_key in missing_intro_mp3[:5]:
+                logger.debug(f"❌ Missing intro MP3 for: {file_key}")
+
+            duration = time.time() - start
+            logger.info(f"⏱️ Detail MP3 check completed in {duration:.2f} seconds")
+            logger.debug(f"🎶 Detail MP3s checked: {len(detail_results)}, missing: {len(missing_detail_mp3)}")
+
+        if check_artist_mp3:
+            logger.debug("🎤 Starting check: artist MP3s")
+            start = time.time()
+
+            artist_list = [a for a in artists if a.spotify_artist_id]
+            artist_tasks = [
+                file_exists_async(BUCKET_ARTIST, f"{a.spotify_artist_id}.mp3", client)
+                for a in artist_list
+            ]
+            artist_results = await asyncio.gather(*artist_tasks)
+            missing_artist_mp3 = [a for a, exists in zip(artist_list, artist_results) if not exists]
+
+            duration = time.time() - start
+            logger.info(f"⏱️ Artist MP3 check completed in {duration:.2f} seconds")
+            logger.debug(f"🎤 Artist MP3s checked: {len(artist_results)}, missing: {len(missing_artist_mp3)}")
 
     return {
         "missing_text": {
             "track_detail": missing_detail_text,
             "artist_description": missing_artist_desc,
-            "ranking_intro": missing_intro_text
+            "ranking_intro": missing_intro_text,
         },
         "missing_mp3": {
             "track_intro": missing_intro_mp3,
             "track_detail": missing_detail_mp3,
-            "artist_description": missing_artist_mp3
+            "artist_description": missing_artist_mp3,
         }
     }
-
 
 def get_decade_genre_ranking_summary(db: Session):
     logger.info("📊 Building ranking summary per decade-genre...")
@@ -126,36 +162,5 @@ def get_decade_genre_ranking_summary(db: Session):
 
     logger.info(f"✅ Found {len(summary)} unique decade-genre combos.")
     return summary
-
-
-@router.get("/tts/diagnostics")
-def run_diagnostics(db: Session = Depends(get_db)):
-    result = get_missing_tts_info(db)
-    ranking_summary = get_decade_genre_ranking_summary(db)
-
-    return {
-        "summary": {
-            "missing_text": {
-                "track_detail": len(result["missing_text"]["track_detail"]),
-                "artist_description": len(result["missing_text"]["artist_description"]),
-                "ranking_intro": len(result["missing_text"]["ranking_intro"]),
-            },
-            "missing_mp3": {
-                "track_intro": len(result["missing_mp3"]["track_intro"]),
-                "track_detail": len(result["missing_mp3"]["track_detail"]),
-                "artist_description": len(result["missing_mp3"]["artist_description"]),
-            }
-        },
-        "samples": {
-            "track_missing_intro": [t.track_name for t in result["missing_text"]["track_detail"][:5]],
-            "artist_missing_description": [a.name for a in result["missing_text"]["artist_description"][:5]],
-            "ranking_missing_info": [f"{r.track_name} (rank {r.rank})" for r in result["missing_text"]["ranking_intro"][:5]],
-            "missing_intro_mp3": [t.track_name for t in result["missing_mp3"]["track_intro"][:5]],
-            "missing_detail_mp3": [t.track_name for t in result["missing_mp3"]["track_detail"][:5]],
-            "missing_artist_mp3": [a.name for a in result["missing_mp3"]["artist_description"][:5]]
-        },
-        "ranking_summary": ranking_summary
-    }
-
 
 __all__ = ["get_missing_tts_info", "get_decade_genre_ranking_summary"]
