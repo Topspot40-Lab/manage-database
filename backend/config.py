@@ -36,6 +36,12 @@ XAI_API_URL = "https://api.x.ai/v1/chat/completions"
 DEFAULT_XAI_MODEL = "grok-2-latest"
 TEMPERATURE_DEFAULT = 0.3
 
+# === Supabase Storage Buckets ===
+BUCKET_TRACK_INTRO = "track-intro-mp3-files"
+BUCKET_TRACK_DETAIL = "track-detail-mp3-files"
+BUCKET_ARTIST = "artist-mp3-files"
+
+
 # -----------------------------------------------------------------------------
 # 🎛️ PROMPT BEHAVIOR AND GENERATION CONFIG
 # -----------------------------------------------------------------------------
