@@ -7,6 +7,7 @@ from backend.routers.tts_detail import detail_router
 from backend.routers.tts_artist import artist_router
 from backend.routers import supabase_summary
 from backend.routers.play_json_track_by_rank import router as playback_router
+from backend.routers import supabase_loader
 from fastapi import Query
 import logging
 
@@ -81,3 +82,4 @@ app.include_router(intro_router)
 app.include_router(detail_router)
 app.include_router(artist_router)
 app.include_router(supabase_summary.router)
+app.include_router(supabase_loader.router)

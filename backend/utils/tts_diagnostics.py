@@ -63,61 +63,117 @@ async def check_intro_mp3s(db: Session, client: httpx.AsyncClient):
     )
     result = db.exec(stmt).all()
 
-    intro_keys = [
-        f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{ranking.ranking:02}.mp3"
-        for ranking, decade, genre in result
-    ]
+    # Prepare filename keys and missing text entries
+    intro_keys = []
+    text_missing_entries = []
 
+    for ranking, decade, genre in result:
+        filename = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{ranking.ranking:02}.mp3"
+        intro_keys.append(filename)
+
+        # Check for missing/empty/null text
+        if not ranking.intro or ranking.intro.strip().lower() == "null":
+            text_missing_entries.append(f"{ranking.ranking:02} — {decade}, {genre}")
+
+    # Check missing MP3s
     intro_tasks = [file_exists_async(BUCKET_TRACK_INTRO, key, client) for key in intro_keys]
     results = await asyncio.gather(*intro_tasks)
+    missing_mp3s = [key for key, exists in zip(intro_keys, results) if not exists]
 
-    missing = [key for key, exists in zip(intro_keys, results) if not exists]
-    if missing:
-        logger.debug(f"🛑 {len(missing)} intro MP3(s) missing: " + ", ".join(missing[:15]))
+    # Logging missing MP3s
+    if missing_mp3s:
+        logger.debug(f"🛑 {len(missing_mp3s)} intro MP3(s) missing out of {len(intro_keys)} total:")
+        logger.debug("\n" + "\n".join(f"- {name}" for name in missing_mp3s[:15]))
     else:
         logger.debug("✅ All intro MP3s present — no missing files.")
 
-    return missing
+    total_rankings = len(result)
+
+    # Logging missing/empty intro texts
+    if text_missing_entries:
+        logger.debug(f"🛑 {len(text_missing_entries)} intro text(s) missing or invalid out of {total_rankings} total:")
+        logger.debug("\n" + "\n".join(f"- Rank {entry}" for entry in text_missing_entries))
+    else:
+        logger.debug(f"✅ All {total_rankings} intro text fields present and valid.")
+
+    return missing_mp3s
 
 # ------------------------------------------------------------------------------
 # 🎶 Check for missing detail MP3s
 # ------------------------------------------------------------------------------
 async def check_detail_mp3s(tracks, client: httpx.AsyncClient):
     detail_tracks = [t for t in tracks if t.spotify_track_id]
+
+    # Check for missing or invalid detail text
+    text_missing = [
+        t for t in detail_tracks
+        if not t.detail or t.detail.strip().lower() == "null"
+    ]
+
+    # Log missing/invalid detail text fields
+    total_tracks = len(detail_tracks)
+    if text_missing:
+        logger.debug(f"🛑 {len(text_missing)} detail text(s) missing or invalid out of {total_tracks} total:")
+        logger.debug("\n" + "\n".join(f"- {t.track_name} ({t.spotify_track_id})" for t in text_missing))
+    else:
+        logger.debug(f"✅ All {total_tracks} detail text fields present and valid.")
+
+    # Now check for missing detail MP3s
     detail_tasks = [
         file_exists_async(BUCKET_TRACK_DETAIL, f"{t.spotify_track_id}.mp3", client)
         for t in detail_tracks
     ]
     results = await asyncio.gather(*detail_tasks)
-    missing = [t for t, exists in zip(detail_tracks, results) if not exists]
 
+    missing = [t for t, exists in zip(detail_tracks, results) if not exists]
     if missing:
         logger.debug(f"🛑 {len(missing)} detail MP3(s) missing:\n" +
-                     "\n".join(f"- {t.track_name}" for t in missing))
+                     "\n".join(f"- title: {t.track_name.ljust(30)} artist: {t.artist_display_name or '[unknown]'}"
+                               for t in missing))
 
     else:
         logger.debug("✅ All detail MP3s present — no missing files.")
+
     logger.debug(f"🎶 Detail MP3s checked: {len(results)}, missing: {len(missing)}")
 
     return missing
+
 
 # ------------------------------------------------------------------------------
 # 🎤 Check for missing artist MP3s
 # ------------------------------------------------------------------------------
 async def check_artist_mp3s(artists, client: httpx.AsyncClient):
     artist_list = [a for a in artists if a.spotify_artist_id]
+
+    # 🔤 Check for missing or invalid artist_description
+    text_missing = [
+        a for a in artist_list
+        if not a.artist_description or a.artist_description.strip().lower() in {"", "null"}
+    ]
+
+    total_artists = len(artist_list)
+
+    if text_missing:
+        logger.debug(f"🛑 {len(text_missing)} artist description(s) missing or invalid out of {total_artists} total:")
+        logger.debug("\n" + "\n".join(f"- name: {a.artist_name:<30}  spotify_id: {a.spotify_artist_id}" for a in text_missing))
+    else:
+        logger.debug(f"✅ All {total_artists} artist description fields present and valid.")
+
+    # 🔈 Check for missing artist MP3s
     artist_tasks = [
         file_exists_async(BUCKET_ARTIST, f"{a.spotify_artist_id}.mp3", client)
         for a in artist_list
     ]
     results = await asyncio.gather(*artist_tasks)
+
     missing = [a for a, exists in zip(artist_list, results) if not exists]
 
     if missing:
-        logger.debug(f"🛑 {len(missing)} artist MP3(s) missing: " +
-                     ", ".join(f"{a.name} ({a.spotify_artist_id})" for a in missing[:5]))
+        logger.debug(f"🛑 {len(missing)} artist MP3(s) missing:\n" +
+                     "\n".join(f"- name: {a.artist_name:<30}  spotify_id: {a.spotify_artist_id}" for a in missing))
     else:
         logger.debug("✅ All artist MP3s present — no missing files.")
+
     logger.debug(f"🎤 Artist MP3s checked: {len(results)}, missing: {len(missing)}")
     return missing
 
@@ -205,4 +261,9 @@ def get_decade_genre_ranking_summary(db: Session):
 # ------------------------------------------------------------------------------
 # 🔐 Exported functions
 # ------------------------------------------------------------------------------
-__all__ = ["get_missing_tts_info", "get_decade_genre_ranking_summary"]
+__all__ = [
+    "get_missing_tts_info",
+    "get_decade_genre_ranking_summary",
+    "normalize_for_filename",  # ✅ Add this line
+]
+
