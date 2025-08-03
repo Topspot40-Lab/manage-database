@@ -5,11 +5,41 @@ from sqlmodel import Session, select
 from backend.database import get_db
 from backend.models import TrackRanking, Track, Artist, Decade, Genre, DecadeGenre
 from backend.utils.tts_diagnostics import normalize_for_filename
+from backend.state import current_decade_genre  # 👈 Add this import
+from backend.services.spotify.playback import play_spotify_track
 
 import logging
 
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
 logger = logging.getLogger("supabase_loader")
+
+
+@router.get("/play-track-by-rank-only")
+async def play_track_by_rank_only(
+    rank: int = Query(..., description="Rank of the track to play"),
+    play_intro: bool = Query(True),
+    play_detail: bool = Query(True),
+    play_track: bool = Query(True),
+    play_artist_mp3: bool = Query(True),
+    db: Session = Depends(get_db)
+):
+    decade = current_decade_genre.get("decade")
+    genre = current_decade_genre.get("genre")
+
+    if not decade or not genre:
+        return {"error": "No track data loaded. Please load with /load-decade-genre-data first."}
+
+    logger.info(f"🎯 Playing rank #{rank} using cached: {decade} / {genre}")
+    return await play_track_by_rank(
+        decade=decade,
+        genre=genre,
+        rank=rank,
+        play_intro=play_intro,
+        play_detail=play_detail,
+        play_track=play_track,
+        play_artist_mp3=play_artist_mp3,
+        db=db
+    )
 
 @router.get("/play-track-by-rank")
 async def play_track_by_rank(
@@ -22,6 +52,13 @@ async def play_track_by_rank(
     play_artist_mp3: bool = Query(True),
     db: Session = Depends(get_db)
 ):
+    from backend.config import (
+        BUCKET_TRACK_INTRO,
+        BUCKET_TRACK_DETAIL,
+        BUCKET_ARTIST,
+    )
+    from backend.services.supabase_playback import play_mp3
+
     logger.info(f"🎯 Playing track by rank: {decade} / {genre} / #{rank}")
 
     # Step 1: Lookup DecadeGenre
@@ -61,24 +98,22 @@ async def play_track_by_rank(
     track_mp3 = f"{track.spotify_track_id}.mp3"
     artist_mp3 = f"{artist.spotify_artist_id}.mp3"
 
-    # === Playback (stubbed in this example — plug in your actual player) ===
-    from backend.services.supabase_playback import play_mp3  # adjust import as needed
-
+    # === Playback ===
     if play_intro:
         logger.info(f"🎙️ Playing intro MP3: {intro_mp3}")
-        await play_mp3("track_intro_mp3_files", intro_mp3)
+        await play_mp3(BUCKET_TRACK_INTRO, intro_mp3)
 
     if play_detail:
         logger.info(f"📖 Playing detail MP3: {detail_mp3}")
-        await play_mp3("track_detail_mp3_files", detail_mp3)
+        await play_mp3(BUCKET_TRACK_DETAIL, detail_mp3)
 
     if play_track:
         logger.info(f"🎵 Playing track MP3: {track_mp3}")
-        await play_mp3("spotify_track_mp3_files", track_mp3)
+        play_spotify_track(track.spotify_track_id)
 
     if play_artist_mp3:
         logger.info(f"🎤 Playing artist MP3: {artist_mp3}")
-        await play_mp3("artist_mp3_files", artist_mp3)
+        await play_mp3(BUCKET_ARTIST, artist_mp3)
 
     return {
         "status": "success",
@@ -92,15 +127,16 @@ async def play_track_by_rank(
         }
     }
 
-
-
 @router.get("/load-decade-genre-data")
 def load_decade_genre_data(
     decade: str = Query(..., description="Decade name, e.g., '1980s'"),
     genre: str = Query(..., description="Genre name, e.g., 'country'"),
     db: Session = Depends(get_db)
 ):
-    logger.info(f"📥 Loading track data for {decade} / {genre}")
+    # ✅ Remember the context
+    current_decade_genre["decade"] = decade
+    current_decade_genre["genre"] = genre
+    logger.info(f"📌 Stored context for play-by-rank-only: {decade} / {genre}")
 
     # Step 1: Lookup DecadeGenre
     stmt = (

@@ -40,6 +40,7 @@ TEMPERATURE_DEFAULT = 0.3
 BUCKET_TRACK_INTRO = "track-intro-mp3-files"
 BUCKET_TRACK_DETAIL = "track-detail-mp3-files"
 BUCKET_ARTIST = "artist-mp3-files"
+BUCKET_SPOTIFY_TRACK = "spotify-track-mp3-files"
 
 
 # -----------------------------------------------------------------------------
