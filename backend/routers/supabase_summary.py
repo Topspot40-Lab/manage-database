@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Query, Depends
 from sqlmodel import Session, select
 import logging
+from sqlalchemy import func
+from backend.models import Artist, Track, Genre, Decade, DecadeGenre, TrackRanking
 
 from backend.database import get_db
-from backend.models import Artist, Track, Genre, Decade
 from backend.utils.tts_diagnostics import (
     get_missing_tts_info,
     get_decade_genre_ranking_summary
@@ -18,23 +19,60 @@ router = APIRouter(
     tags=["Supabase Summary"]
 )
 @router.get("/summary")
-def get_summary(db_name: str = Query(...), db: Session = Depends(get_db)):
+def get_summary(
+    db_name: str = Query("topspot40-dev"),
+    db: Session = Depends(get_db)
+):
     logger.info(f"🔍 Generating DB summary for: {db_name}")
+
     try:
-        return {
+        # Table counts (return int)
+        artists_count = db.exec(select(func.count(Artist.id))).first()
+        tracks_count = db.exec(select(func.count(Track.id))).first()
+        genres_count = db.exec(select(func.count(Genre.id))).first()
+        decades_count = db.exec(select(func.count(Decade.id))).first()
+        rankings_count = db.exec(select(func.count(TrackRanking.id))).first()
+
+        summary = {
             "database": db_name,
             "tables": {
-                "artists": len(db.exec(select(Artist)).all()),
-                "tracks": len(db.exec(select(Track)).all()),
-                "genres": len(db.exec(select(Genre)).all()),
-                "decades": len(db.exec(select(Decade)).all())
-            }
+                "artists": artists_count,
+                "tracks": tracks_count,
+                "genres": genres_count,
+                "decades": decades_count,
+                "track_rankings": rankings_count
+            },
+            "ranking_counts": []
         }
+
+        # Ranked track breakdown by decade and genre
+        result = db.exec(
+            select(
+                Decade.name,
+                Genre.name,
+                func.count(TrackRanking.id)
+            )
+            .join(DecadeGenre, TrackRanking.decade_genre_id == DecadeGenre.id)
+            .join(Decade, Decade.id == DecadeGenre.decade_id)
+            .join(Genre, Genre.id == DecadeGenre.genre_id)
+            .group_by(Decade.name, Genre.name)
+            .order_by(Decade.name, Genre.name)
+        ).all()
+
+        for decade_name, genre_name, count in result:
+            logger.info(f"📊 {decade_name} / {genre_name} → {count} ranked track(s)")
+            summary["ranking_counts"].append({
+                "decade": decade_name,
+                "genre": genre_name,
+                "count": count
+            })
+
+        return summary
+
     except Exception as e:
         logger.error(f"❌ Failed to summarize DB: {e}")
         return {"error": str(e)}
 
-# 🧠 TTS diagnostics summary
 @router.get("/tts/diagnostics")
 async def run_diagnostics(
     db: Session = Depends(get_db),
