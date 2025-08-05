@@ -56,7 +56,7 @@ TEMPERATURE_BIO = 0.5
 TEST_FILE_NUMBER = 1
 
 # -----------------------------------------------------------------------------
-# 📋 FEATURE FLAGS (Text Generation)
+# 📋 FEATURE FLAGS (Text Generation) for generate-json endpoint
 # -----------------------------------------------------------------------------
 ENABLE_RANK_INTRO = True
 ENABLE_TRACK_DETAIL = True
@@ -77,6 +77,11 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID_INTRO = os.getenv("VOICE_ID_INTRO", "EXAVITQu4vr4xnSDxMaL")
 VOICE_ID_ARTIST = os.getenv("VOICE_ID_ARTIST", "Vr6EZfGAz5W6T1wn6b4p")
 VOICE_ID_TRACK = os.getenv("VOICE_ID_TRACK", "oWAxZDx7w5VEj9dCyTzz")
+
+# Brian nPczCjzI2devNBz1zQrb
+# George JBFqnCBsd6RMkjVDRZzb
+# Daniel onwK4e9ZLuTAKqWW03F9
+# Bill pqHfZKP75CvOlQylNhV4
 
 # Audio tuning parameters
 VOICE_STABILITY = float(os.getenv("VOICE_STABILITY", 0.5))
@@ -214,6 +219,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.track_generator": "INFO",
     "backend.services.utils": "INFO",
     "backend.services.xai_service": "INFO",
+    "backend.services.supabase_playback": "INFO",       # ✅ Added
 
     # ─────────────────────────────
     # 🧱 Routers
@@ -222,24 +228,25 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.insert_json": "INFO",
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.routers.supabase_summary": "INFO",        # ✅ Added
-    "backend.routers.tts_intro": "INFO",                # Optional if you log in intro/detail
-    "backend.routers.tts_detail": "INFO",               # Optional
+    "backend.routers.supabase_summary": "DEBUG",
+    "backend.routers.tts_intro": "DEBUG",
+    "backend.routers.tts_detail": "DEBUG",
+    "backend.routers.supabase_loader": "DEBUG",          # ✅ Added
 
     # ─────────────────────────────
     # 🧰 Utility Modules
     # ─────────────────────────────
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
-    "backend.utils.tts_diagnostics": "INFO",            # ✅ Added
+    "backend.utils.tts_diagnostics": "DEBUG",
 
     # ─────────────────────────────
     # 🪵 Custom Loggers
     # ─────────────────────────────
     "backend.logging.track_logging": "INFO",
     "tts_logger": "DEBUG",
-    "supabase_summary": "DEBUG",                         # ✅ If used directly with `getLogger("supabase_summary")`
-    "tts_diagnostics": "DEBUG",                         # ✅ If used directly
+    "supabase_summary": "DEBUG",
+    "tts_diagnostics": "DEBUG",
 
     # ─────────────────────────────
     # 🌐 Third-party Libraries

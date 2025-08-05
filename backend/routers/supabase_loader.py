@@ -98,22 +98,40 @@ async def play_track_by_rank(
     track_mp3 = f"{track.spotify_track_id}.mp3"
     artist_mp3 = f"{artist.spotify_artist_id}.mp3"
 
+    logger.info("=" * 90)
+    logger.info(
+        f"🎯 {decade} / {genre} — Rank #{rank} | 🎵 {track.track_name} by {artist.artist_name} | 🔗 {artist.spotify_artist_id}")
+
     # === Playback ===
     if play_intro:
-        logger.info(f"🎙️ Playing intro MP3: {intro_mp3}")
+        logger.info(f"\n📢 Intro Text (→ {intro_mp3}):\n{ranking.intro.strip()}")
         await play_mp3(BUCKET_TRACK_INTRO, intro_mp3)
 
     if play_detail:
-        logger.info(f"📖 Playing detail MP3: {detail_mp3}")
+        logger.info(f"\n📝 Detail Text (→ {detail_mp3}):\n{track.detail.strip()}")
         await play_mp3(BUCKET_TRACK_DETAIL, detail_mp3)
 
+    if play_artist_mp3:
+        logger.info(f"\n🎙️ Artist Description:\n{artist.artist_description.strip()}")
+        await play_mp3(BUCKET_ARTIST, artist_mp3)
+
+    # === Log Artwork URLs After Playback Starts ===
+    if artist.artist_artwork:
+        logger.info(f"🖼️ Artist Artwork: {artist.artist_artwork}")
+    else:
+        logger.info("🖼️ Artist Artwork: [None]")
+
+    if track.album_artwork:
+        logger.info(f"💿 Album Artwork: {track.album_artwork}")
+    else:
+        logger.info("💿 Album Artwork: [None]")
+
     if play_track:
-        logger.info(f"🎵 Playing track MP3: {track_mp3}")
+        logger.debug(f"🎵 Playing track MP3: {track_mp3}")
         play_spotify_track(track.spotify_track_id)
 
-    if play_artist_mp3:
-        logger.info(f"🎤 Playing artist MP3: {artist_mp3}")
-        await play_mp3(BUCKET_ARTIST, artist_mp3)
+
+
 
     return {
         "status": "success",

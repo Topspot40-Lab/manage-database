@@ -16,9 +16,9 @@ def play_spotify_track(track_id: str) -> bool:
             return False
 
         # Log active device list
-        logger.info("🎧 Active Spotify devices:")
+        logger.debug("🎧 Active Spotify devices:")
         for d in devices:
-            logger.info(f"  • {d['name']} — type: {d['type']} — active: {d['is_active']} — id: {d['id']}")
+            logger.debug(f"  • {d['name']} — type: {d['type']} — active: {d['is_active']} — id: {d['id']}")
 
         # Optional: Pick the active device (if needed)
         active_device = next((d for d in devices if d["is_active"]), None)
@@ -28,7 +28,7 @@ def play_spotify_track(track_id: str) -> bool:
         # 🔁 Step 2: Try to start playback
         uri = f"spotify:track:{track_id}"
         sp.start_playback(uris=[uri])
-        logger.info(f"▶️ Started playback for track: {track_id}")
+        logger.debug(f"▶️ Started playback for track: {track_id}")
         return True
 
     except SpotifyException as e:

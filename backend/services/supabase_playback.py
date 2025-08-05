@@ -27,7 +27,7 @@ async def play_mp3(bucket: str, filename: str):
     }
 
     try:
-        logger.info(f"📥 Downloading MP3 from Supabase: {filename}")
+        logger.debug(f"📥 Downloading MP3 from Supabase: {filename}")
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=headers)
 
@@ -40,7 +40,7 @@ async def play_mp3(bucket: str, filename: str):
             tmp_file.write(response.content)
             tmp_path = Path(tmp_file.name)
 
-        logger.info(f"🔊 Playing with ffplay: {tmp_path}")
+        logger.debug(f"🔊 Playing with ffplay: {tmp_path}")
         try:
             subprocess.run(
                 ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", str(tmp_path)],
@@ -53,7 +53,7 @@ async def play_mp3(bucket: str, filename: str):
         # Attempt to delete the temporary file after playback
         try:
             tmp_path.unlink()
-            logger.info(f"🧹 Deleted temp file: {tmp_path}")
+            logger.debug(f"🧹 Deleted temp file: {tmp_path}")
         except Exception as e:
             logger.warning(f"⚠️ Could not delete temp file: {e}")
 

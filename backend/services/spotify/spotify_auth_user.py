@@ -22,7 +22,7 @@ def get_spotify_user_client() -> spotipy.Spotify:
     if not (cid and secret and redirect):
         raise EnvironmentError("Missing Spotify credentials or redirect URI")
 
-    logger.info("🧭 Initializing SpotifyOAuth...")
+    logger.debug("🧭 Initializing SpotifyOAuth...")
     auth_manager = SpotifyOAuth(
         client_id=cid,
         client_secret=secret,
@@ -31,8 +31,8 @@ def get_spotify_user_client() -> spotipy.Spotify:
         cache_path=".cache"
     )
 
-    logger.info("🔄 Creating Spotify user client with token...")
+    logger.debug("🔄 Creating Spotify user client with token...")
     _client = spotipy.Spotify(auth_manager=auth_manager)
-    logger.info("✅ Spotify user-auth client initialized")
+    logger.debug("✅ Spotify user-auth client initialized")
 
     return _client

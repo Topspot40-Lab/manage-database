@@ -1,9 +1,10 @@
-from typing import Optional
+
 from datetime import datetime, UTC
 from sqlmodel import SQLModel, Field, UniqueConstraint
 from backend.models.enums import ModeFlag
 from sqlalchemy import Column, Enum as SqlEnum  # 👈 Needed for proper SQL enum mapping
-
+from sqlmodel import Relationship
+from typing import Optional
 
 
 class DecadeGenreTrivia(SQLModel, table=True):
@@ -15,21 +16,26 @@ class DecadeGenreTrivia(SQLModel, table=True):
     trivia_mp3_url: Optional[str] = None
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
 
-
-
 class Artist(SQLModel, table=True):
     __tablename__ = "artist"
-    __table_args__ = {
-        "extend_existing": True,
-    }
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     artist_name: str
     spotify_artist_id: Optional[str] = Field(default=None, nullable=True)
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
-    not_on_spotify: bool = Field(default=False)  # ✅ Add this line
+    not_on_spotify: bool = Field(default=False)
 
+    # ✅ Relationship to Track (as main artist)
+    tracks_as_main: list["Track"] = Relationship(back_populates="artist", sa_relationship_kwargs={
+        "foreign_keys": "[Track.artist_id]"
+    })
+
+    # ✅ Relationship to Track (as featured artist)
+    tracks_as_featured: list["Track"] = Relationship(back_populates="featured_artist", sa_relationship_kwargs={
+        "foreign_keys": "[Track.featured_artist_id]"
+    })
 
 
 
@@ -79,6 +85,9 @@ class DecadeGenre(SQLModel, table=True):
     decade_id: Optional[int] = Field(default=None, foreign_key="decade.id")
     genre_id: Optional[int] = Field(default=None, foreign_key="genre.id")
 
+    # ✅ Add these relationships
+    decade: Optional["Decade"] = Relationship()
+    genre: Optional["Genre"] = Relationship()
 
 class TrackGenre(SQLModel, table=True):
     __tablename__ = "track_genre"
@@ -121,7 +130,7 @@ class Top40GenreRanking(SQLModel, table=True):
 
 
 class TrackRanking(SQLModel, table=True):
-    __tablename__ = "track_ranking"  # ✅ explicitly define the table name
+    __tablename__ = "track_ranking"
     __table_args__ = (
         UniqueConstraint("track_id", "decade_genre_id", "tracklist_id", name="track_ranking_track_id_decade_genre_id_tracklist_id_key"),
         UniqueConstraint("ranking", "decade_genre_id", name="uix_rank_per_decade_genre"),
@@ -135,6 +144,10 @@ class TrackRanking(SQLModel, table=True):
     ranking: int
     intro: Optional[str] = None
     created_at: Optional[str] = None
+
+    # ✅ Add these two lines:
+    track: Optional["Track"] = Relationship(back_populates="rankings")
+    decade_genre: Optional["DecadeGenre"] = Relationship()
 
 
 class Tracklist(SQLModel, table=True):
@@ -155,21 +168,30 @@ class Track(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     track_name: str = Field(nullable=False)
-    album_name: Optional[str] = Field(default=None)  # ✅ New field
-    artist_display_name: Optional[str] = Field(default=None)  # ✅ NEW: replaces `track_display_name`
+    album_name: Optional[str] = Field(default=None)
+    artist_display_name: Optional[str] = Field(default=None)
     spotify_track_id: str = Field(nullable=False)
     mode_flag: ModeFlag = Field(
         sa_column=Column(SqlEnum(ModeFlag, name="modeflag", create_constraint=True)),
         default=ModeFlag.SOLO
     )
-
     duration_ms: Optional[int] = Field(default=None)
     popularity: Optional[int] = Field(default=None)
     album_artwork: Optional[str] = Field(default=None)
     year_released: Optional[int] = Field(default=None)
-    artist_id: int = Field(foreign_key="artist.id")
-    featured_artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")
+    artist_id: int = Field(foreign_key="artist.id")  # Required main artist
+    featured_artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")  # Optional guest
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
 
+    # ✅ Relationships
+    artist: "Artist" = Relationship(back_populates="tracks_as_main", sa_relationship_kwargs={
+        "foreign_keys": "[Track.artist_id]"
+    })
+
+    featured_artist: Optional["Artist"] = Relationship(back_populates="tracks_as_featured", sa_relationship_kwargs={
+        "foreign_keys": "[Track.featured_artist_id]"
+    })
+
+    rankings: list["TrackRanking"] = Relationship(back_populates="track")
