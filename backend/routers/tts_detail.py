@@ -1,73 +1,85 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from pathlib import Path
 import logging
+from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 
-from backend.services.track_cache import get_all_rank_entries
-from backend.services.tts.elevenlabs_tts import generate_tts_mp3
+from backend.database import get_db
+from backend.models import Track, TrackRanking, DecadeGenre
 from backend.config import VOICE_ID_TRACK
-from backend.routers.tts_shared import add_metadata_to_mp3, log_tts_action
+from backend.utils.tts_diagnostics import get_missing_tts_info
+from backend.services.tts.generate_tts_batch import generate_tts_batch
 
 logger = logging.getLogger("tts_logger")
 
-# === Track Detail TTS ===
 detail_router = APIRouter(
     prefix="/tts/detail",
     tags=["TTS - Track Detail"]
 )
 
-@detail_router.post("/by-rank")
-def generate_track_detail_tts_by_rank(
-    start_rank: int = Query(..., ge=1),
-    end_rank: int = Query(..., ge=1),
+
+def generate_detail_filename(track):
+    return f"{track['spotify_track_id']}.mp3"
+
+@detail_router.post("/by-missing")
+async def generate_missing_detail_tts(
+    count: int = Query(-1, description="Number of missing detail TTS files to generate. Use -1 for all."),
     overwrite: bool = Query(False),
-    play: bool = Query(False)
+    play: bool = Query(False),
+    db: Session = Depends(get_db)
 ):
-    """
-    Generate TTS for the 'detail' field of ranked tracks in the specified range.
-    """
-    logger.debug(f"🎙️ [Track Detail TTS] Requested ranks {start_rank} to {end_rank} | overwrite={overwrite} | play={play}")
+    logger.info(f"🧠 Generating up to {count} missing detail TTS files")
 
-    if start_rank > end_rank:
-        return {"error": "Start rank must be less than or equal to end rank."}
+    diagnostics = await get_missing_tts_info(
+        db,
+        check_intro_mp3=False,
+        check_detail_mp3=True,
+        check_artist_mp3=False
+    )
 
-    rankings = get_all_rank_entries()
-    output_dir = Path("data/mp3_files/track_detail_mp3_files")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    missing_tracks = diagnostics["missing_mp3"]["track_detail"]
 
-    generated = []
-    for track in rankings:
-        rank = track.get("rank")
-        print(f"Rank: {rank}")
+    if count > 0:
+        missing_tracks = missing_tracks[:count]
 
-        if not rank or not (start_rank <= rank <= end_rank):
-            continue
+    missing_track_ids = {track.id for track in missing_tracks}
 
-        detail = track.get("detail", "").strip()
-        if not detail:
-            continue
+    results = db.exec(
+        select(TrackRanking)
+        .options(
+            selectinload(TrackRanking.track),
+            selectinload(TrackRanking.track).selectinload(Track.artist),
+            selectinload(TrackRanking.decade_genre).selectinload(DecadeGenre.decade),
+            selectinload(TrackRanking.decade_genre).selectinload(DecadeGenre.genre),
+        )
+    ).all()
 
-        track_id = track.get("track_id")
-        if not track_id:
-            continue
+    items = []
+    for ranking in results:
+        track = ranking.track
+        artist = track.artist
+        if track.id in missing_track_ids:
+            items.append({
+                "track_id": track.id,
+                "spotify_track_id": track.spotify_track_id,  # ✅ add this line
+                "track_name": track.track_name,
+                "artist_name": artist.artist_name,
+                "album_name": track.album_name or "TopSpot40 Detail Tracks",
+                "detail": track.detail,
+            })
 
-        out_path = output_dir / f"{track_id}.mp3"
+            if 0 < count <= len(items):
+                break
 
-        if out_path.exists() and not overwrite:
-            log_tts_action("Track Detail", track_id, out_path, "⏭️ Skipped (exists)", play)
-            continue
+    logger.debug(f"🧪 Found {len(items)} missing detail TTS items to generate")
 
-        generate_tts_mp3(detail, out_path, VOICE_ID_TRACK, overwrite=overwrite, play=play)
-
-        track_name = track.get("track_name", "Unknown Track")
-        artist_name = track.get("artist_name", "Unknown Artist")
-        album_name = track.get("album_name") or "TopSpot40 Detail Tracks"
-        add_metadata_to_mp3(out_path, track_name, artist_name, album_name)
-
-        log_tts_action("Track Detail", track_id, out_path, "✅ Generated", play)
-        generated.append(str(out_path))
-
-    logger.info(f"✅ [Track Detail TTS] Generated {len(generated)} detail files")
-    return {
-        "message": f"✅ Generated {len(generated)} track detail TTS files",
-        "files": generated
-    }
+    return generate_tts_batch(
+        items=items,
+        text_key="detail",
+        voice_id=VOICE_ID_TRACK,
+        output_dir=Path("data/mp3_files/track_detail_mp3_files"),
+        filename_func=generate_detail_filename,
+        log_prefix="Track Detail",
+        overwrite=overwrite,
+        play=play
+    )
