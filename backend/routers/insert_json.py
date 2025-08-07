@@ -11,6 +11,7 @@ from backend.utils.mode_utils import parse_mode_flag
 from backend.database import get_db
 from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
 from backend.utils.json_helpers import load_full_json_file
+from backend.services.supabase_storage import delete_intro_mp3_files_for_combo
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["json-insert"])
@@ -21,6 +22,8 @@ async def insert_json_to_db(
     preserve_intro: bool = Query(True),
     preserve_detail: bool = Query(True),
     preserve_artist_description: bool = Query(True),
+    force: bool = Query(False),
+
     db: Session = Depends(get_db)
 ):
     logger.info(f"Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
@@ -44,6 +47,33 @@ async def insert_json_to_db(
     try:
         genre_name = data["genre"]
         decade_name = data["category"]
+
+        # 🚨 Safety check to abort if DecadeGenre already exists
+        existing_genre = db.exec(select(Genre).where(Genre.genre_name == genre_name)).first()
+        existing_decade = db.exec(select(Decade).where(Decade.decade_name == decade_name)).first()
+
+
+
+        if existing_genre and existing_decade:
+            existing_decade_genre = db.exec(
+                select(DecadeGenre).where(
+                    (DecadeGenre.decade_id == existing_decade.id) &
+                    (DecadeGenre.genre_id == existing_genre.id)
+                )
+            ).first()
+
+            if existing_decade_genre:
+                if not force:
+                    logger.warning(f"🚨 ABORT: Decade-Genre combination already exists: {decade_name} / {genre_name}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Decade-Genre '{decade_name}/{genre_name}' already exists. Use force=true to overwrite and reset intro MP3s."
+                    )
+                else:
+                    logger.warning(
+                        f"⚠️ Force mode enabled — deleting existing intro MP3s for {decade_name}/{genre_name}")
+                    await delete_intro_mp3_files_for_combo(decade_name, genre_name)
+                    logger.info(f"✅ Deleted leftover intro MP3s for {decade_name}/{genre_name} before reinserting.")
 
         genre = db.exec(select(Genre).where(Genre.genre_name == genre_name)).first()
         if not genre:

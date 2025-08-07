@@ -225,7 +225,7 @@ LOG_LEVELS_BY_MODULE = {
     # 🧱 Routers
     # ─────────────────────────────
     "backend.routers.generate_json": "INFO",
-    "backend.routers.insert_json": "INFO",
+    "backend.routers.insert_json": "DEBUG",
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.routers.supabase_summary": "DEBUG",
