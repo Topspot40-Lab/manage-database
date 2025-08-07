@@ -2,7 +2,6 @@
 
 import re
 import logging
-import os
 import time
 import asyncio
 import httpx
@@ -12,8 +11,7 @@ from backend.config import (
     SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY,
     BUCKET_TRACK_INTRO,
-    BUCKET_TRACK_DETAIL,
-    BUCKET_ARTIST
+    BUCKET_TRACK_DETAIL
 )
 
 logger = logging.getLogger("tts_diagnostics")
@@ -22,7 +20,7 @@ logger = logging.getLogger("tts_diagnostics")
 # 🧽 Normalize names for filenames (used in intro MP3 filenames)
 # ------------------------------------------------------------------------------
 def normalize_for_filename(text: str) -> str:
-    return re.sub(r"[^\w]", "", text.lower().replace(" ", "_").replace("-", "_"))
+    return re.sub(r"\W", "", text.lower().replace(" ", "_").replace("-", "_"))
 
 # ------------------------------------------------------------------------------
 # 🌐 Async check if a file exists in Supabase Storage
@@ -43,12 +41,12 @@ async def file_exists_async(bucket: str, path: str, client: httpx.AsyncClient) -
 # ------------------------------------------------------------------------------
 # 🧩 Helper function to measure time and log a labeled async task
 # ------------------------------------------------------------------------------
-async def measure_and_log(label: str, func):
+async def measure_and_log(label: str, check_func):
     logger.debug(f"🔍 Starting check: {label}")
     start = time.time()
-    result = await func()
+    result = await check_func()
     duration = time.time() - start
-    logger.info(f"⏱️ {label} check completed in {duration:.2f} seconds")
+    logger.debug(f"⏱️ {label} check completed in {duration:.2f} seconds")
     return result
 
 # ------------------------------------------------------------------------------
@@ -82,19 +80,19 @@ async def check_intro_mp3s(db: Session, client: httpx.AsyncClient):
 
     # Logging missing MP3s
     if missing_mp3s:
-        logger.debug(f"🛑 {len(missing_mp3s)} intro MP3(s) missing out of {len(intro_keys)} total:")
+        logger.info(f"🛑 {len(missing_mp3s)} intro MP3(s) missing out of {len(intro_keys)} total:")
         logger.debug("\n" + "\n".join(f"- {name}" for name in missing_mp3s[:15]))
     else:
-        logger.debug("✅ All intro MP3s present — no missing files.")
+        logger.info("✅ All intro MP3s present — no missing files.")
 
     total_rankings = len(result)
 
     # Logging missing/empty intro texts
     if text_missing_entries:
-        logger.debug(f"🛑 {len(text_missing_entries)} intro text(s) missing or invalid out of {total_rankings} total:")
+        logger.info(f"🛑 {len(text_missing_entries)} intro text(s) missing or invalid out of {total_rankings} total:")
         logger.debug("\n" + "\n".join(f"- Rank {entry}" for entry in text_missing_entries))
     else:
-        logger.debug(f"✅ All {total_rankings} intro text fields present and valid.")
+        logger.info(f"✅ All {total_rankings} intro text fields present and valid.")
 
     return missing_mp3s
 
@@ -113,10 +111,10 @@ async def check_detail_mp3s(tracks, client: httpx.AsyncClient):
     # Log missing/invalid detail text fields
     total_tracks = len(detail_tracks)
     if text_missing:
-        logger.debug(f"🛑 {len(text_missing)} detail text(s) missing or invalid out of {total_tracks} total:")
+        logger.info(f"🛑 {len(text_missing)} detail text(s) missing or invalid out of {total_tracks} total:")
         logger.debug("\n" + "\n".join(f"- {t.track_name} ({t.spotify_track_id})" for t in text_missing))
     else:
-        logger.debug(f"✅ All {total_tracks} detail text fields present and valid.")
+        logger.info(f"✅ All {total_tracks} detail text fields present and valid.")
 
     # Now check for missing detail MP3s
     detail_tasks = [
@@ -134,47 +132,45 @@ async def check_detail_mp3s(tracks, client: httpx.AsyncClient):
     else:
         logger.debug("✅ All detail MP3s present — no missing files.")
 
-    logger.debug(f"🎶 Detail MP3s checked: {len(results)}, missing: {len(missing)}")
+    logger.info(f"🎶 Detail MP3s checked: {len(results)}, missing: {len(missing)}")
 
     return missing
 
 
-# ------------------------------------------------------------------------------
-# 🎤 Check for missing artist MP3s
-# ------------------------------------------------------------------------------
-async def check_artist_mp3s(artists, client: httpx.AsyncClient):
-    artist_list = [a for a in artists if a.spotify_artist_id]
+# -------------------------------------------------------------------
+# 🎤 Check for missing artist MP3s (concurrent + logs like detail)
+# -------------------------------------------------------------------
+async def check_artist_mp3s(artists: list, client: httpx.AsyncClient) -> list:
+    """
+    Check which artists are missing TTS MP3 files in Supabase.
+    Returns a list of Artist objects that are missing files.
+    """
+    from backend.config import SUPABASE_BUCKET_ARTIST_MP3
 
-    # 🔤 Check for missing or invalid artist_description
-    text_missing = [
-        a for a in artist_list
-        if not a.artist_description or a.artist_description.strip().lower() in {"", "null"}
+    valid_artists = [a for a in artists if a.spotify_artist_id]
+    total_artists = len(valid_artists)
+
+    logger.info(f"🎤 Checking {total_artists} artist MP3s...")
+
+    tasks = [
+        file_exists_async(SUPABASE_BUCKET_ARTIST_MP3, f"{a.spotify_artist_id}.mp3", client)
+        for a in valid_artists
     ]
+    results = await asyncio.gather(*tasks)
 
-    total_artists = len(artist_list)
-
-    if text_missing:
-        logger.debug(f"🛑 {len(text_missing)} artist description(s) missing or invalid out of {total_artists} total:")
-        logger.debug("\n" + "\n".join(f"- name: {a.artist_name:<30}  spotify_id: {a.spotify_artist_id}" for a in text_missing))
-    else:
-        logger.debug(f"✅ All {total_artists} artist description fields present and valid.")
-
-    # 🔈 Check for missing artist MP3s
-    artist_tasks = [
-        file_exists_async(BUCKET_ARTIST, f"{a.spotify_artist_id}.mp3", client)
-        for a in artist_list
-    ]
-    results = await asyncio.gather(*artist_tasks)
-
-    missing = [a for a, exists in zip(artist_list, results) if not exists]
+    missing = [a for a, exists in zip(valid_artists, results) if not exists]
 
     if missing:
-        logger.debug(f"🛑 {len(missing)} artist MP3(s) missing:\n" +
-                     "\n".join(f"- name: {a.artist_name:<30}  spotify_id: {a.spotify_artist_id}" for a in missing))
+        logger.debug("🛑 Missing artist MP3s:")
+        logger.debug("\n" + "\n".join(
+            f"- artist: {a.artist_name.ljust(30)}  ID: {a.spotify_artist_id}"
+            for a in missing
+        ))
     else:
         logger.debug("✅ All artist MP3s present — no missing files.")
 
-    logger.debug(f"🎤 Artist MP3s checked: {len(results)}, missing: {len(missing)}")
+    logger.info(f"🎤 Artist MP3s checked: {total_artists}, missing: {len(missing)}")
+
     return missing
 
 # ------------------------------------------------------------------------------
@@ -220,9 +216,10 @@ async def get_missing_tts_info(
         "missing_mp3": {
             "track_intro": missing_intro_mp3,
             "track_detail": missing_detail_mp3,
-            "artist_description": missing_artist_mp3,
+            "artist_mp3": missing_artist_mp3,  # ✅ Fixed key
         }
     }
+
 
 # ------------------------------------------------------------------------------
 # 📊 Utility: summary of decade-genre combinations with ranking counts
@@ -247,7 +244,23 @@ def get_decade_genre_ranking_summary(db: Session):
     results = db.exec(stmt).all()
 
     summary = []
+    headers = ["ID", "Decade", "Genre", "Ranking Count"]
+    col_widths = [6, 10, 20, 15]
+
+    # Build the table as a single string block
+    lines = []
+    separator = "-" * (sum(col_widths) + 9)
+
+    # Header
+    header = f"{headers[0]:<{col_widths[0]}} | {headers[1]:<{col_widths[1]}} | {headers[2]:<{col_widths[2]}} | {headers[3]:<{col_widths[3]}}"
+    lines.append(separator)
+    lines.append(header)
+    lines.append(separator)
+
+    # Rows
     for id, decade, genre, count in results:
+        line = f"{id:<6} | {decade:<10} | {genre:<20} | {count:<15}"
+        lines.append(line)
         summary.append({
             "decade_genre_id": id,
             "decade": decade,
@@ -255,7 +268,12 @@ def get_decade_genre_ranking_summary(db: Session):
             "ranking_count": count
         })
 
-    logger.info(f"✅ Found {len(summary)} unique decade-genre combos.")
+    lines.append(separator)
+    lines.append(f"✅ Total unique decade-genre pairs: {len(summary)}")
+
+    # Log the full block as one message
+    logger.info("\n" + "\n".join(lines))
+
     return summary
 
 # ------------------------------------------------------------------------------

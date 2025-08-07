@@ -1,13 +1,15 @@
-# backend/services/xai_track_detail.py
-
 import json
 import logging
+from sqlmodel import Session, select
+from backend.models import Track
 from backend.services.xai_common import query_xai
+from sqlalchemy import or_
+from sqlalchemy.orm import selectinload  # ✅ ADD THIS
 
 logger = logging.getLogger("STEP_9.TrackDetail")
 
-def get_track_details_from_xai(tracks, language):
 
+def get_track_details_from_xai(tracks, language):
     """
     Adds 'detail' field to each track with 2–4 sentences of Casey Kasem-style storytelling.
     """
@@ -24,8 +26,8 @@ def get_track_details_from_xai(tracks, language):
             formatted_input.append({
                 "track_name": t.get("track_name"),
                 "artist_name": t.get("artist_name"),
-                "album_name": t.get("album_name"),
-                "mode_flag_detail": t.get("mode_flag_detail")
+                "album_name": t.get("album_name")
+                # "mode_flag_detail": t.get("mode_flag_detail")
             })
 
         prompt = (
@@ -48,4 +50,53 @@ def get_track_details_from_xai(tracks, language):
             track = tracks[batch_start + i]
             detail = resp.get("detail")
             track["detail"] = detail
-            logger.debug(f"🟣 Rank {track.get('rank')} detail:\n{detail}")
+            logger.debug(f"🟣 Detail for track '{track.get('track_name')}' by {track.get('artist_name')}:\n{detail}")
+
+
+def regenerate_missing_track_details(db: Session, language: str = "English") -> int:
+    """
+    Finds all tracks missing the 'detail' field and regenerates them using XAI,
+    saving the updated details back into the database.
+    """
+    logger.info("🔁 Regenerating missing track detail text from Supabase...")
+
+    # ✅ Step 1: Query with eager-loading for artist
+    statement = select(Track).options(selectinload(Track.artist)).where(
+        or_(
+            Track.detail.is_(None),
+            Track.detail == ""
+        )
+    )
+    results = db.exec(statement).all()
+    if not results:
+        logger.info("✅ No tracks with missing detail.")
+        return 0
+
+    logger.info(f"🧠 Found {len(results)} tracks missing detail. Sending to XAI...")
+
+    # Step 2: Prepare input for XAI
+    track_dicts = []
+    for track in results:
+        if not track.artist:
+            logger.warning(f"❓ Track '{track.track_name}' is missing an artist relationship.")
+
+        track_dicts.append({
+            "track_name": track.track_name,
+            "artist_name": track.artist.artist_name if track.artist else "Unknown",
+            "album_name": track.album_name,
+            # "mode_flag_detail": track.mode_flag_detail,
+        })
+
+    # Step 3: Generate new 'detail' text
+    get_track_details_from_xai(track_dicts, language=language)
+
+    # Step 4: Save generated text back to the database
+    for i, track in enumerate(results):
+        new_detail = track_dicts[i].get("detail")
+        if new_detail:
+            track.detail = new_detail
+            logger.debug(f"📝 Updated detail for: {track.track_name} by {track.artist.artist_name if track.artist else 'Unknown'}")
+
+    db.commit()
+    logger.info("✅ All missing details regenerated and saved.")
+    return len(results)

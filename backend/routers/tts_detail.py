@@ -38,7 +38,6 @@ async def generate_missing_detail_tts(
     )
 
     missing_tracks = diagnostics["missing_mp3"]["track_detail"]
-
     if count > 0:
         missing_tracks = missing_tracks[:count]
 
@@ -55,13 +54,20 @@ async def generate_missing_detail_tts(
     ).all()
 
     items = []
+    missing_text_count = 0
+
     for ranking in results:
         track = ranking.track
         artist = track.artist
+
         if track.id in missing_track_ids:
+            if not track.detail or not track.detail.strip():
+                missing_text_count += 1
+                continue
+
             items.append({
                 "track_id": track.id,
-                "spotify_track_id": track.spotify_track_id,  # ✅ add this line
+                "spotify_track_id": track.spotify_track_id,
                 "track_name": track.track_name,
                 "artist_name": artist.artist_name,
                 "album_name": track.album_name or "TopSpot40 Detail Tracks",
@@ -71,7 +77,8 @@ async def generate_missing_detail_tts(
             if 0 < count <= len(items):
                 break
 
-    logger.debug(f"🧪 Found {len(items)} missing detail TTS items to generate")
+    logger.info(f"🎯 Ready to generate {len(items)} detail TTS files")
+    logger.info(f"🚫 Skipped {missing_text_count} tracks due to missing detail text")
 
     return generate_tts_batch(
         items=items,

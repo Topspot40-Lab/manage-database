@@ -229,9 +229,9 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.routers.supabase_summary": "DEBUG",
-    "backend.routers.tts_intro": "DEBUG",
-    "backend.routers.tts_detail": "DEBUG",
-    "backend.routers.supabase_loader": "DEBUG",          # ✅ Added
+    "backend.routers.tts_intro": "INFO",
+    "backend.routers.tts_detail": "INFO",
+    "backend.routers.supabase_loader": "INFO",          # ✅ Added
 
     # ─────────────────────────────
     # 🧰 Utility Modules
@@ -263,4 +263,8 @@ LOG_LEVELS_BY_MODULE = {
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").strip().lower() == "true"
 LOG_COLOR_ENABLED = os.getenv("LOG_COLOR_ENABLED", "true").strip().lower() == "true"
 LOG_FILE_PATH = "backend/logs/topspot.log"
+
+# 🔊 Supabase Bucket for Artist MP3s
+SUPABASE_BUCKET_ARTIST_MP3 = BUCKET_ARTIST
+
 

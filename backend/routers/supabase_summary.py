@@ -72,7 +72,6 @@ def get_summary(
     except Exception as e:
         logger.error(f"❌ Failed to summarize DB: {e}")
         return {"error": str(e)}
-
 @router.get("/tts/diagnostics")
 async def run_diagnostics(
     db: Session = Depends(get_db),
@@ -97,28 +96,46 @@ async def run_diagnostics(
     )
     ranking_summary = get_decade_genre_ranking_summary(db)
 
+    # Initialize response with empty dictionaries
+    summary = {
+        "missing_text": {},
+        "missing_mp3": {}
+    }
+
+    # Add missing_text counts if present
+    missing_text = result.get("missing_text", {})
+    if "track_detail" in missing_text:
+        summary["missing_text"]["track_detail"] = len(missing_text["track_detail"])
+    if "artist_description" in missing_text:
+        summary["missing_text"]["artist_description"] = len(missing_text["artist_description"])
+    if "ranking_intro" in missing_text:
+        summary["missing_text"]["ranking_intro"] = len(missing_text["ranking_intro"])
+
+    # Add missing_mp3 counts if the checks were requested
+    missing_mp3 = result.get("missing_mp3", {})
+    if check_intro_mp3 and "track_intro" in missing_mp3:
+        summary["missing_mp3"]["track_intro"] = len(missing_mp3["track_intro"])
+    if check_detail_mp3 and "track_detail" in missing_mp3:
+        summary["missing_mp3"]["track_detail"] = len(missing_mp3["track_detail"])
+    if check_artist_mp3 and "artist_description" in missing_mp3:
+        summary["missing_mp3"]["artist_description"] = len(missing_mp3["artist_description"])
+
     response = {
-        "summary": {
-            "missing_text": {
-                "track_detail": len(result["missing_text"]["track_detail"]),
-                "artist_description": len(result["missing_text"]["artist_description"]),
-                "ranking_intro": len(result["missing_text"]["ranking_intro"]),
-            },
-            "missing_mp3": {
-                "track_intro": len(result["missing_mp3"]["track_intro"]),
-                "track_detail": len(result["missing_mp3"]["track_detail"]),
-                "artist_description": len(result["missing_mp3"]["artist_description"]),
-            }
-        },
+        "summary": summary,
         "ranking_summary": ranking_summary
     }
 
     if show_samples:
-        response["samples"] = {
-            "track_missing_intro_mp3": [t.track_name for t in result["missing_mp3"]["track_intro"][:5]],
-            "track_missing_detail_mp3": [t.track_name for t in result["missing_mp3"]["track_detail"][:5]],
-            "artist_missing_mp3": [a.name for a in result["missing_mp3"]["artist_description"][:5]],
-        }
+        samples = {}
+
+        if check_intro_mp3 and "track_intro" in missing_mp3:
+            samples["track_missing_intro_mp3"] = [t.track_name for t in missing_mp3["track_intro"][:5]]
+        if check_detail_mp3 and "track_detail" in missing_mp3:
+            samples["track_missing_detail_mp3"] = [t.track_name for t in missing_mp3["track_detail"][:5]]
+        if check_artist_mp3 and "artist_description" in missing_mp3:
+            samples["artist_missing_mp3"] = [a.name for a in missing_mp3["artist_description"][:5]]
+
+        response["samples"] = samples
 
     return response
 # 🧾 Full diagnostics (raw data for deep dive or dev use)

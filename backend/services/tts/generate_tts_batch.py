@@ -19,20 +19,24 @@ def generate_tts_batch(
     generated = []
 
     for item in items:
-        text = item.get(text_key, "").strip()
+        raw_text = item.get(text_key)
+        text = raw_text.strip() if isinstance(raw_text, str) else ""
         if not text:
             continue
 
         filename = filename_func(item)
         out_path = output_dir / filename
 
+        item_id = item.get("track_id") or item.get("spotify_artist_id") or "unknown_id"
+
         if out_path.exists() and not overwrite:
-            log_tts_action(log_prefix, item["track_id"], out_path, "⏭️ Skipped (exists)", play)
+            log_tts_action(log_prefix, item_id, out_path, "⏭️ Skipped (exists)", play)
             continue
 
         logger.debug(f"🎧 Generating {log_prefix} → {out_path}")
         generate_tts_mp3(text, out_path, voice_id, overwrite=overwrite, play=play)
 
+        # ✅ Updated: Use keyword args with fallbacks
         add_metadata_to_mp3(
             mp3_path=out_path,
             track_name=item.get("track_name", "Unknown"),
@@ -40,7 +44,7 @@ def generate_tts_batch(
             album_name=item.get("album_name", "TopSpot40"),
         )
 
-        log_tts_action(log_prefix, item["track_id"], out_path, "✅ Generated", play)
+        log_tts_action(log_prefix, item_id, out_path, "✅ Generated", play)
         generated.append(str(out_path))
 
     return {
