@@ -33,7 +33,7 @@ SCHEMA_PATH = BASE_DIR / "backend" / "schemas" / "track_schema.json"
 # -----------------------------------------------------------------------------
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
-DEFAULT_XAI_MODEL = "grok-2-latest"
+DEFAULT_XAI_MODEL = "grok-4-latest"
 TEMPERATURE_DEFAULT = 0.3
 
 # === Supabase Storage Buckets ===
