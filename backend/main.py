@@ -21,6 +21,10 @@ from fastapi import FastAPI
 from backend.logging_setup import setup_logging
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
+from backend.routers.insert_specialty_json import router as specialty_insert_router
+
+
+
 # from backend.routers.tts_track import router as tts_track_router
 
 
@@ -89,3 +93,5 @@ app.include_router(artist_router)
 app.include_router(supabase_summary.router)
 app.include_router(supabase_loader.router)
 app.include_router(tts_regen_router)
+app.include_router(specialty_insert_router, prefix="/json/insert")
+

@@ -25,9 +25,17 @@ def clean_fallback_id(name: str) -> str:
 def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     logger_step4b.debug(f"[build_track_entry] incoming base keys: {list(base.keys())}")
 
+    # ---- Guards & defaults ----------------------------------------------------
+    if not base.get("artist_name") or not base.get("track_name"):
+        raise ValueError(f"Missing artist_name/track_name; keys={list(base.keys())}")
+
+    # spotify_data can be None (e.g., when rebuilding spares)
+    spotify_data = spotify_data or {}
+
+    # ---- Names & featured parsing --------------------------------------------
     artist_name_raw = base["artist_name"]
     track_name_raw = base["track_name"]
-    year_released = base["year_released"]
+    year_released = base.get("year_released")
 
     artist_name_clean, featured_artist_name_raw, _ = parse_featured_artists(artist_name_raw)
     artist_name_clean = normalize_name(artist_name_clean)
@@ -38,38 +46,57 @@ def build_track_entry(base, request, spotify_data, now, is_test_mode=False):
     if featured_artist_name_raw:
         track_display_name += f" (feat. {featured_artist_name_raw})"
 
-    mode_flag_str = base.get("mode_flag", "unknown")
-    try:
-        mode_flag = ModeFlag(mode_flag_str)
-    except ValueError:
-        logger_step4b.warning(f"⚠️ Invalid mode_flag '{mode_flag_str}' — defaulting to 'unknown'")
-        mode_flag = ModeFlag.UNKNOWN
+    # display name fallback
+    artist_display_name = base.get("artist_display_name") or artist_name_raw or artist_name_clean
 
+    # ---- Mode flag(s) ---------------------------------------------------------
+    mode_raw = (base.get("mode_flag") or "").strip().upper()
+
+    if not mode_raw:
+        mode_flag = ModeFlag.SOLO
+    else:
+        try:
+            mode_flag = ModeFlag(mode_raw)
+        except ValueError:
+            logger_step4b.warning(
+                f"⚠️ Invalid mode_flag '{mode_raw}' — defaulting to 'SOLO'"
+            )
+            mode_flag = ModeFlag.SOLO
+
+    mode_flag_detail = base.get("mode_flag_detail", "")
+
+    # ---- Clean text fields ----------------------------------------------------
     detail_cleaned = clean_text_field(base.get("detail"))
 
+    # ---- Build entry ----------------------------------------------------------
     return {
         "rank": base.get("rank"),
         "track_name": track_name_clean,
         "artist_name": artist_name_clean,
-        "artist_display_name": base.get("artist_display_name", artist_name_raw),
-        "featured_artist": base.get("featured_artist_name", featured_artist_name_raw),
+        "artist_display_name": artist_display_name,
+        "featured_artist": featured_artist_name_raw,
         "featured_artist_id": spotify_data.get("featured_artist_id"),
         "track_display_name": track_display_name,
         "genre": request.genre,
         "decade": request.decade,
+
         "spotify_track_id": spotify_data.get("spotify_track_id"),
         "spotify_artist_id": (
             spotify_data.get("artist_id")
             or base.get("artist_id")
             or clean_fallback_id(artist_name_raw)
         ),
-        "mode_flag": mode_flag.value,
         "duration_ms": spotify_data.get("duration_ms"),
         "popularity": spotify_data.get("popularity"),
         "album_artwork": spotify_data.get("album_artwork"),
         "album_name": spotify_data.get("album_name"),
+
         "year_released": year_released,
         "is_explicit": False,
         "created_at": now,
+
+        "mode_flag": mode_flag.value,
+        "mode_flag_detail": mode_flag_detail,
+
         "detail": detail_cleaned,
     }

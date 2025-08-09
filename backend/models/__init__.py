@@ -6,7 +6,13 @@ from .dbmodels import (
     Track,
     TrackRanking,
     DecadeGenre,
-    ArtistGenre
+    ArtistGenre,
+    Specialty,
+    SpecialtyRanking,
+    Tracklist,
+    Top40GenreRanking,
+    DecadeGenreTrivia,
+    TrackGenre
 )
 
 __all__ = [
@@ -16,5 +22,11 @@ __all__ = [
     "Track",
     "TrackRanking",
     "DecadeGenre",
-    "ArtistGenre"
+    "ArtistGenre",
+    "Specialty",
+    "SpecialtyRanking",
+    "Tracklist",
+    "Top40GenreRanking",
+    "DecadeGenreTrivia",
+    "TrackGenre"
 ]

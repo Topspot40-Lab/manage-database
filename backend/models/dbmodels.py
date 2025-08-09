@@ -26,6 +26,7 @@ class Artist(SQLModel, table=True):
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
     not_on_spotify: bool = Field(default=False)
+    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
 
     # ✅ Relationship to Track (as main artist)
     tracks_as_main: list["Track"] = Relationship(back_populates="artist", sa_relationship_kwargs={
@@ -66,6 +67,8 @@ class Specialty(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     specialty_name: str = Field(nullable=False)
+    created_at: Optional[datetime] = Field(default=None)
+    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
 
 
 class ArtistGenre(SQLModel, table=True):
@@ -112,6 +115,7 @@ class SpecialtyRanking(SQLModel, table=True):
     intro_mp3_url: Optional[str] = Field(default=None)
     artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")
     created_at: Optional[datetime] = Field(default=None)
+    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
 
 
 class Top40GenreRanking(SQLModel, table=True):
@@ -158,7 +162,8 @@ class Tracklist(SQLModel, table=True):
     name: str = Field(nullable=False)
     curator: Optional[str] = Field(default=None)
     is_official: Optional[bool] = Field(default=False)
-    language: Optional[str] = Field(default="English")
+    language: Optional[str] = Field(default="en", max_length=2)
+
     notes: Optional[str] = Field(default=None)
     created_at: Optional[datetime] = Field(default=None)
 
@@ -184,6 +189,7 @@ class Track(SQLModel, table=True):
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
+    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
 
     # ✅ Relationships
     artist: "Artist" = Relationship(back_populates="tracks_as_main", sa_relationship_kwargs={

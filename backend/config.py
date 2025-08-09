@@ -33,7 +33,7 @@ SCHEMA_PATH = BASE_DIR / "backend" / "schemas" / "track_schema.json"
 # -----------------------------------------------------------------------------
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_URL = "https://api.x.ai/v1/chat/completions"
-DEFAULT_XAI_MODEL = "grok-4-latest"
+DEFAULT_XAI_MODEL = "grok-3-latest"
 TEMPERATURE_DEFAULT = 0.3
 
 # === Supabase Storage Buckets ===
@@ -219,34 +219,36 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.track_generator": "INFO",
     "backend.services.utils": "INFO",
     "backend.services.xai_service": "INFO",
+    "backend.services.xai_api_client": "INFO",
     "backend.services.supabase_playback": "INFO",       # ✅ Added
 
     # ─────────────────────────────
     # 🧱 Routers
     # ─────────────────────────────
     "backend.routers.generate_json": "INFO",
-    "backend.routers.insert_json": "DEBUG",
+    "backend.routers.insert_json": "INFO",
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.routers.supabase_summary": "DEBUG",
+    "backend.routers.supabase_summary": "INFO",
     "backend.routers.tts_intro": "INFO",
     "backend.routers.tts_detail": "INFO",
     "backend.routers.supabase_loader": "INFO",          # ✅ Added
+    "backend.routers.insert_specialty": "INFO",  # ✅ Added for specialty JSON insert
 
     # ─────────────────────────────
     # 🧰 Utility Modules
     # ─────────────────────────────
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
-    "backend.utils.tts_diagnostics": "DEBUG",
+    "backend.utils.tts_diagnostics": "INFO",
 
     # ─────────────────────────────
     # 🪵 Custom Loggers
     # ─────────────────────────────
     "backend.logging.track_logging": "INFO",
-    "tts_logger": "DEBUG",
-    "supabase_summary": "DEBUG",
-    "tts_diagnostics": "DEBUG",
+    "tts_logger": "INFO",
+    "supabase_summary": "INFO",
+    "tts_diagnostics": "INFO",
 
     # ─────────────────────────────
     # 🌐 Third-party Libraries
@@ -266,5 +268,19 @@ LOG_FILE_PATH = "backend/logs/topspot.log"
 
 # 🔊 Supabase Bucket for Artist MP3s
 SUPABASE_BUCKET_ARTIST_MP3 = BUCKET_ARTIST
+
+# ---------------------------------------------------------------------------
+# 🛟 XAI Fallback & Timeout Configuration
+# ---------------------------------------------------------------------------
+
+# If True, when XAI fails (quota/rate limit or network), the system will load a local test JSON instead.
+FALLBACK_TO_TEST_ON_XAI_ERROR = True   # default: True for dev/testing
+
+# Which test file number to use when falling back (must exist in TEST_JSON_DIR)
+FALLBACK_TEST_FILE_NUMBER = 1          # e.g., json_test_file_1.json
+
+# Timeout (in seconds) for XAI API requests
+XAI_TIMEOUT_SECONDS = 30
+
 
 

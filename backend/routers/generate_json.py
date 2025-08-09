@@ -1,5 +1,11 @@
 # backend/routers/generate_json.py
+from json import JSONDecodeError
+from pydantic import ValidationError
+from requests import HTTPError as RequestsHTTPError
+from requests.exceptions import Timeout, RequestException
 
+# If you have custom XAI errors (recommended):
+from backend.services.xai_errors import XAIQuotaError, XAIRateLimitError
 import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
@@ -34,6 +40,31 @@ class TrackRequest(BaseModel):
     language: str  = "english"
     num_tracks: int = 1
 
+def _rank2(rank):
+    try:
+        return f"{int(rank):02d}"
+    except Exception:
+        return "--"
+
+
+def _to_snake_track(d: dict) -> dict:
+    out = {}
+    out["track_name"] = d.get("track_name") or d.get("trackName") or d.get("traackName") or d.get("title")
+    out["artist_name"] = d.get("artist_name") or d.get("artistName") or d.get("artist")
+    out["year_released"] = d.get("year_released") or d.get("yearReleased") or d.get("release_year")
+    out["album_name"] = d.get("album_name") or d.get("albumName")
+    out["rank"] = d.get("rank")
+
+    # 👇 ensure these keys always exist
+    out["mode_flag"] = d.get("mode_flag") or d.get("modeFlag") or ""
+    out["mode_flag_detail"] = d.get("mode_flag_detail") or d.get("modeFlagDetail") or ""
+
+    # pass through anything else
+    for k, v in d.items():
+        if k not in out:
+            out[k] = v
+    return out
+
 
 # noinspection PyTypeChecker
 @router.post("/generate-json", summary="Generate JSON from XAI + Spotify")
@@ -54,6 +85,24 @@ async def generate_track_json(
         # ───────────────── STEP 1 ─────────────────
         wrapped = step01_get_tracks(request, test_file_number=test_file_number)
         track_list = wrapped["tracks"]
+
+        track_list = [_to_snake_track(t) for t in track_list]
+
+        def _scan_for_missing(field: str, items: list, step_label: str):
+            bad = []
+            for i, it in enumerate(items, start=1):
+                if field not in it or it.get(field) in (None, ""):
+                    bad.append((i, list(it.keys())))
+            if bad:
+                logger.error(
+                    f"❌ {step_label}: {len(bad)} item(s) missing '{field}'. "
+                    f"Examples: {bad[:5]}"
+                )
+            else:
+                logger.debug(f"✅ {step_label}: all items have '{field}'")
+
+        _scan_for_missing("artist_name", track_list, "STEP 1 (model output)")
+
 
         if max_step == 1:
             logger.info("🛑 Stopping after STEP 1 as requested")
@@ -96,6 +145,13 @@ async def generate_track_json(
         before = len(enriched["tracks"])
         enriched["tracks"] = [t for t in enriched["tracks"] if t.get("spotify_track_id")]
         after = len(enriched["tracks"])
+        # re-normalize in case enrich step added/renamed fields
+        enriched["tracks"] = [_to_snake_track(t) for t in enriched["tracks"]]
+
+        missing_modes = [i for i, t in enumerate(enriched["tracks"], 1) if "mode_flag" not in t]
+        blanks = sum(1 for t in enriched["tracks"] if (t.get("mode_flag") or "") == "")
+        logger.info(f"🧪 mode_flag present in all: {not missing_modes} | blanks: {blanks}/{len(enriched['tracks'])}")
+
         logger.info(f"🧹 STEP 3: Filtered out {before - after} tracks with no Spotify match")
 
         logger.info("🛑 Step 3 ----- Complete")
@@ -114,21 +170,19 @@ async def generate_track_json(
             now=now,
             is_test_mode=is_test_mode
         )
-
         # ✅ STEP 4 Summary Output
         logger.debug("📋 STEP 4 SUMMARY: Track Listing")
         tracks = final_json["track"]
         for t in tracks:
             rank = t.get("rank")
-            name = t.get("trackName") or t.get("track_name")
-            artist = t.get("artistName") or t.get("artist_name")
+            name = t.get("track_name", "")
+            artist = t.get("artist_name", "")
             track_id = t.get("spotify_track_id")
-            if track_id:
-                pass
-                # logger.debug(f"   #{rank:02d} — {name} by {artist} 🎧 {track_id}")
-            else:
-                logger.warning(f"   #{rank:02d} — {name} by {artist} ❌ MISSING Spotify ID")
 
+            if track_id:
+                logger.debug(f"   #{_rank2(rank)} — {name} by {artist} 🎧 {track_id}")
+            else:
+                logger.warning(f"   #{_rank2(rank)} — {name} by {artist} ❌ MISSING Spotify ID")
 
         logger.debug("🧾 STEP 4.E: Final JSON preview (pretty-printed)")
         logger.debug(json.dumps(final_json, indent=2, ensure_ascii=False))
@@ -168,12 +222,18 @@ async def generate_track_json(
 
         # ➕ STEP 7: Filling in with spare tracks to ensure 40 total
         logger.debug("➕ STEP 7: Filling in with spare tracks to ensure 40 total")
+
         while len(tracks) < 40 and spare_tracks:
             spare = spare_tracks.pop(0)
-            missing_keys = [key for key in ("trackName", "artistName") if key not in spare]
+
+            # normalize spare just like STEP 1/3
+            spare = _to_snake_track(spare)
+
+            missing_keys = [key for key in ("track_name", "artist_name") if key not in spare or not spare.get(key)]
             if missing_keys:
                 logger.warning(f"⚠️ Skipping spare track due to missing keys: {missing_keys} — {spare}")
                 continue
+
             try:
                 rebuilt = build_track_entry(
                     spare,
@@ -184,8 +244,8 @@ async def generate_track_json(
                 )
                 rebuilt["rank"] = len(tracks) + 1
                 tracks.append(rebuilt)
-                logger.info(f"✅ Spare track added: {rebuilt['artist_display_name']}")
-
+                logger.info(
+                    f"✅ Spare track added: {rebuilt.get('artist_name', '<unknown>')} — {rebuilt.get('track_name', '')}")
             except Exception as e:
                 logger.warning(f"❌ Failed to rebuild spare track: {e}")
                 continue
@@ -332,16 +392,43 @@ async def generate_track_json(
         #     json.dump(final_json, f, indent=2, ensure_ascii=False)
         # logger.debug(f"✅ JSON saved to {filepath}")
 
-        logger.info("🛑 Step 11 ----- JSON Creation Complete")
+        # ... existing code above ...
 
+        logger.info("🛑 Step 11 ----- JSON Creation Complete")
         return {
             "message": "JSON created successfully",
             "file": str(filepath),
             "version": "v3-official",
-            "track_count": len(tracks)
+            "track_count": len(tracks),
         }
 
-
-    except Exception as e:
-        logger.exception("❌ Unexpected error in generate_track_json")
-        raise HTTPException(status_code=500, detail=f"Internal error: {e}")
+    # ──────────────────────────────────────────────────────────────────────────────
+    # Specific, actionable exception handling
+    # ──────────────────────────────────────────────────────────────────────────────
+    except HTTPException:
+        # Re-raise FastAPI HTTP errors unchanged so status codes propagate.
+        raise
+    except XAIQuotaError as e:
+        logger.warning("💳 XAI quota exhausted: %s", e)
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "xai_quota_exhausted", "message": str(e)},
+        )
+    except XAIRateLimitError as e:
+        logger.warning("⏳ XAI rate limited: %s", e)
+        raise HTTPException(
+            status_code=429,
+            detail={"reason": "xai_rate_limited", "message": str(e)},
+        )
+    except Timeout as e:
+        logger.warning("🌐 Upstream timeout: %s", e)
+        raise HTTPException(status_code=504, detail="Upstream timeout")
+    except (RequestsHTTPError, RequestException) as e:
+        logger.warning("🌐 Upstream HTTP error: %s", e)
+        raise HTTPException(status_code=502, detail="Upstream service error")
+    except (ValidationError, JSONDecodeError, KeyError, TypeError, ValueError) as e:
+        logger.exception("🧩 Data/parse/validation error in generate_json")
+        raise HTTPException(status_code=400, detail=f"Bad input/state: {e}")
+    except Exception as e:  # noqa: TRY002  (keep a final safety net)
+        logger.exception("❌ Unhandled error in generate_json")
+        raise HTTPException(status_code=500, detail="Internal server error")
