@@ -3,7 +3,7 @@ from json import JSONDecodeError
 from pydantic import ValidationError
 from requests import HTTPError as RequestsHTTPError
 from requests.exceptions import Timeout, RequestException
-
+from backend.utils.naming import slug_underscore, normalize_language_code
 # If you have custom XAI errors (recommended):
 from backend.services.xai_errors import XAIQuotaError, XAIRateLimitError
 import logging
@@ -14,7 +14,7 @@ from backend.services.spotify.missing_log import (
     handle_missing_track,
     reassign_ranks,
 )
-
+from pathlib import Path
 from backend.builders.track_builder import build_track_entry
 from backend.builders.json_builder import build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
@@ -250,7 +250,7 @@ async def generate_track_json(
                 logger.warning(f"❌ Failed to rebuild spare track: {e}")
                 continue
 
-            logger.info("🛑 Step 7 ----- Complete")
+        logger.info("🛑 Step 7 ----- Complete")
 
         # 🔢 STEP 8: Reassigning ranks and finalizing track table
         logger.debug("🔢 STEP 8: Reassigning ranks and finalizing track table")
@@ -332,44 +332,38 @@ async def generate_track_json(
         # logger.info("🛑 Step 9 ----- Complete")
 
         # 💾 STEP 10: Saving final JSON to file
-        filepath = get_json_path(request.decade, request.genre, request.language[:2])
-        logger.debug(f"💾 STEP 10: Saving final JSON to file: {filepath}")
+        lang_code = normalize_language_code(request.language)  # "es", not "sp"
+        filepath = get_json_path(request.decade, request.genre, lang_code)
+        logger.debug(f"💾 STEP 10: Saving final JSON to dir: {filepath}")
 
-        decade = request.decade.lower()
-        genre = request.genre.lower()
 
-        # Use timestamped filename if running in test mode
+        decade_slug = slug_underscore(request.decade)
+        genre_slug = slug_underscore(request.genre)
+
+        # keep directory name as it exists on disk (e.g., "before 1990s")
+        decade_dir = request.decade
+
         if is_test_mode:
-            filename = f"{decade}_{genre}_en_test_{now_dt.strftime('%Y%m%d_%H%M%S')}.json"
+            filename = f"{decade_slug}_{genre_slug}_{lang_code}_test_{now_dt.strftime('%Y%m%d_%H%M%S')}.json"
         else:
-            filename = f"{decade}_{genre}_en.json"
+            filename = f"{decade_slug}_{genre_slug}_{lang_code}.json"
 
-        logger.info(f"🧮 STEP 10: Saving {len(track_list)} track(s) to {filename}")
-        # assert len(track_list) <= 5, "🚨 Something's off — too many tracks being saved!"
+        # If get_json_path returns a full file path, take its parent; if it returns a dir, Path() handles fine.
+        base_dir = Path(filepath)
+        # Make sure base_dir is a directory path. If get_json_path returns a file, use .parent:
+        if base_dir.suffix:  # has an extension -> it's a file
+            base_dir = base_dir.parent
 
+        final_path = base_dir / filename
+        final_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 🕵️ Log final JSON tables before saving
-        track_list = final_json.get("track", [])
-        ranking_list = final_json.get("track_ranking", [])
-        artist_list = final_json.get("artist", [])
+        logger.debug(f"💾 STEP 10: Target directory: {final_path.parent}")
 
-        logger.debug(
-            f"📂 STEP 10: FINAL JSON CONTENT PREVIEW:\n"
-            f"🧾 track ({len(track_list)} entries):\n" +
-            "\n".join([f"   - #{t.get('rank')}: {t.get('track_name')} by {t.get('artist_name')}" for t in
-                       track_list]) + "\n" +
-            f"🧾 track_ranking ({len(ranking_list)} entries):\n" +
-            "\n".join([f"   - #{r.get('rank')}: {r.get('track_name')} by {r.get('artist_name')}" for r in
-                       ranking_list]) + "\n" +
-            f"🧾 artist ({len(artist_list)} entries):\n" +
-            "\n".join([f"   - {a.get('artist_name')} ({a.get('spotify_artist_id')})" for a in artist_list])
-        )
-
-        logger.info(f"🧾 FINAL JSON: {len(track_list)} track(s)")
+        logger.info(f"🧮 STEP 10: Saving {len(tracks)} track(s) to {final_path.name}")
 
         save_full_json_file(
             payload=final_json,
-            decade=decade,
+            decade=decade_dir,
             filename=filename
         )
 
@@ -387,17 +381,11 @@ async def generate_track_json(
             errors=[]
         )
 
-        # Save the full final_json to the file
-        # with open(filepath, "w", encoding="utf-8") as f:
-        #     json.dump(final_json, f, indent=2, ensure_ascii=False)
-        # logger.debug(f"✅ JSON saved to {filepath}")
-
-        # ... existing code above ...
 
         logger.info("🛑 Step 11 ----- JSON Creation Complete")
         return {
             "message": "JSON created successfully",
-            "file": str(filepath),
+            "file": str(final_path),  # <— use final_path, not filepath
             "version": "v3-official",
             "track_count": len(tracks),
         }

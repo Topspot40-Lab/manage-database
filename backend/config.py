@@ -233,7 +233,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.tts_intro": "INFO",
     "backend.routers.tts_detail": "INFO",
     "backend.routers.supabase_loader": "INFO",          # ✅ Added
-    "backend.routers.insert_specialty": "INFO",  # ✅ Added for specialty JSON insert
+    "backend.routers.insert_specialty": "DEBUG",  # ✅ Added for specialty JSON insert
 
     # ─────────────────────────────
     # 🧰 Utility Modules
