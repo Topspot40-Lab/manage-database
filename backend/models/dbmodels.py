@@ -67,7 +67,6 @@ class Specialty(SQLModel, table=True):
 
     id: int = Field(default=None, primary_key=True)
     specialty_name: str = Field(nullable=False)
-    created_at: Optional[datetime] = Field(default=None)
     language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
 
 
@@ -108,15 +107,16 @@ class SpecialtyRanking(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     track_id: Optional[int] = Field(default=None, foreign_key="track.id")
     specialty_id: Optional[int] = Field(default=None, foreign_key="specialty.id")
-    tracklist_id: int = Field(default=1, foreign_key="tracklist.id")
+
+    # 👇 match the actual table name in Postgres
+    tracklist_id: int = Field(default=1, foreign_key="track_list.id")
+
     ranking: Optional[int] = Field(default=None)
     intro: Optional[str] = Field(default=None)
-    detail: Optional[str] = Field(default=None)
-    intro_mp3_url: Optional[str] = Field(default=None)
-    artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")
-    created_at: Optional[datetime] = Field(default=None)
-    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
 
+    created_at: Optional[datetime] = Field(default=None)
+    # If you want NOT NULL with default, drop Optional:
+    language: str = Field(default="en", max_length=2)
 
 class Top40GenreRanking(SQLModel, table=True):
     __tablename__ = "top40_genre_ranking"

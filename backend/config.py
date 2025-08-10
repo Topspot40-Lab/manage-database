@@ -10,8 +10,8 @@ load_dotenv()
 
 # config.py
 
-APP_VERSION = "1.0.7"
-LAST_UPDATED = "2025-07-18: 11:00 am"
+APP_VERSION = "1.0.8"
+LAST_UPDATED = "2025-08-10: 11:00 am"
 
 # ---------------------------------------------------------------------
 # 🎧 TRACK LIMIT CONFIG

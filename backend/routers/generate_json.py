@@ -14,6 +14,7 @@ from backend.services.spotify.missing_log import (
     handle_missing_track,
     reassign_ranks,
 )
+import re
 from pathlib import Path
 from backend.builders.track_builder import build_track_entry
 from backend.builders.json_builder import build_final_json
@@ -45,6 +46,41 @@ def _rank2(rank):
         return f"{int(rank):02d}"
     except Exception:
         return "--"
+
+
+
+# connectors → how to treat the collab
+# FEATURED: leave first as main, put the rest into featured_artist
+# DUET: treat as a collab (still keep the first as main for search)
+_CONNECTORS = [
+    (r"\s+feat\.\s+", "FEATURED"),
+    (r"\s+ft\.\s+", "FEATURED"),
+    (r"\s+featuring\s+", "FEATURED"),
+    (r"\s+with\s+", "DUET"),
+    (r"\s+con\s+", "DUET"),       # es
+    (r"\s+y\s+", "DUET"),         # es
+    (r"\s+&\s+", "DUET"),
+]
+
+def _normalize_artist_collab(t: dict) -> dict:
+    name = (t.get("artist_name") or "").strip()
+    if not name:
+        return t
+    for pattern, mode in _CONNECTORS:
+        parts = re.split(pattern, name, flags=re.IGNORECASE)
+        if len(parts) >= 2:
+            main = parts[0].strip()
+            rest = " & ".join(p.strip() for p in parts[1:] if p.strip())
+            t["artist_name"] = main
+            # Only set mode if caller didn’t supply one
+            if not (t.get("mode_flag") or "").strip():
+                t["mode_flag"] = mode
+            # capture featured/collab partner(s) for later
+            # (your insert code already guards and only uses these if mode is DUET/FEATURED)
+            t["featured_artist"] = rest
+            return t
+    return t
+
 
 
 def _to_snake_track(d: dict) -> dict:
@@ -87,6 +123,7 @@ async def generate_track_json(
         track_list = wrapped["tracks"]
 
         track_list = [_to_snake_track(t) for t in track_list]
+        track_list = [_normalize_artist_collab(t) for t in track_list]  # 👈 add this line
 
         def _scan_for_missing(field: str, items: list, step_label: str):
             bad = []
@@ -192,16 +229,6 @@ async def generate_track_json(
         if max_step == 4:
             logger.info("🛑 Stopping after STEP 4 as requested")
             return {"message": "Stopped after STEP 4", "preview": final_json}
-
-        # ───────────── STEP 5 - STEP 11 (unchanged) ─────────────
-        # Make sure all the following code stays at **this** indent.
-        # … STEP 5 replacement logic …
-        # … STEP 6 remove invalid …
-        # … STEP 7 add spares …
-        # … STEP 8 reassign ranks …
-        # … STEP 9 rebuild artist table …
-        # … STEP 10 save JSON …
-        # … STEP 11 summary …
 
         # 🧹 STEP 5: Handling tracks with missing Spotify IDs
         logger.debug("🧹 STEP 5: Handling tracks with missing Spotify IDs")
@@ -311,62 +338,70 @@ async def generate_track_json(
 
         logger.info("🛑 Step 9 ----- Complete")
 
-        # 👨‍🎤 STEP 9: Rebuilding artist table from track data
-        # logger.debug("👨‍🎤 STEP 9: Rebuilding artist table from track data")
-        # artist_lookup = {}
-        # for t in tracks:
-        #     aid = t.get("spotify_artist_id")
-        #     if not aid:
-        #         continue
-        #     if aid not in artist_lookup:
-        #         artist_lookup[aid] = {
-        #             "artist_name": t.get("artist_name"),
-        #             "spotify_artist_id": aid,
-        #             "artist_artwork": t.get("artist_artwork"),
-        #             "artist_description": None,
-        #             "artist_mp3_url": None,
-        #             "not_on_spotify": t.get("not_on_spotify", False)
-        #         }
-        # final_json[["artist"] = list(artist_lookup.values())
-        #
-        # logger.info("🛑 Step 9 ----- Complete")
-
         # 💾 STEP 10: Saving final JSON to file
+
+        # 10.0 Uppercase any existing mode flags (defensive)
+        for t in (final_json.get("track") or []):
+            mf = t.get("mode_flag")
+            if mf is not None:
+                t["mode_flag"] = str(mf).upper().strip()
+
         lang_code = normalize_language_code(request.language)  # "es", not "sp"
         filepath = get_json_path(request.decade, request.genre, lang_code)
         logger.debug(f"💾 STEP 10: Saving final JSON to dir: {filepath}")
 
-
         decade_slug = slug_underscore(request.decade)
         genre_slug = slug_underscore(request.genre)
-
         # keep directory name as it exists on disk (e.g., "before 1990s")
         decade_dir = request.decade
 
-        if is_test_mode:
-            filename = f"{decade_slug}_{genre_slug}_{lang_code}_test_{now_dt.strftime('%Y%m%d_%H%M%S')}.json"
-        else:
-            filename = f"{decade_slug}_{genre_slug}_{lang_code}.json"
+        filename = (
+            f"{decade_slug}_{genre_slug}_{lang_code}_test_{now_dt.strftime('%Y%m%d_%H%M%S')}.json"
+            if is_test_mode else
+            f"{decade_slug}_{genre_slug}_{lang_code}.json"
+        )
 
-        # If get_json_path returns a full file path, take its parent; if it returns a dir, Path() handles fine.
         base_dir = Path(filepath)
-        # Make sure base_dir is a directory path. If get_json_path returns a file, use .parent:
-        if base_dir.suffix:  # has an extension -> it's a file
+        if base_dir.suffix:  # if get_json_path returned a file
             base_dir = base_dir.parent
 
         final_path = base_dir / filename
         final_path.parent.mkdir(parents=True, exist_ok=True)
 
         logger.debug(f"💾 STEP 10: Target directory: {final_path.parent}")
-
         logger.info(f"🧮 STEP 10: Saving {len(tracks)} track(s) to {final_path.name}")
 
-        save_full_json_file(
-            payload=final_json,
-            decade=decade_dir,
-            filename=filename
-        )
+        # ---- STEP 10.A: normalize language + harmonize mode/featured before save ----
+        final_json["language"] = lang_code  # e.g., "es"
 
+        # Be defensive: only set on dict items
+        for tl in (final_json.get("tracklist") or []):
+            if isinstance(tl, dict):
+                tl["language"] = lang_code
+
+        def _harmonize_mode_and_feature(t: dict) -> None:
+            feat = (t.get("featured_artist") or "")
+            if not isinstance(feat, str):
+                feat = str(feat)
+            feat = feat.strip()
+
+            flag = (t.get("mode_flag") or "").strip().upper()
+
+            # If there is a featured artist but flag says SOLO/blank, mark as DUET
+            if feat and flag in ("", "SOLO"):
+                t["mode_flag"] = "DUET"
+            # If no featured artist but flag says DUET/FEATURED, reset to SOLO
+            if not feat and flag in ("DUET", "FEATURED"):
+                t["mode_flag"] = "SOLO"
+
+            # Keep display name in sync
+            base = t.get("track_name") or ""
+            t["track_display_name"] = f"{base} (feat. {feat})" if feat else base
+
+        for t in (final_json.get("track") or []):
+            _harmonize_mode_and_feature(t)
+
+        save_full_json_file(payload=final_json, decade=decade_dir, filename=filename)
         logger.info("🛑 Step 10 ----- Complete")
 
         # 📊 STEP 11: Logging summary report

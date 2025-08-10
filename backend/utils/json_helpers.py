@@ -189,22 +189,30 @@ def get_mode_flag(main: str, feat: Optional[str], keyword: Optional[str]) -> str
 # 📁 JSON File Loaders / Savers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_full_json_file(decade: Optional[str] = None, filename: Optional[str] = None, *, file_path: Optional[Path] = None) -> Dict:
+def load_full_json_file(
+    decade: Optional[str] = None,
+    filename: Optional[str] = None,
+    *,
+    file_path: Optional[Path] = None
+) -> Dict:
     """
     Load a full TopSpot JSON file from either:
       - `file_path`, or
       - `decade` + `filename` from the known genredecade directory
+    Spaces in folder/file names are replaced with underscores automatically.
     """
 
     if file_path:
         path = file_path
         context = f"[Direct path: {file_path.name}]"
     elif decade and filename:
-        path = JSON_BASE / decade / filename
-        context = f"[From decade: {decade}, file: {filename}]"
+        # Normalize spaces to underscores for consistency
+        safe_decade = decade.replace(" ", "_")
+        safe_filename = filename.replace(" ", "_")
+        path = JSON_BASE / safe_decade / safe_filename
+        context = f"[From decade: {safe_decade}, file: {safe_filename}]"
     else:
         raise ValueError("Must provide either file_path or (decade and filename)")
-
 
     logger_step1b.info(f"📁 Loading JSON {context}")
     logger_step1b.debug(f"🔍 Full path: {path.resolve()}")
@@ -222,7 +230,6 @@ def load_full_json_file(decade: Optional[str] = None, filename: Optional[str] = 
     logger_step1b.info(f"✅ Loaded JSON: {len(top_keys)} top-level keys, {track_count} track(s)")
 
     tracks = data.get("track", [])
-
     if tracks:
         logger_step1b.debug(f"🧪 Sample intro (rank {tracks[0].get('rank')}): {tracks[0].get('intro')}")
 
