@@ -1,210 +1,420 @@
 # backend/routers/insert_specialty_json.py
-from __future__ import annotations
 import logging
-from pathlib import Path
-from typing import Optional
+from typing import Dict, Tuple, Optional
 
-from fastapi import APIRouter, Depends, Path as FPath, Query, HTTPException
+import sqlalchemy
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from sqlalchemy import and_
+from sqlalchemy.exc import DataError, IntegrityError, OperationalError, SQLAlchemyError
 from sqlmodel import Session, select
 
 from backend.database import get_db
-from backend.models import Track, Artist, Specialty, SpecialtyRanking
+from backend.models import (
+    Artist,
+    Track,
+    Specialty,
+    SpecialtyRanking,
+    Genre,
+)
+from backend.services.supabase_storage import delete_intro_mp3_files_for_combo
 from backend.utils.json_helpers import load_full_json_file
-from backend.utils.naming import slug_underscore, normalize_language_code
-from shared.filepaths import get_json_path  # same helper you use elsewhere
+from backend.utils.mode_utils import ModeFlag, parse_mode_flag
+from backend.utils.naming import normalize_language_code
 
-router = APIRouter(tags=["Insert: Specialty"])
-logger = logging.getLogger("insert_specialty")
+# helpers (now in utils/)
+from backend.utils.specialty_utils import (
+    resolve_labels,
+    parse_featured_keys,
+    should_update,
+    ensure_artist_genre_link,
+)
 
-@router.post("/specialty/{decade}/{genre}")
-def insert_json_to_specialty_db(
-    decade: str = FPath(..., description="Decade folder name, e.g. 'before 1990s' or '1950s'"),
-    genre: str = FPath(..., description="Genre folder name shown on disk"),
-    language: str = Query("english", description="Language name or code (e.g. english/español/es)"),
-    filename: Optional[str] = Query(
-        None,
-        description="Optional explicit JSON filename. If omitted, it's constructed from decade/genre/language."
-    ),
-    preserve_intro: bool = Query(True, description="Keep existing intro text if present"),
-    preserve_detail: bool = Query(True, description="Keep existing detail text if present"),
-    preserve_artist_description: bool = Query(True, description="Keep existing artist descriptions if present"),
-    force: bool = Query(False, description="If true, overwrite preserved fields"),
+logger = logging.getLogger(__name__)
+specialty_router = APIRouter(prefix="", tags=["specialty-insert"])
+# export as `router` so main.py can `import router as specialty_insert_router`
+router = specialty_router
+__all__ = ["router", "specialty_router"]
+
+
+@specialty_router.post("/insert-specialty-json/{category}/{specialty}")
+async def insert_specialty_json(
+    category: str = Path(..., description="Category/Decade-like label, e.g. 'before 1990s'"),
+    specialty: str = Path(..., description="Specialty name, e.g. 'latin favorites'"),
+    language: str = Query("english", description="Language (name or code) like 'english'/'espanol'/'es'"),
+    preserve_intro: bool = Query(True),
+    preserve_detail: bool = Query(True),
+    preserve_artist_description: bool = Query(True),
+    force: bool = Query(False),
+    filename: Optional[str] = Query(None, description="Optional override of the JSON filename"),
+    # Transaction controls
+    atomic: bool = Query(True, description="Run in a single DB transaction (recommended)."),
+    dry_run: bool = Query(False, description="Do everything except the final commit; rolls back at the end."),
     db: Session = Depends(get_db),
 ):
     """
-    Insert a JSON chart into the Specialty tables, using the same path/filename
-    scheme as the main insert endpoint.
+    Insert a Specialty + Artists + Tracks + SpecialtyRanking from a JSON file.
+
+    Behavior mirrors your /insert-json-to-db endpoint:
+      - preserves existing text by default (intro/detail/artist_description)
+      - force=True wipes existing rankings (and deletes intro MP3s) before reinsert
+      - supports DUET/FEATURED via mode_flag + featured artist creation
+      - dry_run=True: validates and rolls back; skips MP3 deletions
+      - atomic=True: single transaction with flush() savepoints
     """
-    # ---- Resolve language & filename -----------------------------------------
-    lang_code = normalize_language_code(language)  # e.g., "es" not "sp"
-    decade_slug = slug_underscore(decade)         # e.g., "before_1990s"
-    genre_slug = slug_underscore(genre)           # e.g., "latin_favorites"
+    logger.info(f"Connected to DB; schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
 
-    if filename:
-        json_path = Path(filename)
-    else:
-        # Directory where JSONs live (your helper may return a dir or a file path)
-        base = Path(get_json_path(decade, genre, lang_code))
-        if base.suffix:  # if helper returned a file path, use its parent dir
-            base = base.parent
-        constructed = f"{decade_slug}_{genre_slug}_{lang_code}.json"
-        json_path = base / constructed
-
-    if not json_path.exists():
-        raise HTTPException(status_code=404, detail=f"JSON file not found: {json_path}")
-
-    logger.info(f"📁 Inserting Specialty JSON from: {json_path}")
-
-    # ---- Load JSON & normalize shape -----------------------------------------
-    data = load_full_json_file(str(json_path))
-
-    # Support either "track" or "tracks" key (your generator uses "track")
-    tracks = data.get("track") or data.get("tracks") or []
-    if not tracks:
-        raise HTTPException(status_code=400, detail="No tracks found in JSON payload")
-
-    # Derive specialty name/description from JSON (fallbacks to path params)
-    specialty_name = data.get("genre") or genre
-    decade_label = data.get("decade") or decade
-    description = f"{specialty_name} - {decade_label}"
-
-    # Language in file may be a verbose name; normalize it
-    file_lang = normalize_language_code(data.get("language", lang_code))
-    # Use the query param language as the source of truth if provided
-    lang_final = file_lang or lang_code
-
-    # ---- Ensure Specialty exists ---------------------------------------------
-    spec_stmt = select(Specialty).where(
-        Specialty.specialty_name == specialty_name,
-        Specialty.language == lang_final,
-    )
-    specialty = db.exec(spec_stmt).first()
-    if not specialty:
-        specialty = Specialty(
-            specialty_name=specialty_name,
-            description=description,
-            language=lang_final,
-        )
-        db.add(specialty)
-        db.commit()
-        db.refresh(specialty)
-        logger.info(f"✅ Created specialty: {specialty_name} ({lang_final})")
-
-    inserted = 0
-    updated = 0
-
-    for t in tracks:
-        # Your generator uses "spotify_track_id". Keep compatibility with older "track_id".
-        spotify_id = t.get("spotify_track_id") or t.get("track_id")
-        if not spotify_id:
-            logger.warning("⚠️ Skipping track with no spotify_track_id/track_id")
-            continue
-
-        artist_name = t.get("artist_name")
-        track_name = t.get("track_name")
-        if not artist_name or not track_name:
-            logger.warning("⚠️ Skipping track missing artist_name/track_name")
-            continue
-
-        # ---- Ensure Artist ----------------------------------------------------
-        artist_stmt = select(Artist).where(
-            Artist.artist_name == artist_name,
-            Artist.language == lang_final
-        )
-        artist = db.exec(artist_stmt).first()
-        if not artist:
-            artist_desc = t.get("artist_description", "")
-            artist = Artist(
-                artist_name=artist_name,
-                artist_description=artist_desc,
-                language=lang_final,
-            )
-            db.add(artist)
-            db.commit()
-            db.refresh(artist)
-            logger.info(f"➕ Added artist: {artist_name} ({lang_final})")
+    # Helper to commit-or-flush depending on atomic
+    def _savepoint():
+        if atomic:
+            db.flush()
         else:
-            if not preserve_artist_description or force:
-                # Update/overwrite description if provided
-                new_desc = t.get("artist_description")
-                if new_desc:
-                    artist.artist_description = new_desc
-                    db.add(artist)
-                    db.commit()
-
-        # ---- Ensure Track -----------------------------------------------------
-        track_stmt = select(Track).where(Track.spotify_track_id == spotify_id)
-        db_track = db.exec(track_stmt).first()
-        if not db_track:
-            db_track = Track(
-                track_name=track_name,
-                spotify_track_id=spotify_id,
-                artist_id=artist.id,
-                album_name=t.get("album_name", ""),
-                duration_ms=t.get("duration_ms"),
-                detail=t.get("detail", ""),
-                language=lang_final,
-            )
-            db.add(db_track)
             db.commit()
-            db.refresh(db_track)
-            logger.info(f"🎵 Added track: {track_name} ({lang_final})")
-        else:
-            # Optionally update track detail if not preserving
-            if (not preserve_detail or force) and t.get("detail"):
-                db_track.detail = t["detail"]
-                db.add(db_track)
-                db.commit()
 
-        # ---- Specialty Ranking (upsert-ish) ----------------------------------
-        rank_num = t.get("rank")
-        intro = t.get("intro", "")
-        detail = t.get("detail", "")
+    # ---------- Resolve language + filename ----------
+    lang_code = normalize_language_code(language)
+    json_filename = filename or f"{category}_{specialty}_{lang_code}.json"
 
-        # Is there already a ranking row for this specialty+track?
-        sr_stmt = select(SpecialtyRanking).where(
-            SpecialtyRanking.specialty_id == specialty.id,
-            SpecialtyRanking.track_id == spotify_id,  # NOTE: if your FK expects Track.id, adjust here
-            SpecialtyRanking.language == lang_final,
+    # ---------- Load JSON ----------
+    try:
+        data = load_full_json_file(category, json_filename)
+        logger.info(f"Loaded JSON file: {json_filename}")
+        # Normalize artist to list if a dict slipped in
+        if isinstance(data.get("artist"), dict):
+            logger.warning("⚠️ Patching artist field from dict to list")
+            data["artist"] = [data["artist"]]
+    except FileNotFoundError:
+        logger.error("JSON file not found")
+        raise HTTPException(status_code=404, detail="JSON file not found")
+    except Exception as e:
+        logger.error(f"Error reading JSON: {e}")
+        raise HTTPException(status_code=500, detail=f"Read error: {e}")
+
+    # ---------- Core labels (centralized) ----------
+    json_genre, json_category = resolve_labels(data, category, specialty)
+
+    # Optional: fetch Genre row once for ArtistGenre linking
+    genre_row = db.exec(select(Genre).where(Genre.genre_name == json_genre)).first()
+
+    tx_ctx = None
+    tx_open = False
+    try:
+        # If atomic, start an explicit transaction block
+        tx_ctx = db.begin() if atomic else None
+        if tx_ctx:
+            tx_ctx.__enter__()
+            tx_open = True
+
+        # ---------- Ensure Specialty ----------
+        spec_stmt = select(Specialty).where(
+            Specialty.specialty_name == json_genre,
+            Specialty.language == lang_code,
         )
-        sr = db.exec(sr_stmt).first()
+        specialty_obj = db.exec(spec_stmt).first()
+        if not specialty_obj:
+            specialty_obj = Specialty(
+                specialty_name=json_genre,
+                description=f"{json_genre} - {json_category}",
+                language=lang_code,
+            )
+            db.add(specialty_obj)
+            _savepoint()
+            db.refresh(specialty_obj)
+            logger.info(f"➕ Created Specialty: {json_genre} ({lang_code})")
 
-        if sr:
-            # Respect preserve flags unless forcing
-            changed = False
-            if rank_num is not None and sr.ranking != rank_num:
-                sr.ranking = rank_num
-                changed = True
-            if (not preserve_intro or force) and intro:
-                sr.intro = intro
-                changed = True
-            if (not preserve_detail or force) and detail:
-                sr.detail = detail
-                changed = True
-            if changed:
-                db.add(sr)
+        # ---------- Safety: Prevent duplicate population unless force ----------
+        existing_sr = db.exec(
+            select(SpecialtyRanking).where(
+                SpecialtyRanking.specialty_id == specialty_obj.id,
+                SpecialtyRanking.language == lang_code,
+            )
+        ).first()
+
+        if existing_sr:
+            if not force:
+                logger.warning(f"🚨 ABORT: Specialty already populated: {json_category} / {json_genre} / {lang_code}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Specialty '{json_category}/{json_genre}' (lang={lang_code}) already has rankings. "
+                        f"Use force=true to overwrite and reset intro MP3s."
+                    ),
+                )
+            else:
+                if dry_run:
+                    logger.warning(
+                        f"⚠️ Force requested, but dry_run=True — would delete MP3s for {json_category}/{json_genre} (skipped)."
+                    )
+                else:
+                    logger.warning(
+                        f"⚠️ Force mode — deleting existing intro MP3s for {json_category}/{json_genre}"
+                    )
+                    await delete_intro_mp3_files_for_combo(json_category, json_genre)
+                    logger.info(f"✅ Deleted leftover intro MP3s for {json_category}/{json_genre}")
+
+                # Wipe prior rankings for this specialty+language
+                prior = db.exec(
+                    select(SpecialtyRanking).where(
+                        SpecialtyRanking.specialty_id == specialty_obj.id,
+                        SpecialtyRanking.language == lang_code,
+                    )
+                ).all()
+                for row in prior:
+                    db.delete(row)
+                _savepoint()
+                logger.info("🧹 Cleared old SpecialtyRanking rows for this specialty/language.")
+
+        # ---------- Build Artist map from JSON 'artist' ----------
+        artist_map: Dict[str, int] = {}
+        for a in data.get("artist", []):
+            sid = a.get("spotify_artist_id")
+            name = a["artist_name"].strip()
+
+            stmt = select(Artist).where(Artist.spotify_artist_id == sid) if sid else select(Artist).where(
+                Artist.artist_name == name
+            )
+            existing_artist = db.exec(stmt).first()
+
+            if existing_artist:
+                artist_id = existing_artist.id
+                desc = a.get("artist_description")
+                if should_update(existing_artist.artist_description, preserve_artist_description):
+                    existing_artist.artist_description = desc
+                    logger.info(f"📝 Updated artist_description for: {name}")
+            else:
+                artist = Artist(
+                    artist_name=name,
+                    spotify_artist_id=sid,
+                    artist_artwork=a.get("artist_artwork"),
+                    artist_description=a.get("artist_description"),
+                    not_on_spotify=a.get("not_on_spotify", False),
+                )
+                db.add(artist)
+                _savepoint()
+                db.refresh(artist)
+                artist_id = artist.id
+                logger.info(f"➕ Added artist: {name}")
+
+            artist_map[sid or name] = artist_id
+            ensure_artist_genre_link(db, artist_id, genre_row)
+
+        _savepoint()
+
+        # ---------- PRE-PASS: ensure featured artists exist (create if missing) ----------
+        for t in data.get("track", []):
+            parsed_flag = parse_mode_flag(t.get("mode_flag"))
+            if parsed_flag not in (ModeFlag.DUET, ModeFlag.FEATURED):
+                continue
+
+            feat_sid, feat_name = parse_featured_keys(t)
+            key = feat_sid or feat_name
+            if not key or key in artist_map:
+                continue
+
+            fa = None
+            if feat_sid:
+                fa = db.exec(select(Artist).where(Artist.spotify_artist_id == feat_sid)).first()
+            if not fa and feat_name:
+                fa = db.exec(select(Artist).where(Artist.artist_name == feat_name)).first()
+
+            if not fa and feat_name:
+                fa = Artist(artist_name=feat_name, spotify_artist_id=feat_sid)
+                db.add(fa)
+                _savepoint()
+                db.refresh(fa)
+                logger.info(f"➕ Added featured artist: {feat_name}")
+
+            if fa:
+                artist_map[key] = fa.id
+                ensure_artist_genre_link(db, fa.id, genre_row)
+
+        _savepoint()
+
+        # ---------- Upsert Tracks ----------
+        track_map: Dict[Tuple[str, int], int] = {}
+        for t in data.get("track", []):
+            sid = t.get("spotify_track_id")
+            artist_sid = t.get("spotify_artist_id")
+            artist_id = artist_map.get(artist_sid or t["artist_name"].strip())
+
+            parsed_flag = parse_mode_flag(t.get("mode_flag"))
+
+            with db.no_autoflush:
+                if sid:
+                    track = db.exec(select(Track).where(Track.spotify_track_id == sid)).first()
+                else:
+                    track = db.exec(
+                        select(Track).where(and_(Track.track_name == t["track_name"], Track.artist_id == artist_id))
+                    ).first()
+
+            feat_sid, feat_name = parse_featured_keys(t)
+            featured_artist_id = None
+            if parsed_flag in (ModeFlag.DUET, ModeFlag.FEATURED):
+                featured_artist_id = artist_map.get(feat_sid or feat_name)
+
+            if track:
+                logger.info(f"🔁 Updating track: {t['track_name']}")
+                track.track_name = t["track_name"]
+                track.artist_display_name = t.get("artist_display_name")
+                track.artist_id = artist_id
+                track.featured_artist_id = featured_artist_id
+                track.duration_ms = t.get("duration_ms")
+                track.popularity = t.get("popularity")
+                track.album_artwork = t.get("album_artwork")
+                track.year_released = t.get("year_released")
+                track.is_explicit = t.get("is_explicit")
+                track.created_at = t.get("created_at")
+                track.album_name = t.get("album_name")
+                track.mode_flag = parsed_flag.value if parsed_flag else None
+
+                if hasattr(track, "mode_flag_detail"):
+                    setattr(track, "mode_flag_detail", t.get("mode_flag_detail"))
+
+                if should_update(track.detail, preserve_detail):
+                    track.detail = t.get("detail")
+                    logger.info(f"📝 Updated detail for: {t['track_name']}")
+            else:
+                logger.info(f"➕ Creating new track: {t['track_name']}")
+                track_kwargs = dict(
+                    track_name=t["track_name"],
+                    artist_display_name=t.get("artist_display_name"),
+                    artist_id=artist_id,
+                    featured_artist_id=featured_artist_id,
+                    spotify_track_id=sid,
+                    duration_ms=t.get("duration_ms"),
+                    popularity=t.get("popularity"),
+                    album_artwork=t.get("album_artwork"),
+                    year_released=t.get("year_released"),
+                    is_explicit=t.get("is_explicit"),
+                    created_at=t.get("created_at"),
+                    detail=t.get("detail"),
+                    album_name=t.get("album_name"),
+                    mode_flag=parsed_flag.value if parsed_flag else None,
+                )
+                if "mode_flag_detail" in t and hasattr(Track, "mode_flag_detail"):
+                    track_kwargs["mode_flag_detail"] = t.get("mode_flag_detail")
+
+                track = Track(**track_kwargs)
+                db.add(track)
+                _savepoint()
+                db.refresh(track)
+
+            track_map[(track.track_name, artist_id)] = track.id
+
+        _savepoint()
+
+        # ---------- Insert/Update SpecialtyRanking ----------
+        inserted = 0
+        updated = 0
+
+        for r in data.get("track_ranking", []):
+            spotify_tid = r.get("track_id")
+            if not spotify_tid:
+                logger.warning("🚫 Skipping ranking entry — no track_id")
+                continue
+
+            track_obj = db.exec(select(Track).where(Track.spotify_track_id == spotify_tid)).first()
+            if not track_obj:
+                logger.warning(f"🚫 Track not found in DB with Spotify ID: {spotify_tid}")
+                continue
+
+            stmt_sr = select(SpecialtyRanking).where(
+                and_(
+                    SpecialtyRanking.specialty_id == specialty_obj.id,
+                    SpecialtyRanking.track_id == track_obj.id,
+                    SpecialtyRanking.language == lang_code,
+                )
+            )
+            sr = db.exec(stmt_sr).first()
+
+            if sr:
+                sr.ranking = r.get("rank")
+                intro = r.get("intro")
+                if should_update(sr.intro, preserve_intro):
+                    sr.intro = intro
+                    logger.info(f"📝 Updated intro for: {track_obj.track_name}")
                 updated += 1
-        else:
-            sr = SpecialtyRanking(
-                specialty_id=specialty.id,
-                track_id=spotify_id,   # <-- If this should be Track.id, use db_track.id instead
-                ranking=rank_num,
-                intro=intro,
-                detail=detail,
-                artist_id=artist.id,
-                language=lang_final,
-            )
-            db.add(sr)
-            inserted += 1
+            else:
+                db.add(
+                    SpecialtyRanking(
+                        specialty_id=specialty_obj.id,
+                        track_id=track_obj.id,
+                        ranking=r.get("rank"),
+                        intro=r.get("intro"),
+                        artist_id=track_obj.artist_id,
+                        language=lang_code,
+                    )
+                )
+                inserted += 1
 
-    db.commit()
-    logger.info(f"✅ SpecialtyRanking rows — inserted: {inserted}, updated: {updated}")
+        _savepoint()
 
-    return {
-        "message": "✅ Specialty JSON processed.",
-        "specialty": specialty_name,
-        "language": lang_final,
-        "file": str(json_path),
-        "inserted": inserted,
-        "updated": updated,
-    }
+        # ---------- Finalize ----------
+        if atomic:
+            if dry_run:
+                logger.info("🧪 DRY RUN: rolling back all changes.")
+                db.rollback()
+                tx_ctx.__exit__(None, None, None)
+                tx_open = False
+                return {
+                    "status": "dry_run",
+                    "message": f"Validated {json_filename} (no changes committed).",
+                    "specialty": json_genre,
+                    "category": json_category,
+                    "language": lang_code,
+                    "inserted_would_be": inserted,
+                    "updated_would_be": updated,
+                }
+            else:
+                db.commit()
+                tx_ctx.__exit__(None, None, None)
+                tx_open = False
+
+        logger.info(f"✅ Specialty import complete. Inserted rankings: {inserted}, updated: {updated}")
+        return {
+            "status": "success",
+            "message": f"Inserted {json_filename}",
+            "specialty": json_genre,
+            "category": json_category,
+            "language": lang_code,
+            "inserted": inserted,
+            "updated": updated,
+        }
+
+    # ---- Narrow exception handling ----
+    except HTTPException:
+        if atomic and tx_open:
+            try:
+                db.rollback()
+                tx_ctx.__exit__(None, None, None)
+            except SQLAlchemyError:
+                logger.warning("Rollback/exit failed after HTTPException", exc_info=True)
+        raise
+
+    except (IntegrityError, DataError, OperationalError) as e:
+        if atomic and tx_open:
+            try:
+                db.rollback()
+                tx_ctx.__exit__(type(e), e, e.__traceback__)
+            except SQLAlchemyError:
+                logger.warning("Rollback/exit failed after DB error", exc_info=True)
+        logger.exception("Database error while inserting specialty JSON")
+        raise HTTPException(status_code=500, detail="Database error while inserting specialty JSON.")
+
+    except SQLAlchemyError as e:
+        if atomic and tx_open:
+            try:
+                db.rollback()
+                tx_ctx.__exit__(type(e), e, e.__traceback__)
+            except SQLAlchemyError:
+                logger.warning("Rollback/exit failed after SQLAlchemyError", exc_info=True)
+        logger.exception("SQLAlchemy error while inserting specialty JSON")
+        raise HTTPException(status_code=500, detail="Database error while inserting specialty JSON.")
+
+    finally:
+        # Safety: if the transaction context is still open here, close it.
+        if atomic and tx_open:
+            try:
+                db.rollback()
+                tx_ctx.__exit__(None, None, None)
+            except SQLAlchemyError:
+                logger.warning("Final rollback/exit failed in finally()", exc_info=True)
