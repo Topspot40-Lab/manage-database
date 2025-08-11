@@ -72,20 +72,26 @@ def get_summary(
     except Exception as e:
         logger.error(f"❌ Failed to summarize DB: {e}")
         return {"error": str(e)}
+
+
 @router.get("/tts/diagnostics")
 async def run_diagnostics(
-    db: Session = Depends(get_db),
-    show_samples: bool = Query(False, description="Include sample missing entries"),
-    check_intro_mp3: bool = Query(False, description="Check for missing intro MP3 files"),
-    check_detail_mp3: bool = Query(False, description="Check for missing detail MP3 files"),
-    check_artist_mp3: bool = Query(False, description="Check for missing artist MP3 files"),
+        db: Session = Depends(get_db),
+        show_samples: bool = Query(False, description="Include sample missing entries"),
+        check_intro_mp3: bool = Query(False, description="Check for missing intro MP3 files (TrackRanking.intro)"),
+        check_specialty_intro_mp3: bool = Query(False,
+                                                description="Check for missing specialty intro MP3 files (SpecialtyRanking.intro)"),
+        check_detail_mp3: bool = Query(False, description="Check for missing detail MP3 files (Track.detail)"),
+        check_artist_mp3: bool = Query(False, description="Check for missing artist MP3 files (Artist.description)"),
+
 ):
     logger.info(
-        f"🧠 Starting TTS diagnostics summary... | "
+        "🧠 Starting TTS diagnostics summary... | "
         f"show_samples={show_samples}, "
         f"check_intro_mp3={check_intro_mp3}, "
         f"check_detail_mp3={check_detail_mp3}, "
-        f"check_artist_mp3={check_artist_mp3}"
+        f"check_artist_mp3={check_artist_mp3}, "
+        f"check_specialty_intro_mp3={check_specialty_intro_mp3}"
     )
 
     result = await get_missing_tts_info(
@@ -93,16 +99,13 @@ async def run_diagnostics(
         check_intro_mp3=check_intro_mp3,
         check_detail_mp3=check_detail_mp3,
         check_artist_mp3=check_artist_mp3,
+        check_specialty_intro_mp3=check_specialty_intro_mp3,  # 👈 new
     )
     ranking_summary = get_decade_genre_ranking_summary(db)
 
-    # Initialize response with empty dictionaries
-    summary = {
-        "missing_text": {},
-        "missing_mp3": {}
-    }
+    summary = {"missing_text": {}, "missing_mp3": {}}
 
-    # Add missing_text counts if present
+    # Text counts (unchanged)
     missing_text = result.get("missing_text", {})
     if "track_detail" in missing_text:
         summary["missing_text"]["track_detail"] = len(missing_text["track_detail"])
@@ -111,7 +114,7 @@ async def run_diagnostics(
     if "ranking_intro" in missing_text:
         summary["missing_text"]["ranking_intro"] = len(missing_text["ranking_intro"])
 
-    # Add missing_mp3 counts if the checks were requested
+    # MP3 counts (add specialty)
     missing_mp3 = result.get("missing_mp3", {})
     if check_intro_mp3 and "track_intro" in missing_mp3:
         summary["missing_mp3"]["track_intro"] = len(missing_mp3["track_intro"])
@@ -119,6 +122,8 @@ async def run_diagnostics(
         summary["missing_mp3"]["track_detail"] = len(missing_mp3["track_detail"])
     if check_artist_mp3 and "artist_description" in missing_mp3:
         summary["missing_mp3"]["artist_description"] = len(missing_mp3["artist_description"])
+    if check_specialty_intro_mp3 and "specialty_intro" in missing_mp3:  # 👈 new
+        summary["missing_mp3"]["specialty_intro"] = len(missing_mp3["specialty_intro"])
 
     response = {
         "summary": summary,
@@ -129,15 +134,33 @@ async def run_diagnostics(
         samples = {}
 
         if check_intro_mp3 and "track_intro" in missing_mp3:
-            samples["track_missing_intro_mp3"] = [t.track_name for t in missing_mp3["track_intro"][:5]]
+            samples["track_missing_intro_mp3"] = [
+                getattr(t, "track_name", None) or getattr(getattr(t, "track", None), "track_name", "(unknown)") for t in
+                missing_mp3["track_intro"][:5]]
+
         if check_detail_mp3 and "track_detail" in missing_mp3:
-            samples["track_missing_detail_mp3"] = [t.track_name for t in missing_mp3["track_detail"][:5]]
+            samples["track_missing_detail_mp3"] = [
+                getattr(t, "track_name", None) or getattr(getattr(t, "track", None), "track_name", "(unknown)") for t in
+                missing_mp3["track_detail"][:5]]
+
         if check_artist_mp3 and "artist_description" in missing_mp3:
-            samples["artist_missing_mp3"] = [a.name for a in missing_mp3["artist_description"][:5]]
+            samples["artist_missing_mp3"] = [getattr(a, "name", None) or getattr(a, "artist_name", "(unknown)") for a in
+                                             missing_mp3["artist_description"][:5]]
+
+        # 👇 NEW: sample names for specialty intros
+        if check_specialty_intro_mp3 and "specialty_intro" in missing_mp3:
+            samples["specialty_missing_intro_mp3"] = [
+                # Try SpecialtyRanking.track.track_name → fallback to .track_name or "(unknown)"
+                getattr(sr, "track_name", None)
+                or getattr(getattr(sr, "track", None), "track_name", "(unknown)")
+                for sr in missing_mp3["specialty_intro"][:5]
+            ]
 
         response["samples"] = samples
 
     return response
+
+
 # 🧾 Full diagnostics (raw data for deep dive or dev use)
 @router.get("/diagnostics")
 def full_diagnostics(db: Session = Depends(get_db)):

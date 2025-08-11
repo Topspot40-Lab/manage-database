@@ -41,7 +41,8 @@ BUCKET_TRACK_INTRO = "track-intro-mp3-files"
 BUCKET_TRACK_DETAIL = "track-detail-mp3-files"
 BUCKET_ARTIST = "artist-mp3-files"
 BUCKET_SPOTIFY_TRACK = "spotify-track-mp3-files"
-
+# 👇 NEW: specialty intro bucket (defaults to your new bucket name)
+BUCKET_SPECIALTY_INTRO = os.getenv("SUPABASE_BUCKET_SPECIALTY_INTRO", "specialty-intro-mp3-files")
 
 # -----------------------------------------------------------------------------
 # 🎛️ PROMPT BEHAVIOR AND GENERATION CONFIG
