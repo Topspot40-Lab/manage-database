@@ -8,7 +8,7 @@ from backend.utils.naming import slug_underscore, normalize_language_code
 from backend.services.xai_errors import XAIQuotaError, XAIRateLimitError
 import logging
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 import json
 from backend.services.spotify.missing_log import (
     handle_missing_track,
@@ -25,15 +25,17 @@ from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 from backend.utils.json_helpers import save_full_json_file
 from shared.filepaths import get_json_path
 from pydantic import BaseModel
-
+from fastapi import APIRouter
 from backend.utils.log_helpers import log_generate_json_summary
 
 logger = logging.getLogger(__name__)
 logger.debug("📦 Final step message...")
 
-router = APIRouter()
+router = APIRouter(prefix="/json", tags=["json"])
 
-
+@router.get("/generate")
+async def generate():
+    return {"ok": True}
 
 class TrackRequest(BaseModel):
     decade: str = "1950s"
@@ -318,7 +320,7 @@ async def generate_track_json(
 
         # 🎙️ STEP 9.B: Add artist_description using XAI
 
-        core_artists = final_json.get("artist", [])
+        core_artists = final_json.get("artist_table") or final_json.get("artist") or []
 
         if core_artists:
             artist_described = get_artist_descriptions_from_xai(core_artists, request.language)

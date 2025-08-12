@@ -28,6 +28,22 @@ async def insert_json_to_db(
 ):
     logger.info(f"Connected to DB and using schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
 
+    # 🕵️ Mapper sleuth: see all classes mapped to decade_genre
+    import sys, inspect
+    hits = []
+    for modname, mod in list(sys.modules.items()):
+        d = getattr(mod, "__dict__", None)
+        if not d:
+            continue
+        for name, obj in list(d.items()):
+            try:
+                if getattr(obj, "__tablename__", None) == "decade_genre":
+                    hits.append((modname, name, inspect.getsourcefile(obj)))
+            except Exception:
+                pass
+    logger.error("🕵️ decade_genre classes loaded: %s", hits)
+
+
     try:
         filename = f"{decade}_{genre}_en.json"
         data = load_full_json_file(decade, filename)
@@ -51,8 +67,6 @@ async def insert_json_to_db(
         # 🚨 Safety check to abort if DecadeGenre already exists
         existing_genre = db.exec(select(Genre).where(Genre.genre_name == genre_name)).first()
         existing_decade = db.exec(select(Decade).where(Decade.decade_name == decade_name)).first()
-
-
 
         if existing_genre and existing_decade:
             existing_decade_genre = db.exec(

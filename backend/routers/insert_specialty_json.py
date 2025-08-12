@@ -1,416 +1,438 @@
 # backend/routers/insert_specialty_json.py
+from __future__ import annotations
+
 import logging
-from typing import Dict, Tuple, Optional
+import re
+import uuid
+from typing import List
 
-import sqlalchemy
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from sqlalchemy import and_
-from sqlalchemy.exc import DataError, IntegrityError, OperationalError, SQLAlchemyError
-from sqlmodel import Session, select
-from contextlib import nullcontext
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import text
+from sqlmodel import Session
 
-from backend.database import get_db
-from backend.models import (
-    Artist,
-    Track,
-    Specialty,
-    SpecialtyRanking,
-    Genre,
-)
-from backend.services.supabase_storage import delete_intro_mp3_files_for_combo
-from backend.utils.json_helpers import load_full_json_file
-from backend.utils.mode_utils import ModeFlag, parse_mode_flag
-from backend.utils.naming import normalize_language_code
-
-# helpers (now in utils/)
-from backend.utils.specialty_utils import (
-    resolve_labels,
-    parse_featured_keys,
-    should_update,
-    ensure_artist_genre_link,
-)
+from backend.database import engine, get_db
 
 logger = logging.getLogger(__name__)
-specialty_router = APIRouter(prefix="", tags=["specialty-insert"])
-# export as `router` so main.py can `import router as specialty_insert_router`
-router = specialty_router
+
+# Public router export
+specialty_router = APIRouter(prefix="", tags=["specialty-diag"])
+router = specialty_router  # for main.py include
 __all__ = ["router", "specialty_router"]
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-@specialty_router.post("/insert-specialty-json/{category}/{specialty}")
-async def insert_specialty_json(
-    category: str = Path(..., description="Category/Decade-like label, e.g. 'before 1990s'"),
-    specialty: str = Path(..., description="Specialty name, e.g. 'latin favorites'"),
-    language: str = Query("english", description="Language (name or code) like 'english'/'espanol'/'es'"),
-    preserve_intro: bool = Query(True),
-    preserve_detail: bool = Query(True),
-    preserve_artist_description: bool = Query(True),
-    force: bool = Query(False),
-    filename: Optional[str] = Query(None, description="Optional override of the JSON filename"),
-    # Transaction controls
-    atomic: bool = Query(True, description="Run in a single DB transaction (recommended)."),
-    dry_run: bool = Query(False, description="Do everything except the final commit; rolls back at the end."),
+def exec_one(db: Session, sql: str, **params):
+    """Execute a SQL statement and return the first row (or None)."""
+    return db.exec(text(sql), params=params).first()
+
+def exec_all(db: Session, sql: str, **params):
+    """Execute a SQL statement and return all rows (list)."""
+    return db.exec(text(sql), params=params).all()
+
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+def _ok_ident(x: str) -> bool:
+    return bool(_IDENT_RE.match(x))
+
+# ---------------------------------------------------------------------------
+# Pings / Connection info
+# ---------------------------------------------------------------------------
+
+@specialty_router.get("/_ping-specialty")
+def _ping_specialty():
+    """Router health check."""
+    logger.info("🟢 _ping-specialty endpoint hit")
+    return {"ok": True, "message": "Specialty router is alive"}
+
+@specialty_router.get("/_ping-specialty-db")
+def _ping_specialty_db(db: Session = Depends(get_db)):
+    """DB liveness check (SELECT 1)."""
+    logger.info("🟢 _ping-specialty-db endpoint hit")
+    result = exec_one(db, "SELECT 1")
+    return {"ok": True, "db_result": result[0] if result else None}
+
+@specialty_router.get("/_db-conn-info")
+def _db_conn_info():
+    """Show SQLAlchemy connection target (masked)."""
+    url = engine.url
+    return {
+        "ok": True,
+        "driver": url.drivername,
+        "host": url.host,
+        "port": url.port,
+        "database": url.database,
+        "username": url.username,
+    }
+
+@specialty_router.get("/_db-where-am-i")
+def _db_where_am_i(db: Session = Depends(get_db)):
+    """Server identity and search_path."""
+    row = exec_one(db, """
+        SELECT current_database() AS database,
+               current_user       AS role,
+               current_schema()   AS current_schema,
+               current_setting('search_path') AS search_path
+    """)
+    return {"ok": True, **dict(row._mapping)}
+
+# ---------------------------------------------------------------------------
+# Schema / tables
+# ---------------------------------------------------------------------------
+
+@specialty_router.get("/_db-schemas")
+def _db_schemas(db: Session = Depends(get_db)):
+    """List non-system schemas."""
+    rows = exec_all(db, """
+        SELECT nspname AS schema
+        FROM pg_namespace
+        WHERE nspname NOT IN ('pg_catalog','information_schema')
+        ORDER BY nspname
+    """)
+    return {"ok": True, "schemas": [r[0] for r in rows]}
+
+@specialty_router.get("/_db-tables-in")
+def _db_tables_in(schema: str = Query("public"), db: Session = Depends(get_db)):
+    """List tables in a specific schema."""
+    rows = exec_all(db, """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = :schema
+        ORDER BY table_name
+    """, schema=schema)
+    return {"ok": True, "schema": schema, "tables": [r[0] for r in rows]}
+
+@specialty_router.get("/_db-describe-table")
+def _db_describe_table(
+    schema: str = Query("public"),
+    table: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    """Describe columns for a given table."""
+    if not (_ok_ident(schema) and _ok_ident(table)):
+        return {"ok": False, "error": "invalid schema/table name"}
+    rows = exec_all(db, """
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_schema = :schema AND table_name = :table
+        ORDER BY ordinal_position
+    """, schema=schema, table=table)
+    return {
+        "ok": True,
+        "schema": schema,
+        "table": table,
+        "columns": [dict(r._mapping) for r in rows]
+    }
+
+# ---------------------------------------------------------------------------
+# Qualified count / first-row peek
+# ---------------------------------------------------------------------------
+
+@specialty_router.get("/_db-count-qual")
+def _db_count_qual(
+    schema: str = Query("public"),
+    table: str = Query(...),
     db: Session = Depends(get_db),
 ):
-    """
-    Insert a Specialty + Artists + Tracks + SpecialtyRanking from a JSON file.
+    """SELECT COUNT(*) from "schema"."table"."""
+    if not (_ok_ident(schema) and _ok_ident(table)):
+        return {"ok": False, "error": "invalid schema/table name"}
+    row = exec_one(db, f'SELECT COUNT(*) FROM "{schema}"."{table}"')
+    return {"ok": True, "schema": schema, "table": table, "count": row[0] if row else 0}
 
-    Behavior mirrors your /insert-json-to-db endpoint:
-      - preserves existing text by default (intro/detail/artist_description)
-      - force=True wipes existing rankings (and deletes intro MP3s) before reinsert
-      - supports DUET/FEATURED via mode_flag + featured artist creation
-      - dry_run=True: validates and rolls back; skips MP3 deletions
-      - atomic=True: single transaction; uses SAVEPOINT via begin_nested()
-    """
-    logger.info(f"Connected to DB; schema: {sqlalchemy.inspect(db.bind).default_schema_name}")
+@specialty_router.get("/_db-first-row-qual")
+def _db_first_row_qual(
+    schema: str = Query("public"),
+    table: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """SELECT * LIMIT 1 from "schema"."table"."""
+    if not (_ok_ident(schema) and _ok_ident(table)):
+        return {"ok": False, "error": "invalid schema/table name"}
+    row = exec_one(db, f'SELECT * FROM "{schema}"."{table}" LIMIT 1')
+    return {"ok": True, "schema": schema, "table": table,
+            "row": (dict(row._mapping) if row else None)}
 
-    # Helper to commit-or-flush depending on atomic
-    def _savepoint():
-        if atomic:
-            db.flush()
-        else:
-            db.commit()
+# ---------------------------------------------------------------------------
+# Specialty probes
+# ---------------------------------------------------------------------------
 
-    # ---------- Resolve language + filename ----------
-    lang_code = normalize_language_code(language)
-    json_filename = filename or f"{category}_{specialty}_{lang_code}.json"
+@specialty_router.get("/_specialty-exists")
+def _specialty_exists(db: Session = Depends(get_db)):
+    """Does public.specialty exist?"""
+    row = exec_one(db, "SELECT to_regclass('public.specialty') IS NOT NULL AS exists")
+    return {"ok": True, "exists": bool(row[0])}
 
-    # ---------- Load JSON ----------
+@specialty_router.get("/_db-pk")
+def _db_pk(schema: str = Query("public"),
+           table: str = Query(...),
+           db: Session = Depends(get_db)):
+    """Return primary key column names for a table."""
+    rowset = exec_all(db, """
+        SELECT a.attname AS column_name
+        FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
+        WHERE i.indisprimary
+          AND n.nspname = :schema
+          AND c.relname  = :table
+        ORDER BY a.attnum
+    """, schema=schema, table=table)
+    cols: List[str] = [r[0] for r in rowset]
+    return {"ok": True, "schema": schema, "table": table, "pk_columns": cols}
+
+@specialty_router.get("/_specialty-peek")
+def _specialty_peek(limit: int = Query(3, ge=1, le=50), db: Session = Depends(get_db)):
+    """Return first N rows from public.specialty (no ORDER BY)."""
     try:
-        data = load_full_json_file(category, json_filename)
-        logger.info(f"Loaded JSON file: {json_filename}")
-        # Normalize artist to list if a dict slipped in
-        if isinstance(data.get("artist"), dict):
-            logger.warning("⚠️ Patching artist field from dict to list")
-            data["artist"] = [data["artist"]]
-    except FileNotFoundError:
-        logger.error("JSON file not found")
-        raise HTTPException(status_code=404, detail="JSON file not found")
+        rows = exec_all(db, """
+            SELECT * FROM public.specialty
+            LIMIT :limit
+        """, limit=limit)
+        return {"ok": True, "count": len(rows), "rows": [dict(r._mapping) for r in rows]}
     except Exception as e:
-        logger.error(f"Error reading JSON: {e}")
-        raise HTTPException(status_code=500, detail=f"Read error: {e}")
+        return {"ok": False, "error": str(e)}
 
-    # ---------- Core labels (centralized) ----------
-    json_genre, json_category = resolve_labels(data, category, specialty)
+@specialty_router.get("/_specialty-peek-ordered")
+def _specialty_peek_ordered(
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Return first N rows ordered by PK (if present)."""
+    pk = exec_all(db, """
+        SELECT a.attname AS column_name
+        FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
+        WHERE i.indisprimary
+          AND n.nspname = 'public'
+          AND c.relname  = 'specialty'
+        ORDER BY a.attnum
+    """)
+    order_clause = ""
+    if pk:
+        cols = ", ".join([f'"{r[0]}"' for r in pk])
+        order_clause = f"ORDER BY {cols}"
 
-    # Optional: fetch Genre row once for ArtistGenre linking
-    genre_row = db.exec(select(Genre).where(Genre.genre_name == json_genre)).first()
-
-    # Predeclare counters so they're available for dry_run exits
-    inserted = 0
-    updated = 0
-
-    # Choose a transaction context that won't explode if one is already open
-    tx_ctx = db.begin_nested() if atomic else nullcontext()
-
+    sql = f'SELECT * FROM "public"."specialty" {order_clause} LIMIT :limit'
     try:
-        with tx_ctx:
-            # ---------- Ensure Specialty ----------
-            spec_stmt = select(Specialty).where(
-                Specialty.specialty_name == json_genre,
-                Specialty.language == lang_code,
+        rows = exec_all(db, sql, limit=limit)
+        return {"ok": True, "count": len(rows), "rows": [dict(r._mapping) for r in rows]}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "sql": sql}
+
+# ---------------------------------------------------------------------------
+# Validations
+# ---------------------------------------------------------------------------
+
+@specialty_router.get("/_db-validate-tables")
+def db_validate_tables(schema: str = Query("public"), db: Session = Depends(get_db)):
+    """Check presence of expected tables/columns and return row counts."""
+    expected = {
+        "category": ["id", "category_name"],
+        "specialty": ["id", "specialty_name", "language"],
+        "specialty_category": ["category_id", "specialty_id"],
+        "artist": ["id", "artist_name", "language"],
+        "track": ["id", "track_name", "artist_id", "language"],
+        "specialty_ranking": ["id", "specialty_category_id", "track_id", "ranking", "language"],
+        "genre": ["id", "genre_name"],
+        "artist_genre": ["artist_id", "genre_id"],
+    }
+
+    report = []
+    for table, cols in expected.items():
+        t_exists = exec_one(db, """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = :s AND table_name = :t
             )
-            specialty_obj = db.exec(spec_stmt).first()
-            if not specialty_obj:
-                specialty_obj = Specialty(
-                    specialty_name=json_genre,
-                    description=f"{json_genre} - {json_category}",
-                    language=lang_code,
-                )
-                db.add(specialty_obj)
-                _savepoint()
-                db.refresh(specialty_obj)
-                logger.info(f"➕ Created Specialty: {json_genre} ({lang_code})")
+        """, s=schema, t=table)[0]
 
-            # ---------- Safety: Prevent duplicate population unless force ----------
-            existing_sr = db.exec(
-                select(SpecialtyRanking).where(
-                    SpecialtyRanking.specialty_id == specialty_obj.id,
-                    SpecialtyRanking.language == lang_code,
-                )
-            ).first()
+        table_info = {"table": table, "exists": bool(t_exists), "missing_columns": [], "count": None}
+        if t_exists:
+            present_cols = {r[0] for r in exec_all(db, """
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema = :s AND table_name = :t
+            """, s=schema, t=table)}
+            missing = [c for c in cols if c not in present_cols]
+            table_info["missing_columns"] = missing
 
-            if existing_sr:
-                if not force:
-                    logger.warning(f"🚨 ABORT: Specialty already populated: {json_category} / {json_genre} / {lang_code}")
-                    raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            f"Specialty '{json_category}/{json_genre}' (lang={lang_code}) already has rankings. "
-                            f"Use force=true to overwrite and reset intro MP3s."
-                        ),
-                    )
-                else:
-                    if dry_run:
-                        logger.warning(
-                            f"⚠️ Force requested, but dry_run=True — would delete MP3s for {json_category}/{json_genre} (skipped)."
-                        )
-                    else:
-                        logger.warning(
-                            f"⚠️ Force mode — deleting existing intro MP3s for {json_category}/{json_genre}"
-                        )
-                        await delete_intro_mp3_files_for_combo(json_category, json_genre)
-                        logger.info(f"✅ Deleted leftover intro MP3s for {json_category}/{json_genre}")
+            cnt = exec_one(db, f'SELECT COUNT(*) FROM "{schema}"."{table}"')[0]
+            table_info["count"] = cnt
 
-                    # Wipe prior rankings for this specialty+language
-                    prior = db.exec(
-                        select(SpecialtyRanking).where(
-                            SpecialtyRanking.specialty_id == specialty_obj.id,
-                            SpecialtyRanking.language == lang_code,
-                        )
-                    ).all()
-                    for row in prior:
-                        db.delete(row)
-                    _savepoint()
-                    logger.info("🧹 Cleared old SpecialtyRanking rows for this specialty/language.")
+        report.append(table_info)
 
-            # ---------- Build Artist map from JSON 'artist' ----------
-            artist_map: Dict[str, int] = {}
-            for a in data.get("artist", []):
-                sid = a.get("spotify_artist_id")
-                name = a["artist_name"].strip()
+    ok = all(r["exists"] and not r["missing_columns"] for r in report)
+    return {"ok": ok, "schema": schema, "tables": report}
 
-                # lookup by (spotify_id OR name) + language
-                stmt = select(Artist)
-                if sid:
-                    stmt = stmt.where(Artist.spotify_artist_id == sid)
-                else:
-                    stmt = stmt.where(Artist.artist_name == name)
-                stmt = stmt.where(Artist.language == lang_code)  # 👈 language-scoped lookup
+@specialty_router.get("/_db-validate-fk")
+def db_validate_fk(schema: str = Query("public"), db: Session = Depends(get_db)):
+    """Orphan check for common FK relationships (counts > 0 = problems)."""
+    checks = {
+        "track.artist_id → artist.id":
+            f'SELECT COUNT(*) FROM "{schema}"."track" t '
+            f'LEFT JOIN "{schema}"."artist" a ON a.id = t.artist_id '
+            f'WHERE t.artist_id IS NOT NULL AND a.id IS NULL',
+        "artist_genre.artist_id → artist.id":
+            f'SELECT COUNT(*) FROM "{schema}"."artist_genre" ag '
+            f'LEFT JOIN "{schema}"."artist" a ON a.id = ag.artist_id '
+            f'WHERE ag.artist_id IS NOT NULL AND a.id IS NULL',
+        "artist_genre.genre_id → genre.id":
+            f'SELECT COUNT(*) FROM "{schema}"."artist_genre" ag '
+            f'LEFT JOIN "{schema}"."genre" g ON g.id = ag.genre_id '
+            f'WHERE ag.genre_id IS NOT NULL AND g.id IS NULL',
+        "specialty_category.category_id → category.id":
+            f'SELECT COUNT(*) FROM "{schema}"."specialty_category" sc '
+            f'LEFT JOIN "{schema}"."category" c ON c.id = sc.category_id '
+            f'WHERE sc.category_id IS NOT NULL AND c.id IS NULL',
+        "specialty_category.specialty_id → specialty.id":
+            f'SELECT COUNT(*) FROM "{schema}"."specialty_category" sc '
+            f'LEFT JOIN "{schema}"."specialty" s ON s.id = sc.specialty_id '
+            f'WHERE sc.specialty_id IS NOT NULL AND s.id IS NULL',
+        "specialty_ranking.specialty_category_id → specialty_category":
+            f'SELECT COUNT(*) FROM "{schema}"."specialty_ranking" sr '
+            f'LEFT JOIN "{schema}"."specialty_category" sc2 ON sc2.id = sr.specialty_category_id '
+            f'WHERE sr.specialty_category_id IS NOT NULL AND sc2.id IS NULL',
+        "specialty_ranking.track_id → track.id":
+            f'SELECT COUNT(*) FROM "{schema}"."specialty_ranking" sr '
+            f'LEFT JOIN "{schema}"."track" t ON t.id = sr.track_id '
+            f'WHERE sr.track_id IS NOT NULL AND t.id IS NULL',
+    }
 
-                existing_artist = db.exec(stmt).first()
+    results = []
+    for name, sql in checks.items():
+        try:
+            c = exec_one(db, sql)[0]
+        except Exception as e:
+            results.append({"check": name, "error": str(e)})
+        else:
+            results.append({"check": name, "orphans": int(c)})
 
-                if existing_artist:
-                    artist_id = existing_artist.id
-                    desc = a.get("artist_description")
-                    if should_update(existing_artist.artist_description, preserve_artist_description):
-                        existing_artist.artist_description = desc
-                        logger.info(f"📝 Updated artist_description for: {name}")
-                else:
-                    artist = Artist(
-                        artist_name=name,
-                        spotify_artist_id=sid,
-                        artist_artwork=a.get("artist_artwork"),
-                        artist_description=a.get("artist_description"),
-                        not_on_spotify=a.get("not_on_spotify", False),
-                        language=lang_code,  # 👈 set language on create
-                    )
-                    db.add(artist)
-                    _savepoint()
-                    db.refresh(artist)
-                    artist_id = artist.id
-                    logger.info(f"➕ Added artist: {name} ({lang_code})")
+    ok = all(r.get("orphans", 0) == 0 for r in results if "error" not in r)
+    return {"ok": ok, "schema": schema, "results": results}
 
-                artist_map[sid or name] = artist_id
-                ensure_artist_genre_link(db, artist_id, genre_row)
+# ---------------------------------------------------------------------------
+# Minimal real write: ensure Category + Specialty + link
+# ---------------------------------------------------------------------------
 
-            _savepoint()
+@specialty_router.post("/specialty/ensure-combo")
+def ensure_combo(
+    category: str = Query(..., description="e.g. 'Before 1990s' or '1960s'"),
+    specialty: str = Query(..., description="e.g. 'latin favorites'"),
+    language: str = Query("en", description="two-letter or name; stored as provided"),
+    db: Session = Depends(get_db),
+):
+    """Ensure Category, Specialty(language), and their link exist."""
+    category = category.strip()
+    specialty = specialty.strip()
+    lang = language.strip().lower()
 
-            # ---------- PRE-PASS: ensure featured artists exist (create if missing) ----------
-            for t in data.get("track", []):
-                parsed_flag = parse_mode_flag(t.get("mode_flag"))
-                if parsed_flag not in (ModeFlag.DUET, ModeFlag.FEATURED):
-                    continue
+    created = {"category": False, "specialty": False, "link": False}
 
-                feat_sid, feat_name = parse_featured_keys(t)
-                key = feat_sid or feat_name
-                if not key or key in artist_map:
-                    continue
+    # Ensure Category
+    row = exec_one(db, """
+        INSERT INTO public.category (category_name)
+        SELECT :category
+        WHERE NOT EXISTS (
+            SELECT 1 FROM public.category WHERE category_name = :category
+        )
+        RETURNING id
+    """, category=category)
+    if row:
+        cat_id = row[0]
+        created["category"] = True
+    else:
+        cat_id = exec_one(db, """
+            SELECT id FROM public.category WHERE category_name = :category
+        """, category=category)[0]
 
-                fa = None
-                if feat_sid:
-                    q = select(Artist).where(Artist.spotify_artist_id == feat_sid, Artist.language == lang_code)
-                    fa = db.exec(q).first()
-                if not fa and feat_name:
-                    q = select(Artist).where(Artist.artist_name == feat_name, Artist.language == lang_code)
-                    fa = db.exec(q).first()
+    # Ensure Specialty (name + language)
+    row = exec_one(db, """
+        INSERT INTO public.specialty (specialty_name, language)
+        SELECT :specialty, :lang
+        WHERE NOT EXISTS (
+            SELECT 1 FROM public.specialty
+            WHERE specialty_name = :specialty AND language = :lang
+        )
+        RETURNING id
+    """, specialty=specialty, lang=lang)
+    if row:
+        spec_id = row[0]
+        created["specialty"] = True
+    else:
+        spec_id = exec_one(db, """
+            SELECT id FROM public.specialty
+            WHERE specialty_name = :specialty AND language = :lang
+        """, specialty=specialty, lang=lang)[0]
 
-                if not fa and feat_name:
-                    fa = Artist(
-                        artist_name=feat_name,
-                        spotify_artist_id=feat_sid,
-                        language=lang_code,  # 👈 set language on create
-                    )
-                    db.add(fa)
-                    _savepoint()
-                    db.refresh(fa)
-                    logger.info(f"➕ Added featured artist: {feat_name} ({lang_code})")
+    # Ensure link table
+    row = exec_one(db, """
+        INSERT INTO public.specialty_category (category_id, specialty_id)
+        SELECT :cat_id, :spec_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM public.specialty_category
+            WHERE category_id = :cat_id AND specialty_id = :spec_id
+        )
+        RETURNING category_id, specialty_id
+    """, cat_id=cat_id, spec_id=spec_id)
+    if row:
+        created["link"] = True
 
-                if fa:
-                    artist_map[key] = fa.id
-                    ensure_artist_genre_link(db, fa.id, genre_row)
+    db.commit()
+    return {
+        "ok": True,
+        "category": {"name": category, "id": cat_id, "created": created["category"]},
+        "specialty": {"name": specialty, "language": lang, "id": spec_id, "created": created["specialty"]},
+        "linked": created["link"]
+    }
 
-            _savepoint()
+# ---------------------------------------------------------------------------
+# Safe write probe (persistent, not TEMP — PgBouncer-friendly)
+# ---------------------------------------------------------------------------
 
-            # ---------- Upsert Tracks ----------
-            track_map: Dict[Tuple[str, int], int] = {}
-            for t in data.get("track", []):
-                sid = t.get("spotify_track_id")
-                artist_sid = t.get("spotify_artist_id")
-                artist_id = artist_map.get(artist_sid or t["artist_name"].strip())
-
-                parsed_flag = parse_mode_flag(t.get("mode_flag"))
-
-                with db.no_autoflush:
-                    if sid:
-                        tstmt = select(Track).where(Track.spotify_track_id == sid, Track.language == lang_code)  # 👈
-                        track = db.exec(tstmt).first()
-                    else:
-                        tstmt = select(Track).where(
-                            and_(Track.track_name == t["track_name"], Track.artist_id == artist_id),
-                            Track.language == lang_code,  # 👈
-                        )
-                        track = db.exec(tstmt).first()
-
-                feat_sid, feat_name = parse_featured_keys(t)
-                featured_artist_id = None
-                if parsed_flag in (ModeFlag.DUET, ModeFlag.FEATURED):
-                    featured_artist_id = artist_map.get(feat_sid or feat_name)
-
-                if track:
-                    logger.info(f"🔁 Updating track: {t['track_name']}")
-                    track.track_name = t["track_name"]
-                    track.artist_display_name = t.get("artist_display_name")
-                    track.artist_id = artist_id
-                    track.featured_artist_id = featured_artist_id
-                    track.duration_ms = t.get("duration_ms")
-                    track.popularity = t.get("popularity")
-                    track.album_artwork = t.get("album_artwork")
-                    track.year_released = t.get("year_released")
-                    track.is_explicit = t.get("is_explicit")
-                    track.created_at = t.get("created_at")
-                    track.album_name = t.get("album_name")
-                    track.mode_flag = parsed_flag.value if parsed_flag else None
-
-                    if hasattr(track, "mode_flag_detail"):
-                        setattr(track, "mode_flag_detail", t.get("mode_flag_detail"))
-
-                    if should_update(track.detail, preserve_detail):
-                        track.detail = t.get("detail")
-                        logger.info(f"📝 Updated detail for: {t['track_name']}")
-                else:
-                    logger.info(f"➕ Creating new track: {t['track_name']}")
-                    track_kwargs = dict(
-                        track_name=t["track_name"],
-                        artist_display_name=t.get("artist_display_name"),
-                        artist_id=artist_id,
-                        featured_artist_id=featured_artist_id,
-                        spotify_track_id=sid,
-                        duration_ms=t.get("duration_ms"),
-                        popularity=t.get("popularity"),
-                        album_artwork=t.get("album_artwork"),
-                        year_released=t.get("year_released"),
-                        is_explicit=t.get("is_explicit"),
-                        created_at=t.get("created_at"),
-                        detail=t.get("detail"),
-                        album_name=t.get("album_name"),
-                        mode_flag=parsed_flag.value if parsed_flag else None,
-                        language=lang_code,  # 👈 set language on create
-                    )
-                    if "mode_flag_detail" in t and hasattr(Track, "mode_flag_detail"):
-                        track_kwargs["mode_flag_detail"] = t.get("mode_flag_detail")
-
-                    track = Track(**track_kwargs)
-                    db.add(track)
-                    _savepoint()
-                    db.refresh(track)
-
-                track_map[(track.track_name, artist_id)] = track.id
-
-            _savepoint()
-
-            # ---------- Insert/Update SpecialtyRanking ----------
-            for r in data.get("track_ranking", []):
-                spotify_tid = r.get("track_id")
-                if not spotify_tid:
-                    logger.warning("🚫 Skipping ranking entry — no track_id")
-                    continue
-
-                track_obj = db.exec(select(Track).where(Track.spotify_track_id == spotify_tid)).first()
-                if not track_obj:
-                    logger.warning(f"🚫 Track not found in DB with Spotify ID: {spotify_tid}")
-                    continue
-
-                stmt_sr = select(SpecialtyRanking).where(
-                    and_(
-                        SpecialtyRanking.specialty_id == specialty_obj.id,
-                        SpecialtyRanking.track_id == track_obj.id,
-                        SpecialtyRanking.language == lang_code,
-                    )
-                )
-                sr = db.exec(stmt_sr).first()
-
-                if sr:
-                    sr.ranking = r.get("rank")
-                    intro = r.get("intro")
-                    if should_update(sr.intro, preserve_intro):
-                        sr.intro = intro
-                        logger.info(f"📝 Updated intro for: {track_obj.track_name}")
-                    updated += 1
-                else:
-                    db.add(
-                        SpecialtyRanking(
-                            specialty_id=specialty_obj.id,
-                            track_id=track_obj.id,
-                            ranking=r.get("rank"),
-                            intro=r.get("intro"),
-                            artist_id=track_obj.artist_id,
-                            language=lang_code,
-                        )
-                    )
-                    inserted += 1
-
-            _savepoint()
-
-            # ---------- Finalize inside the context ----------
-            if dry_run:
-                logger.info("🧪 DRY RUN: rolling back all changes.")
-                # Raising a sentinel lets the context roll back cleanly
-                raise RuntimeError("__DRY_RUN__")
-
-        # Only reached if no exception and not dry_run
-        if atomic:
-            db.commit()
-
-        logger.info(f"✅ Specialty import complete. Inserted rankings: {inserted}, updated: {updated}")
-        return {
-            "status": "success",
-            "message": f"Inserted {json_filename}",
-            "specialty": json_genre,
-            "category": json_category,
-            "language": lang_code,
-            "inserted": inserted,
-            "updated": updated,
-        }
-
-    # ---- Narrow exception handling ----
-    except RuntimeError as e:
-        # Catch the dry-run sentinel
-        if str(e) == "__DRY_RUN__":
-            return {
-                "status": "dry_run",
-                "message": f"Validated {json_filename} (no changes committed).",
-                "specialty": json_genre,
-                "category": json_category,
-                "language": lang_code,
-                "inserted_would_be": inserted,
-                "updated_would_be": updated,
-            }
-        # not our sentinel: treat as generic error below
+@specialty_router.post("/_db-write-probe")
+def _db_write_probe(db: Session = Depends(get_db)):
+    """Create a throwaway row in a probe table, verify, then delete."""
+    run_id = str(uuid.uuid4())
+    try:
+        db.exec(text("""
+            CREATE TABLE IF NOT EXISTS public.__probe (
+                id BIGSERIAL PRIMARY KEY,
+                run_id UUID NOT NULL,
+                note TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """))
+        db.exec(text("""
+            INSERT INTO public.__probe (run_id, note)
+            VALUES (:run_id, 'hello from write probe')
+        """), params={"run_id": run_id})
+        seen = exec_one(db, """
+            SELECT COUNT(*) FROM public.__probe WHERE run_id = :run_id
+        """, run_id=run_id)[0]
+        db.exec(text("DELETE FROM public.__probe WHERE run_id = :run_id"),
+                params={"run_id": run_id})
+        db.commit()
+        return {"ok": True, "inserted_and_seen": seen, "run_id": run_id}
+    except Exception as e:
         db.rollback()
-        logger.exception("RuntimeError during specialty insert")
-        raise HTTPException(status_code=500, detail="Runtime error while inserting specialty JSON.")
+        return {"ok": False, "error": str(e)}
 
-    except HTTPException:
-        db.rollback()
-        raise
+@specialty_router.get("/specialty/list-combos")
+def list_combos(db: Session = Depends(get_db), limit: int = Query(50, ge=1, le=200)):
+    rows = exec_all(db, """
+        SELECT sc.id AS specialty_category_id,
+               c.category_name,
+               s.specialty_name,
+               s.language
+        FROM public.specialty_category sc
+        JOIN public.category  c ON c.id = sc.category_id
+        JOIN public.specialty s ON s.id = sc.specialty_id
+        ORDER BY c.category_name, s.specialty_name, s.language
+        LIMIT :limit
+    """, limit=limit)
+    return {"ok": True, "count": len(rows), "rows": [dict(r._mapping) for r in rows]}
 
-    except (IntegrityError, DataError, OperationalError) as e:
-        db.rollback()
-        logger.exception("Database error while inserting specialty JSON")
-        raise HTTPException(status_code=500, detail="Database error while inserting specialty JSON.")
-
-    except SQLAlchemyError as e:
-        db.rollback()
-        logger.exception("SQLAlchemy error while inserting specialty JSON")
-        raise HTTPException(status_code=500, detail="Database error while inserting specialty JSON.")
