@@ -2,6 +2,7 @@ import logging
 from backend.config import SPOTIFY_BLACKLIST
 
 logger = logging.getLogger("STEP_1.A" or "STEP_1")
+
 def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
     prompted_num = num_tracks + buffer_size
     prompt = (
@@ -22,6 +23,11 @@ def build_track_prompt(decade, genre, num_tracks, language, buffer_size):
         "- 'Pop': Reflect mainstream chart success, like Billboard Hot 100 hits of the era.\n"
         "- 'R&B': Motown and soul in the 60s, New Jack Swing in the 90s, etc.\n"
         "- 'Folk': Include 1960s protest songs and acoustic revival, not modern indie-folk.\n\n"
+
+        # 🔊 NEW: TTS-friendly wording for ranks
+        "🔊 TTS Formatting (strict):\n"
+        "- Never use the '#' character for ranks.\n"
+        "- Whenever a rank is referenced in text, write it as 'number {rank}' (e.g., 'number 12'), not '#12' and not '12th'.\n\n"
 
         "🧾 Each JSON object must include:\n"
         "- rank (integer)\n"

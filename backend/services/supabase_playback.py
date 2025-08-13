@@ -34,7 +34,7 @@ def play_mp3_bytes_sync(mp3_bytes: bytes, *, block: bool = True, diagnostics: bo
             pass
 
         cmd = base_args + [str(tmp_path)]
-        logger.info("▶ ffplay starting")
+        logger.debug("▶ ffplay starting")
 
         if block:
             proc = subprocess.run(cmd, check=False, capture_output=True)
@@ -45,7 +45,7 @@ def play_mp3_bytes_sync(mp3_bytes: bytes, *, block: bool = True, diagnostics: bo
                     logger.debug("ffplay stdout: %s", proc.stdout.decode(errors="ignore"))
                 logger.error("❌ ffplay failed with returncode=%s", proc.returncode)
             else:
-                logger.info("✅ ffplay completed")
+                logger.debug("✅ ffplay completed")
             return proc.returncode
         else:
             subprocess.Popen(cmd)

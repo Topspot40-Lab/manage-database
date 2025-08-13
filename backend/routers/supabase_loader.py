@@ -316,7 +316,7 @@ async def play_tracks_with_starting_rank(
                 uris=[f"spotify:track:{track_id}"],
                 position_ms=position_ms,
             )
-            logger.info(f"▶ start_playback track={track_id} pos={position_ms}ms")
+            logger.debug(f"▶ start_playback track={track_id} pos={position_ms}ms")
             return True
         except Exception as e:
             logger.exception(f"start_playback failed for track={track_id}: {e}")
