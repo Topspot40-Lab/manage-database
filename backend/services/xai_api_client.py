@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Optional, Any
 
 import requests
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from urllib.parse import urlparse
 import os
 
@@ -44,17 +45,20 @@ if not TEST_DIR.exists():
 
 # ---- HTTP session with retries/backoff --------------------------------------------
 _session = requests.Session()
+
 _retries = Retry(
-    total=2,
-    connect=2,
-    read=2,
+    total=3,               # a little more generous
+    connect=3,
+    read=3,
     backoff_factor=1.5,
     status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=frozenset(["POST"]),
+    allowed_methods=frozenset(["POST"]),  # IMPORTANT: uppercase method names
     raise_on_status=False,
 )
-_session.mount("https://", HTTPAdapter(max_retries=_retries))
-# no HTTP mount; keeps scanners happy
+
+_adapter = HTTPAdapter(max_retries=_retries, pool_connections=20, pool_maxsize=20)
+_session.mount("https://", _adapter)
+_session.mount("http://", _adapter)  # harmless; keeps pools consistent
 
 # ---- Helpers ----------------------------------------------------------------------
 def _test_path(n: int) -> Path:

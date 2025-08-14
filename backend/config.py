@@ -30,7 +30,7 @@ SCHEMA_PATH = BASE_DIR / "backend" / "schemas" / "track_schema.json"
 import os
 
 # BED_ENABLED          = os.getenv("BED_ENABLED", "true").lower() == "true"
-SPOTIFY_BED_TRACK_ID = os.getenv("SPOTIFY_BED_TRACK_ID", "2ggZjjqszgPpFUMyCwPrrj")  # your bed track
+# SPOTIFY_BED_TRACK_ID = os.getenv("SPOTIFY_BED_TRACK_ID", "2ggZjjqszgPpFUMyCwPrrj")  # your bed track
 # BED_VOLUME_PERCENT   = int(os.getenv("BED_VOLUME_PERCENT", "20"))   # 0–100
 # MAIN_VOLUME_PERCENT  = int(os.getenv("MAIN_VOLUME_PERCENT", "60"))  # after VO
 # BED_FADE_MS          = int(os.getenv("BED_FADE_MS", "1200"))        # fade-out time
@@ -290,7 +290,7 @@ FALLBACK_TO_TEST_ON_XAI_ERROR = True   # default: True for dev/testing
 FALLBACK_TEST_FILE_NUMBER = 1          # e.g., json_test_file_1.json
 
 # Timeout (in seconds) for XAI API requests
-XAI_TIMEOUT_SECONDS = 30
+XAI_TIMEOUT_SECONDS = 180
 
 
 import os
@@ -334,8 +334,12 @@ _bed_id_raw = (
     "2ggZjjqszgPpFUMyCwPrrj"  # default you showed
 )
 BED_SPOTIFY_TRACK_ID = _extract_spotify_track_id(_bed_id_raw)
+
 if BED_ENABLED and not BED_SPOTIFY_TRACK_ID:
     log.warning("BED_ENABLED=true but no valid BED_SPOTIFY_TRACK_ID parsed from env.")
+
+# (optional back-compat for any older imports)
+SPOTIFY_BED_TRACK_ID = BED_SPOTIFY_TRACK_ID
 
 # Volume: BED_FACTOR (float) takes precedence; else BED_VOLUME_PERCENT
 _bed_factor_env = os.getenv("BED_FACTOR", "").strip()
@@ -354,3 +358,11 @@ else:
     BED_VOLUME_PERCENT = _clamp(int(os.getenv("BED_VOLUME_PERCENT", "20")))
     log.info("🎚 BED fixed volume: %s%%", BED_VOLUME_PERCENT)
 
+# --- XAI timeouts & retries ---
+XAI_CONNECT_TIMEOUT = 10     # seconds
+XAI_READ_TIMEOUT = 120       # bump from 30 -> 120 (or 180)
+XAI_MAX_RETRIES = 3
+XAI_BACKOFF_FACTOR = 1.5
+# Optional: force regional endpoint (see note below)
+# XAI_API_BASE = "https://us-east-1.api.x.ai/v1"
+XAI_API_BASE = "https://api.x.ai/v1"
