@@ -241,7 +241,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.validate_json": "INFO",
     "backend.routers.supabase_summary": "INFO",
     "backend.routers.tts_intro": "INFO",
-    "backend.routers.tts_detail": "INFO",
+    "backend.routers.tts_detail": "DEBUG",
     "backend.routers.supabase_loader": "DEBUG",          # ✅ Added
     "backend.routers.insert_specialty": "DEBUG",  # ✅ Added for specialty JSON insert
 
@@ -256,7 +256,7 @@ LOG_LEVELS_BY_MODULE = {
     # 🪵 Custom Loggers
     # ─────────────────────────────
     "backend.logging.track_logging": "INFO",
-    "tts_logger": "INFO",
+    "tts_logger": "DEBUG",
     "supabase_summary": "INFO",
     "tts_diagnostics": "INFO",
 

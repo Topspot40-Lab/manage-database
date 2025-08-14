@@ -5,6 +5,7 @@ from backend.models.enums import ModeFlag
 from sqlalchemy import Column, Enum as SqlEnum  # 👈 Needed for proper SQL enum mapping
 from sqlmodel import Relationship
 from typing import Optional
+from sqlalchemy import CheckConstraint
 
 
 class DecadeGenreTrivia(SQLModel, table=True):
@@ -132,27 +133,28 @@ class Top40GenreRanking(SQLModel, table=True):
     created_at: Optional[datetime] = Field(default=None)
     intro_mp3_url: Optional[str] = Field(default=None)
 
-
 class TrackRanking(SQLModel, table=True):
     __tablename__ = "track_ranking"
     __table_args__ = (
-        UniqueConstraint("track_id", "decade_genre_id", "tracklist_id", name="track_ranking_track_id_decade_genre_id_tracklist_id_key"),
-        UniqueConstraint("ranking", "decade_genre_id", name="uix_rank_per_decade_genre"),
-        {"extend_existing": True}
+        UniqueConstraint("decade_genre_id", "ranking", name="uix_rank_per_decade_genre"),
+        UniqueConstraint("decade_genre_id", "track_id", name="uix_track_per_decade_genre"),
+        CheckConstraint("ranking >= 1", name="chk_tr_ranking_positive"),
+        {"extend_existing": True},
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    track_id: int = Field(foreign_key="track.id")
-    decade_genre_id: int = Field(foreign_key="decade_genre.id")
-    tracklist_id: int
-    ranking: int
-    intro: Optional[str] = None
-    created_at: Optional[str] = None
+    track_id: int = Field(foreign_key="track.id", index=True)
+    decade_genre_id: int = Field(foreign_key="decade_genre.id", index=True)
 
-    # ✅ Add these two lines:
+    # single list for now
+    tracklist_id: int = Field(default=1)
+
+    ranking: int = Field(index=True)
+    intro: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
     track: Optional["Track"] = Relationship(back_populates="rankings")
     decade_genre: Optional["DecadeGenre"] = Relationship()
-
 
 class Tracklist(SQLModel, table=True):
     __tablename__ = "track_list"

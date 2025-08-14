@@ -9,7 +9,8 @@ from backend.models import Track, TrackRanking, DecadeGenre
 from sqlalchemy.orm import selectinload
 
 from backend.config import VOICE_ID_INTRO
-from backend.utils.tts_diagnostics import get_missing_tts_info
+from backend.utils.tts_diagnostics import get_missing_tts_info, normalize_for_filename
+
 from backend.services.tts.generate_tts_batch import generate_tts_batch
 
 logger = logging.getLogger("tts_logger")
@@ -21,8 +22,9 @@ intro_router = APIRouter(
 
 
 def generate_intro_filename(track):
-    return f"{track['decade']}_{track['genre']}_{track['rank']:02}.mp3"
-
+    decade = normalize_for_filename(track["decade"])
+    genre  = normalize_for_filename(track["genre"])
+    return f"{decade}_{genre}_{int(track['rank']):02}.mp3"
 
 @intro_router.post("/by-missing")
 async def generate_missing_intro_tts(
