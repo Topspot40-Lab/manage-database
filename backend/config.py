@@ -250,7 +250,7 @@ LOG_LEVELS_BY_MODULE = {
     # ─────────────────────────────
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
-    "backend.utils.tts_diagnostics": "INFO",
+    "backend.utils.tts_diagnostics": "DEBUG",
 
     # ─────────────────────────────
     # 🪵 Custom Loggers
@@ -258,7 +258,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.logging.track_logging": "INFO",
     "tts_logger": "DEBUG",
     "supabase_summary": "INFO",
-    "tts_diagnostics": "INFO",
+    "tts_diagnostics": "DEBUG",
 
     # ─────────────────────────────
     # 🌐 Third-party Libraries

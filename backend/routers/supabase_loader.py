@@ -7,7 +7,7 @@ from backend.models import TrackRanking, Track, Artist, Decade, Genre, DecadeGen
 from backend.utils.tts_diagnostics import normalize_for_filename
 from backend.services.spotify.playback import play_spotify_track
 from backend.state import current_decade_genre, skip_event  # 👈 add skip_event
-
+from backend.config import BED_VOLUME_PERCENT  # add with the other imports
 import logging
 
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
@@ -232,7 +232,7 @@ async def play_tracks_with_starting_rank(
     play_artist_mp3: bool = Query(True),
     db: Session = Depends(get_db)
 ):
-    import random, asyncio, logging
+    import random, asyncio
     from sqlmodel import select
     from backend.config import (
         BUCKET_TRACK_INTRO, BUCKET_TRACK_DETAIL, BUCKET_ARTIST,
@@ -244,7 +244,6 @@ async def play_tracks_with_starting_rank(
     from backend.models import Decade, Genre, DecadeGenre, TrackRanking, Track, Artist
     from backend.state import current_decade_genre
 
-    logger = logging.getLogger("play_tracks_with_starting_rank")
 
     decade = current_decade_genre.get("decade")
     genre = current_decade_genre.get("genre")
@@ -361,19 +360,28 @@ async def play_tracks_with_starting_rank(
             or getattr(artist, "description", None)
             or getattr(artist, "bio", None)
         )
+        # --- Log intro/detail/artist text to terminal (mirrors what we'll play)
+        intro_text = getattr(ranking, "intro", None) or getattr(track, "intro", None)
+        detail_text = getattr(ranking, "detail", None) or getattr(track, "detail", None)
+        artist_text = (
+                getattr(artist, "artist_description", None)
+                or getattr(artist, "description", None)
+                or getattr(artist, "bio", None)
+        )
+
         if play_intro and intro_text:
-            logger.info("📣 INTRO TEXT:",intro_text)
+            logger.info("📣 INTRO TEXT:\n%s", intro_text)
         if play_detail and detail_text:
-            logger.info("📝 DETAIL TEXT:", detail_text)
+            logger.info("📝 DETAIL TEXT:\n%s", detail_text)
         if play_artist_mp3 and artist_text:
-            logger.info("👤 ARTIST TEXT:", artist_text)
+            logger.info("👤 ARTIST TEXT:\n%s", artist_text)
 
         # --- Start bed track (if configured) ---
         if SPOTIFY_BED_TRACK_ID:
             # Start bed first (activates device), then set volume down
             if _start_track(SPOTIFY_BED_TRACK_ID, device_id):
                 await asyncio.sleep(0.6)
-                _set_volume(int(100 * BED_FACTOR), device_id)
+                _set_volume(BED_VOLUME_PERCENT, device_id)
 
         # --- Play narration MP3s (these do not affect Spotify device) ---
         if play_intro:

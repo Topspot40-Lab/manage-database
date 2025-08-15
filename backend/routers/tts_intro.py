@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from backend.config import VOICE_ID_INTRO
 from backend.utils.tts_diagnostics import get_missing_tts_info, normalize_for_filename
 
+
 from backend.services.tts.generate_tts_batch import generate_tts_batch
 
 logger = logging.getLogger("tts_logger")
