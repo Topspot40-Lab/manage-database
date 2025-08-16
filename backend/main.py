@@ -8,7 +8,7 @@ from backend.routers.tts_artist import artist_router
 from backend.routers import supabase_summary
 from backend.routers.play_json_track_by_rank import router as playback_router
 from backend.routers.tts_regenerator import router as tts_regen_router
-
+from backend.routers.locales import router as locales_router
 # inside your FastAPI app setup:
 
 
@@ -95,3 +95,4 @@ app.include_router(supabase_loader.router)
 app.include_router(tts_regen_router)
 app.include_router(specialty_insert_router, prefix="/json/insert")
 
+app.include_router(locales_router)

@@ -203,3 +203,32 @@ class Track(SQLModel, table=True):
     })
 
     rankings: list["TrackRanking"] = Relationship(back_populates="track")
+
+
+
+class TrackRankingLocale(SQLModel, table=True):
+    __tablename__ = "track_ranking_locale"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    track_ranking_id: int = Field(foreign_key="track_ranking.id")
+    language_code: str
+    intro_text: str
+    tts_bucket: Optional[str] = None
+    tts_key: Optional[str] = None
+
+class TrackLocale(SQLModel, table=True):
+    __tablename__ = "track_locale"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    track_id: int = Field(foreign_key="track.id")
+    language_code: str
+    detail_text: str
+    tts_bucket: Optional[str] = None
+    tts_key: Optional[str] = None
+
+class ArtistLocale(SQLModel, table=True):
+    __tablename__ = "artist_locale"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    artist_id: int = Field(foreign_key="artist.id")
+    language_code: str
+    artist_description_text: str
+    tts_bucket: Optional[str] = None
+    tts_key: Optional[str] = None
