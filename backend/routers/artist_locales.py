@@ -9,6 +9,7 @@ from backend.config import ELEVENLABS_API_KEY, ELEVEN_MODEL_ID
 from backend.utils.storage_keys import bucket_for
 from backend.services.supabase_storage import upload_bytes
 from backend.services.elevenlabs_tts import synth_to_mp3_bytes
+from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 
 router = APIRouter(prefix="/locales/artist", tags=["artist-locales"])
 
@@ -57,8 +58,9 @@ def upsert_artist_descriptions(
     artist_ids: Optional[List[int]] = Query(None),
     limit: int = Query(25, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    only_missing_text: bool = Query(False, description="If true, only artists missing ANY of the requested locales"),
+    only_missing_text: bool = Query(False),
     dry_run: bool = Query(True),
+    source: str = Query("xai", pattern="^(seed|xai)$"),  # <-- default to xai now
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     langs = [l for l in languages if l in SUPPORTED_LANGS]
@@ -67,17 +69,48 @@ def upsert_artist_descriptions(
         return {"processed": 0, "note": "No supported languages requested."}
 
     artists = pick_artists(db, artist_ids, limit, offset, langs, only_missing_text)
+
+    # Build a quick map for all artists in this batch
+    by_id = {a.id: a for a in artists}
+    by_name_lower = { (a.artist_name or "").strip().lower(): a for a in artists }
+
+    # Language label mapping for your XAI function’s prompt
+    lang_label = {
+        "es": "Spanish",
+        "pt-BR": "Portuguese (Brazil)",
+    }
+
+    # Prepare XAI results per language (batch call once per lang)
+    xai_descs_by_lang: Dict[str, Dict[str, str]] = {}  # lang -> {name_lower: desc}
+    if source == "xai" and artists:
+        # Build the unique input your function expects
+        unique_input = [{"artist_name": a.artist_name} for a in artists if (a.artist_name or "").strip()]
+        for lang in langs:
+            label = lang_label[lang]
+            results = get_artist_descriptions_from_xai(unique_input, label) or []
+            # Map name_lower -> description
+            xai_descs_by_lang[lang] = {
+                (r.get("artist_name","").strip().lower()): r.get("artist_description","").strip()
+                for r in results if r.get("artist_name") and r.get("artist_description")
+            }
+
     planned, processed = [], 0
 
     for artist in artists:
         for lang in langs:
-            text = generate_artist_description(lang, artist)
+            # Pick text source: XAI if available, else fallback stub
+            text = None
+            if source == "xai":
+                text = xai_descs_by_lang.get(lang, {}).get((artist.artist_name or "").strip().lower())
+            if not text:
+                text = generate_artist_description(lang, artist)  # your existing seed fallback
 
             planned.append({
                 "artist_id": artist.id,
                 "artist": artist.artist_name,
                 "language": lang,
                 "will_write": {"artist_description_text": True},
+                "source": "xai" if source == "xai" else "seed",
             })
             if dry_run:
                 continue
