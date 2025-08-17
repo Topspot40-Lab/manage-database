@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from backend.database import get_db
 
 from backend.models.dbmodels import (
-    Decade, Genre, DecadeGenre,        # ⬅️ added
+    Decade, Genre, DecadeGenre,
     TrackRanking, Track, Artist,
     TrackRankingLocale, TrackLocale, ArtistLocale,
 )
@@ -55,8 +55,14 @@ def backfill_locales(
     languages: List[str] = Query(["es", "pt-BR"]),
     limit: int = Query(1, ge=1, le=500),
     dry_run: bool = Query(True),
+    tts: bool = Query(False, description="Generate & upload MP3s (False = DB only)"),
     db: Session = Depends(get_db),
 ):
+    log.info(
+        "backfill params | decade=%s genre=%s languages=%s limit=%s dry_run=%s tts=%s",
+        decade, genre, languages, limit, dry_run, tts
+    )
+
     try:
         # 1) Resolve decade_genre_id from normalized schema
         dg_id = _get_decade_genre_id(db, decade, genre)
@@ -90,13 +96,9 @@ def backfill_locales(
                 raise
 
         for tr, tk, ar in rows:
-            # Be resilient to field naming differences
             track_name = getattr(tk, "track_name", None)
             artist_name = getattr(ar, "artist_name", None)
-            year_released = (
-                getattr(tk, "year_released", None)
-                or getattr(tk, "release_year", None)
-            )
+            year_released = getattr(tk, "year_released", None) or getattr(tk, "release_year", None)
 
             if not track_name or not artist_name:
                 log.warning(
@@ -184,16 +186,15 @@ def backfill_locales(
         if not dry_run:
             _commit_once()
 
-            # 4) TTS + upload (after DB commit), only when not dry_run
+        # 4) TTS + upload (after DB commit), only when requested
+        tts_errors = []
+        if not dry_run and tts:
             for tr, tk, ar in rows:
                 key = key_for(decade, genre, tr.ranking)
-                # Recompute localization to avoid retaining lots of text in memory
                 track_name = getattr(tk, "track_name", None)
                 artist_name = getattr(ar, "artist_name", None)
-                year_released = (
-                    getattr(tk, "year_released", None)
-                    or getattr(tk, "release_year", None)
-                )
+                year_released = getattr(tk, "year_released", None) or getattr(tk, "release_year", None)
+
                 payload = {
                     "rank": tr.ranking,
                     "decade": decade,
@@ -209,16 +210,48 @@ def backfill_locales(
                     intro = data.get("intro")
                     detail = data.get("detail")
                     artist_desc = data.get("artist_description")
+                    # inside: if not dry_run and tts:
+                    try:
+                        if intro:
+                            mp3 = synth_to_mp3_bytes(intro, lang, kind="intro", api_key=ELEVENLABS_API_KEY)
+                            if mp3:
+                                upload_bytes(bucket_for("intro", lang), key, mp3, "audio/mpeg")
+                            else:
+                                msg = f"TTS returned no audio (intro, {lang}, rank={tr.ranking})"
+                                log.warning(msg)
+                                tts_errors.append(msg)
+                    except Exception as ex:
+                        msg = f"TTS/upload failed (intro, lang={lang}, rank={tr.ranking}): {ex}"
+                        log.error(msg)
+                        tts_errors.append(msg)
 
-                    if intro:
-                        mp3 = synth_to_mp3_bytes(intro, lang, kind="intro", api_key=ELEVENLABS_API_KEY)
-                        upload_bytes(bucket_for("intro", lang), key, mp3, "audio/mpeg")
-                    if detail:
-                        mp3 = synth_to_mp3_bytes(detail, lang, kind="detail", api_key=ELEVENLABS_API_KEY)
-                        upload_bytes(bucket_for("detail", lang), key, mp3, "audio/mpeg")
-                    if artist_desc:
-                        mp3 = synth_to_mp3_bytes(artist_desc, lang, kind="artist", api_key=ELEVENLABS_API_KEY)
-                        upload_bytes(bucket_for("artist", lang), key, mp3, "audio/mpeg")
+                    try:
+                        if detail:
+                            mp3 = synth_to_mp3_bytes(detail, lang, kind="detail", api_key=ELEVENLABS_API_KEY)
+                            if mp3:
+                                upload_bytes(bucket_for("detail", lang), key, mp3, "audio/mpeg")
+                            else:
+                                msg = f"TTS returned no audio (detail, {lang}, rank={tr.ranking})"
+                                log.warning(msg)
+                                tts_errors.append(msg)
+                    except Exception as ex:
+                        msg = f"TTS/upload failed (detail, lang={lang}, rank={tr.ranking}): {ex}"
+                        log.error(msg)
+                        tts_errors.append(msg)
+
+                    try:
+                        if artist_desc:
+                            mp3 = synth_to_mp3_bytes(artist_desc, lang, kind="artist", api_key=ELEVENLABS_API_KEY)
+                            if mp3:
+                                upload_bytes(bucket_for("artist", lang), key, mp3, "audio/mpeg")
+                            else:
+                                msg = f"TTS returned no audio (artist, {lang}, rank={tr.ranking})"
+                                log.warning(msg)
+                                tts_errors.append(msg)
+                    except Exception as ex:
+                        msg = f"TTS/upload failed (artist, lang={lang}, rank={tr.ranking}): {ex}"
+                        log.error(msg)
+                        tts_errors.append(msg)
 
         # 5) Response
         return {
@@ -228,8 +261,14 @@ def backfill_locales(
             "languages": languages,
             "processed": processed,
             "dry_run": dry_run,
-            "sample_planned_actions": planned_actions[: min(10, len(planned_actions))],  # preview
-            "note": "(dry-run) no DB writes or uploads performed" if dry_run else "localized rows written; mp3s uploaded",
+            "tts": tts,
+            "sample_planned_actions": planned_actions[: min(10, len(planned_actions))],
+            "tts_errors": (tts_errors[:5] if tts else []),
+            "note": (
+                "(dry-run) no DB writes or uploads performed"
+                if dry_run else
+                ("localized rows written; " + ("mp3s attempted" if tts else "no TTS (tts=false)"))
+            ),
         }
 
     except HTTPException:

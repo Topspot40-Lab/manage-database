@@ -208,6 +208,9 @@ class Track(SQLModel, table=True):
 
 class TrackRankingLocale(SQLModel, table=True):
     __tablename__ = "track_ranking_locale"
+    __table_args__ = (
+        UniqueConstraint("track_ranking_id", "language_code", name="uix_trl_rank_lang"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     track_ranking_id: int = Field(foreign_key="track_ranking.id")
     language_code: str
@@ -217,6 +220,9 @@ class TrackRankingLocale(SQLModel, table=True):
 
 class TrackLocale(SQLModel, table=True):
     __tablename__ = "track_locale"
+    __table_args__ = (
+        UniqueConstraint("track_id", "language_code", name="uix_tl_track_lang"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     track_id: int = Field(foreign_key="track.id")
     language_code: str
@@ -226,6 +232,9 @@ class TrackLocale(SQLModel, table=True):
 
 class ArtistLocale(SQLModel, table=True):
     __tablename__ = "artist_locale"
+    __table_args__ = (
+        UniqueConstraint("artist_id", "language_code", name="uix_al_artist_lang"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     artist_id: int = Field(foreign_key="artist.id")
     language_code: str

@@ -369,10 +369,23 @@ XAI_API_BASE = "https://api.x.ai/v1"
 
 # backend/config.py
 BUCKETS = {
-    "en": {"intro": "track-intro-mp3-files",    "detail": "track-detail-mp3-files",    "artist": "artist-mp3-files"},
-    "es": {"intro": "track-intro-mp3-files-es", "detail": "track-detail-mp3-files-es", "artist": "artist-mp3-files-es"},
-    "pt": {"intro": "track-intro-mp3-files-pt", "detail": "track-detail-mp3-files-pt", "artist": "artist-mp3-files-pt"},
+    "en": {
+        "intro":  "track-intro-mp3-files",
+        "detail": "track-detail-mp3-files",
+        "artist": "artist-mp3-files",
+    },
+    "es": {
+        "intro":  "track-intro-mp3-files-es",
+        "detail": "track-detail-mp3-files-es",
+        "artist": "artist-mp3-files-es",
+    },
+    "pt": {
+        "intro":  "track-intro-mp3-files-ptbr",
+        "detail": "track-detail-mp3-files-ptbr",
+        "artist": "artist-mp3-files-ptbr",
+    },
 }
+
 SUPPORTED_LANGS = ["en", "es", "pt-BR"]
 DEFAULT_LANGUAGE = "en"
 
@@ -381,18 +394,18 @@ ELEVEN_MODEL_ID = "eleven_multilingual_v2"  # good for EN/ES/PT-BR
 # One voice per language × kind (fill in your real voice_ids)
 TTS_PROFILES = {
     "en": {
-        "intro":  {"voice_id": "<EN_INTRO_ID>",  "settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
-        "detail": {"voice_id": "<EN_DETAIL_ID>", "settings": {"stability": 0.6, "similarity_boost": 0.6, "style": 0.2, "use_speaker_boost": False}},
-        "artist": {"voice_id": "<EN_ARTIST_ID>", "settings": {"stability": 0.55,"similarity_boost": 0.7, "style": 0.35,"use_speaker_boost": True}},
+        "intro":  {"voice_id": "EXAVITQu4vr4xnSDxMaL",  "settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
+        "detail": {"voice_id": "Vr6EZfGAz5W6T1wn6b4p", "settings": {"stability": 0.6, "similarity_boost": 0.6, "style": 0.2, "use_speaker_boost": False}},
+        "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55,"similarity_boost": 0.7, "style": 0.35,"use_speaker_boost": True}},
     },
     "es": {
-        "intro":  {"voice_id": "<ES_INTRO_ID>",  "settings": {"stability": 0.5, "similarity_boost": 0.85,"style": 0.5, "use_speaker_boost": True}},
-        "detail": {"voice_id": "<ES_DETAIL_ID>", "settings": {"stability": 0.65,"similarity_boost": 0.7, "style": 0.25,"use_speaker_boost": False}},
-        "artist": {"voice_id": "<ES_ARTIST_ID>", "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
+        "intro":  {"voice_id": "pNInz6obpgDQGcFmaJgB",  "settings": {"stability": 0.5, "similarity_boost": 0.85,"style": 0.5, "use_speaker_boost": True}},
+        "detail": {"voice_id": "7EjKsW93fhgPskc2LsT1", "settings": {"stability": 0.65,"similarity_boost": 0.7, "style": 0.25,"use_speaker_boost": False}},
+        "artist": {"voice_id": "9Bc7af4lXwKmS2h7VpQz", "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
     },
     "pt-BR": {
-        "intro":  {"voice_id": "<PT_INTRO_ID>",  "settings": {"stability": 0.5, "similarity_boost": 0.85,"style": 0.5, "use_speaker_boost": True}},
-        "detail": {"voice_id": "<PT_DETAIL_ID>", "settings": {"stability": 0.65,"similarity_boost": 0.7, "style": 0.25,"use_speaker_boost": False}},
-        "artist": {"voice_id": "<PT_ARTIST_ID>", "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
+        "intro":  {"voice_id": "5dF3gH7abcXYZ1234567",  "settings": {"stability": 0.5, "similarity_boost": 0.85,"style": 0.5, "use_speaker_boost": True}},
+        "detail": {"voice_id": "h8JkLmNopqRST9876543", "settings": {"stability": 0.65,"similarity_boost": 0.7, "style": 0.25,"use_speaker_boost": False}},
+        "artist": {"voice_id": " h8JkLmNopqRST9876543", "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
     },
 }
