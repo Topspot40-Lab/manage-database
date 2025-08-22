@@ -33,11 +33,38 @@ SCHEMA_PATH = BASE_DIR / "backend" / "schemas" / "track_schema.json"
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# Legacy single-purpose buckets (⚠️ kept for back-compat; see BUCKETS map below)
-BUCKET_TRACK_INTRO = "track-intro-mp3-files"
+# NEW: language-scoped buckets (all kinds live in the same bucket, under prefixes)
+#   audio-en/intro/*.mp3,  audio-en/detail/*.mp3,  audio-en/artist/*.mp3
+#   audio-es/intro/*.mp3,  audio-es/detail/*.mp3,  audio-es/artist/*.mp3
+#   audio-ptbr/intro/*.mp3, audio-ptbr/detail/*.mp3, audio-ptbr/artist/*.mp3
+LANGUAGE_BUCKETS = {
+    "en":    "audio-en",
+    "es":    "audio-es",
+    "pt-BR": "audio-ptbr",
+}
+
+# Canonical map used by services: for each language, each kind resolves to the SAME bucket.
+# Keys "intro/detail/artist" are kept to avoid touching call sites; code should prepend the prefix to the object key.
+BUCKETS = {
+    lang: {"intro": bucket, "detail": bucket, "artist": bucket}
+    for lang, bucket in LANGUAGE_BUCKETS.items()
+}
+
+# (Recommended) Standard prefixes to use when building keys in code.
+AUDIO_PREFIXES = {"intro": "intro", "detail": "detail", "artist": "artist"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ⚠️ Legacy single-purpose buckets (kept for back-compat ONLY; do not use)
+#     These reflect the OLD layout (separate buckets per kind) and are retained
+#     so old imports don't crash while you refactor to BUCKETS + AUDIO_PREFIXES.
+# ─────────────────────────────────────────────────────────────────────────────
+BUCKET_TRACK_INTRO  = "track-intro-mp3-files"
 BUCKET_TRACK_DETAIL = "track-detail-mp3-files"
-BUCKET_ARTIST = "artist-mp3-files"
+BUCKET_ARTIST       = "artist-mp3-files"
 BUCKET_SPOTIFY_TRACK = "spotify-track-mp3-files"
+
+# Back-compat: single bucket reference derived from BUCKETS (used by some modules)
+SUPABASE_BUCKET_ARTIST_MP3 = BUCKETS["en"]["artist"]   # resolves to "audio-en"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🤖 XAI configuration
@@ -147,7 +174,8 @@ VOICE_SIMILARITY = float(os.getenv("VOICE_SIMILARITY", "0.75"))
 
 # Model selection
 # Global default (used for EN unless overridden)
-_ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_monolingual_v1")
+# _ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_monolingual_v1")
+_ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")
 # Back-compat for older modules that import ELEVENLABS_MODEL
 ELEVENLABS_MODEL = _ELEVEN_MODEL_ID_DEFAULT
 
@@ -166,13 +194,6 @@ MODEL_BY_LANG = {
     "pt-BR": ELEVEN_MODEL_ID_PT_BR,
 }
 
-# Buckets by language/kind (canonical key "pt-BR")
-BUCKETS = {
-    "en":    {"intro": "track-intro-mp3-files",       "detail": "track-detail-mp3-files",       "artist": "artist-mp3-files"},
-    "es":    {"intro": "track-intro-mp3-files-es",    "detail": "track-detail-mp3-files-es",    "artist": "artist-mp3-files-es"},
-    "pt-BR": {"intro": "track-intro-mp3-files-ptbr",  "detail": "track-detail-mp3-files-ptbr",  "artist": "artist-mp3-files-ptbr"},
-}
-
 # Back-compat: single bucket references derived from BUCKETS (avoid drift)
 SUPABASE_BUCKET_ARTIST_MP3 = BUCKETS["en"]["artist"]
 
@@ -186,21 +207,25 @@ DEFAULT_TTS_LANGUAGE   = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
 
 # Per-language, per-kind voice profiles (service uses these first)
 # To override model per kind, add "model_id" to a profile entry.
+
+# Camilo multilingual voice PGggLl3Am9ns1ICvp3DO
 TTS_PROFILES = {
     "en": {
-        "intro":  {"voice_id": "EXAVITQu4vr4xnSDxMaL",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
-        "detail": {"voice_id": "Vr6EZfGAz5W6T1wn6b4p", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
+        # "intro":  {"voice_id": "BYzs2jBcHhCzX4QmS6fd",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
+        "intro":  {"voice_id": "PGggLl3Am9ns1ICvp3DO",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
+        # "detail": {"voice_id": "4XUsiqPDK4UACIM2BILe", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
+        "detail": {"voice_id": "PGggLl3Am9ns1ICvp3DO", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
         "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
         "intro":  {"voice_id": "pNInz6obpgDQGcFmaJgB",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
         "detail": {"voice_id": "7EjKsW93fhgPskc2LsT1", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
-        "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
+        "artist": {"voice_id": "w7IU2bIH6xHcyfkUUWi3", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
     },
     "pt-BR": {
         "intro":  {"voice_id": "5dF3gH7abcXYZ1234567",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
-        "detail": {"voice_id": "h8JkLmNopqRST9876543", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
-        "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
+        "detail": {"voice_id": "cyD08lEy76q03ER1jZ7y", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
+        "artist": {"voice_id": "CstacWqMhJQlnfLPxRG4", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
     },
 }
 
@@ -260,7 +285,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.insert_json": "INFO",
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.routers.supabase_summary": "INFO",
+    "backend.routers.supabase_summary": "DEBUG",
     "backend.routers.tts_intro": "INFO",
     "backend.routers.tts_detail": "DEBUG",
     "backend.routers.supabase_loader": "DEBUG",

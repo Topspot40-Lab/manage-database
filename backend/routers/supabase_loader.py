@@ -1,24 +1,33 @@
 # backend/routers/supabase_loader.py
 
 from fastapi import APIRouter, Query, Depends
+from typing import Literal
 from sqlmodel import Session, select
 from backend.database import get_db
 from backend.models import TrackRanking, Track, Artist, Decade, Genre, DecadeGenre
 from backend.utils.tts_diagnostics import normalize_for_filename
 from backend.services.spotify.playback import play_spotify_track
-from backend.state import current_decade_genre, skip_event  # 👈 add skip_event
-from backend.config import BED_VOLUME_PERCENT  # add with the other imports
+from backend.state import current_decade_genre, skip_event
+from backend.config import BED_VOLUME_PERCENT, BUCKETS, AUDIO_PREFIXES
 import logging
 
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
 logger = logging.getLogger("supabase_loader")
 
+# --- helpers for language-aware buckets/keys ---
+def _canon_lang(code: str) -> str:
+    m = (code or "en").strip().lower()
+    return {"en": "en", "es": "es", "ptbr": "pt-BR"}.get(m, "en")
+
+def _bucket_for(language: str, kind: Literal["intro", "detail", "artist"]) -> str:
+    lang = _canon_lang(language)
+    return BUCKETS.get(lang, BUCKETS["en"])[kind]
+
+def _key_for(kind: Literal["intro", "detail", "artist"], filename: str) -> str:
+    return f"{AUDIO_PREFIXES[kind]}/{filename}"
+
 @router.post("/skip-current-track")
 async def skip_current_track():
-    """
-    Signal the playback loop to skip the current song.
-    Your wait helper will see this and return immediately.
-    """
     skip_event.set()
     return {"status": "skipping"}
 
@@ -29,6 +38,7 @@ async def play_track_by_rank_only(
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_mp3: bool = Query(True),
+    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
     decade = current_decade_genre.get("decade")
@@ -46,6 +56,7 @@ async def play_track_by_rank_only(
         play_detail=play_detail,
         play_track=play_track,
         play_artist_mp3=play_artist_mp3,
+        tts_language=tts_language,
         db=db
     )
 
@@ -58,16 +69,13 @@ async def play_track_by_rank(
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_mp3: bool = Query(True),
+    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    from backend.config import (
-        BUCKET_TRACK_INTRO,
-        BUCKET_TRACK_DETAIL,
-        BUCKET_ARTIST,
-    )
     from backend.services.supabase_playback import play_mp3
 
-    logger.info(f"🎯 Playing track by rank: {decade} / {genre} / #{rank}")
+    lang = _canon_lang(tts_language)
+    logger.info(f"🎯 Playing track by rank: {decade} / {genre} / #{rank} (lang={lang})")
 
     # Step 1: Lookup DecadeGenre
     stmt = (
@@ -100,69 +108,75 @@ async def play_track_by_rank(
     if not artist:
         return {"error": f"Artist ID {track.artist_id} not found"}
 
-    # === File keys ===
-    intro_mp3 = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
-    detail_mp3 = f"{track.spotify_track_id}.mp3"
-    track_mp3 = f"{track.spotify_track_id}.mp3"
-    artist_mp3 = f"{artist.spotify_artist_id}.mp3"
+    # === Filenames (unchanged) ===
+    intro_filename  = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
+    detail_filename = f"{track.spotify_track_id}.mp3"
+    artist_filename = f"{artist.spotify_artist_id}.mp3"
+
+    # === Keys (prefix folders) ===
+    intro_key  = _key_for("intro", intro_filename)
+    detail_key = _key_for("detail", detail_filename)
+    artist_key = _key_for("artist", artist_filename)
+
+    # === Buckets (per language) ===
+    intro_bucket  = _bucket_for(lang, "intro")
+    detail_bucket = _bucket_for(lang, "detail")
+    artist_bucket = _bucket_for(lang, "artist")
 
     logger.info("=" * 90)
     logger.info(
-        f"🎯 {decade} / {genre} — Rank #{rank} | 🎵 {track.track_name} by {artist.artist_name} | 🔗 {artist.spotify_artist_id}")
+        f"🎯 {decade} / {genre} — Rank #{rank} | 🎵 {track.track_name} by {artist.artist_name} | lang={lang}"
+    )
 
     # === Playback ===
     if play_intro:
-        logger.info(f"\n📢 Intro Text (→ {intro_mp3}):\n{ranking.intro.strip()}")
-        await play_mp3(BUCKET_TRACK_INTRO, intro_mp3)
+        if ranking.intro:
+            logger.info(f"\n📢 Intro Text (→ {intro_key} in {intro_bucket}):\n{ranking.intro.strip()}")
+        await play_mp3(intro_bucket, intro_key)
 
     if play_detail:
-        logger.info(f"\n📝 Detail Text (→ {detail_mp3}):\n{track.detail.strip()}")
-        await play_mp3(BUCKET_TRACK_DETAIL, detail_mp3)
+        if track.detail:
+            logger.info(f"\n📝 Detail Text (→ {detail_key} in {detail_bucket}):\n{track.detail.strip()}")
+        await play_mp3(detail_bucket, detail_key)
 
     if play_artist_mp3:
-        logger.info(f"\n🎙️ Artist Description:\n{artist.artist_description.strip()}")
-        await play_mp3(BUCKET_ARTIST, artist_mp3)
+        if artist.artist_description:
+            logger.info(f"\n🎙️ Artist Description (→ {artist_key} in {artist_bucket}):\n{artist.artist_description.strip()}")
+        await play_mp3(artist_bucket, artist_key)
 
     # === Log Artwork URLs After Playback Starts ===
-    if artist.artist_artwork:
-        logger.info(f"🖼️ Artist Artwork: {artist.artist_artwork}")
-    else:
-        logger.info("🖼️ Artist Artwork: [None]")
-
-    if track.album_artwork:
-        logger.info(f"💿 Album Artwork: {track.album_artwork}")
-    else:
-        logger.info("💿 Album Artwork: [None]")
+    logger.info(f"🖼️ Artist Artwork: {artist.artist_artwork or '[None]'}")
+    logger.info(f"💿 Album Artwork: {track.album_artwork or '[None]'}")
 
     if play_track:
-        logger.debug(f"🎵 Playing track MP3: {track_mp3}")
+        logger.debug(f"🎵 Playing track on Spotify: {track.spotify_track_id}")
         play_spotify_track(track.spotify_track_id)
-
-
-
 
     return {
         "status": "success",
+        "language": lang,
         "track": track.track_name,
         "artist": artist.artist_name,
-        "played": {
-            "intro": play_intro,
-            "detail": play_detail,
-            "track": play_track,
-            "artist": play_artist_mp3
-        }
+        "played": {"intro": play_intro, "detail": play_detail, "track": play_track, "artist": play_artist_mp3},
+        "keys": {
+            "intro":  {"bucket": intro_bucket,  "key": intro_key},
+            "detail": {"bucket": detail_bucket, "key": detail_key},
+            "artist": {"bucket": artist_bucket, "key": artist_key},
+        },
     }
 
 @router.get("/load-decade-genre-data")
 def load_decade_genre_data(
     decade: str = Query(..., description="Decade name, e.g., '1980s'"),
     genre: str = Query(..., description="Genre name, e.g., 'country'"),
+    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
     # ✅ Remember the context
     current_decade_genre["decade"] = decade
     current_decade_genre["genre"] = genre
-    logger.info(f"📌 Stored context for play-by-rank-only: {decade} / {genre}")
+    lang = _canon_lang(tts_language)
+    logger.info(f"📌 Stored context for play-by-rank-only: {decade} / {genre} (lang={lang})")
 
     # Step 1: Lookup DecadeGenre
     stmt = (
@@ -181,6 +195,10 @@ def load_decade_genre_data(
         select(TrackRanking).where(TrackRanking.decade_genre_id == decade_genre.id)
     ).all()
 
+    intro_bucket  = _bucket_for(lang, "intro")
+    detail_bucket = _bucket_for(lang, "detail")
+    artist_bucket = _bucket_for(lang, "artist")
+
     response = []
     for rank_entry in rankings:
         track = db.get(Track, rank_entry.track_id)
@@ -193,31 +211,34 @@ def load_decade_genre_data(
             logger.warning(f"⚠️ Artist ID {track.artist_id} not found")
             continue
 
-        # Build file keys
-        intro_mp3 = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank_entry.ranking:02}.mp3"
-        detail_mp3 = f"{track.spotify_track_id}.mp3"
-        track_mp3 = f"{track.spotify_track_id}.mp3"
-        artist_mp3 = f"{artist.spotify_artist_id}.mp3"
+        intro_filename  = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank_entry.ranking:02}.mp3"
+        detail_filename = f"{track.spotify_track_id}.mp3"
+        artist_filename = f"{artist.spotify_artist_id}.mp3" if artist.spotify_artist_id else None
 
         response.append({
             "rank": rank_entry.ranking,
             "trackName": track.track_name,
             "artistName": artist.artist_name,
-            "intro": rank_entry.intro,
-            "detail": track.detail,
-            "artistDescription": artist.artist_description,
-            "introMp3": intro_mp3,
-            "detailMp3": detail_mp3,
-            "trackMp3": track_mp3,
-            "artistMp3": artist_mp3,
+            "intro": getattr(rank_entry, "intro", None) or getattr(track, "intro", None),
+            "detail": getattr(rank_entry, "detail", None) or getattr(track, "detail", None),
+            "artistDescription": getattr(artist, "artist_description", None) or getattr(artist, "description", None) or getattr(artist, "bio", None),
+            # filenames (legacy)
+            "introMp3": intro_filename,
+            "detailMp3": detail_filename,
+            "artistMp3": artist_filename,
+            # language-aware bucket + prefixed keys (new)
+            "introKey":  {"bucket": intro_bucket,  "key": _key_for("intro", intro_filename)},
+            "detailKey": {"bucket": detail_bucket, "key": _key_for("detail", detail_filename)},
+            "artistKey": {"bucket": artist_bucket, "key": _key_for("artist", artist_filename)} if artist_filename else None,
             "artistArtwork": artist.artist_artwork,
             "albumArtwork": track.album_artwork
         })
 
-    logger.info(f"✅ Loaded {len(response)} ranked tracks for {decade} / {genre}")
+    logger.info(f"✅ Loaded {len(response)} ranked tracks for {decade} / {genre} (lang={lang})")
     return {
         "decade": decade,
         "genre": genre,
+        "language": lang,
         "track_count": len(response),
         "rankings": sorted(response, key=lambda x: x["rank"])
     }
@@ -230,20 +251,18 @@ async def play_tracks_with_starting_rank(
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_mp3: bool = Query(True),
+    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
     import random, asyncio
     from sqlmodel import select
-    from backend.config import (
-        BUCKET_TRACK_INTRO, BUCKET_TRACK_DETAIL, BUCKET_ARTIST,
-        SPOTIFY_BED_TRACK_ID, BED_FACTOR
-    )
+    from backend.config import SPOTIFY_BED_TRACK_ID
     from backend.services.supabase_playback import play_mp3
     from backend.services.spotify.spotify_auth_user import get_spotify_user_client
-    from backend.utils.tts_diagnostics import normalize_for_filename
     from backend.models import Decade, Genre, DecadeGenre, TrackRanking, Track, Artist
     from backend.state import current_decade_genre
 
+    lang = _canon_lang(tts_language)
 
     decade = current_decade_genre.get("decade")
     genre = current_decade_genre.get("genre")
@@ -325,7 +344,6 @@ async def play_tracks_with_starting_rank(
     if not device_id:
         return {"error": "No active Spotify device. Open Spotify and play any track once, then try again."}
 
-    # Explicitly activate the target device so volume calls won't 404/NO_ACTIVE_DEVICE
     try:
         sp.transfer_playback(device_id=device_id, force_play=False)
         logger.debug("transfer_playback OK")
@@ -333,6 +351,10 @@ async def play_tracks_with_starting_rank(
         logger.warning(f"transfer_playback failed (continuing): {e}")
 
     results = []
+
+    intro_bucket  = _bucket_for(lang, "intro")
+    detail_bucket = _bucket_for(lang, "detail")
+    artist_bucket = _bucket_for(lang, "artist")
 
     for rank in play_order:
         ranking = next((rk for rk in rankings if rk.ranking == rank), None)
@@ -345,14 +367,18 @@ async def play_tracks_with_starting_rank(
             continue
         artist = db.get(Artist, track.artist_id)
 
-        intro_mp3 = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
-        detail_mp3 = f"{track.spotify_track_id}.mp3"
-        artist_mp3 = f"{artist.spotify_artist_id}.mp3" if artist and artist.spotify_artist_id else None
+        intro_filename  = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
+        detail_filename = f"{track.spotify_track_id}.mp3"
+        artist_filename = f"{artist.spotify_artist_id}.mp3" if artist and artist.spotify_artist_id else None
+
+        intro_key  = _key_for("intro", intro_filename)
+        detail_key = _key_for("detail", detail_filename)
+        artist_key = _key_for("artist", artist_filename) if artist_filename else None
 
         logger.info("=" * 90)
-        logger.info(f"▶ Rank #{rank} | {track.track_name} by {artist.artist_name}")
+        logger.info(f"▶ Rank #{rank} | {track.track_name} by {artist.artist_name} (lang={lang})")
 
-        # --- Log intro/detail/artist text to terminal (mirrors what we'll play)
+        # Log texts (what we’ll play)
         intro_text = getattr(ranking, "intro", None) or getattr(track, "intro", None)
         detail_text = getattr(ranking, "detail", None) or getattr(track, "detail", None)
         artist_text = (
@@ -360,15 +386,6 @@ async def play_tracks_with_starting_rank(
             or getattr(artist, "description", None)
             or getattr(artist, "bio", None)
         )
-        # --- Log intro/detail/artist text to terminal (mirrors what we'll play)
-        intro_text = getattr(ranking, "intro", None) or getattr(track, "intro", None)
-        detail_text = getattr(ranking, "detail", None) or getattr(track, "detail", None)
-        artist_text = (
-                getattr(artist, "artist_description", None)
-                or getattr(artist, "description", None)
-                or getattr(artist, "bio", None)
-        )
-
         if play_intro and intro_text:
             logger.info("📣 INTRO TEXT:\n%s", intro_text)
         if play_detail and detail_text:
@@ -378,30 +395,30 @@ async def play_tracks_with_starting_rank(
 
         # --- Start bed track (if configured) ---
         if SPOTIFY_BED_TRACK_ID:
-            # Start bed first (activates device), then set volume down
             if _start_track(SPOTIFY_BED_TRACK_ID, device_id):
                 await asyncio.sleep(0.6)
                 _set_volume(BED_VOLUME_PERCENT, device_id)
 
-        # --- Play narration MP3s (these do not affect Spotify device) ---
+        # --- Play narration MP3s ---
         if play_intro:
-            await play_mp3(BUCKET_TRACK_INTRO, intro_mp3)
+            await play_mp3(intro_bucket, intro_key)
         if play_detail:
-            await play_mp3(BUCKET_TRACK_DETAIL, detail_mp3)
-        if play_artist_mp3 and artist_mp3:
-            await play_mp3(BUCKET_ARTIST, artist_mp3)
+            await play_mp3(detail_bucket, detail_key)
+        if play_artist_mp3 and artist_key:
+            await play_mp3(artist_bucket, artist_key)
 
-        # --- Play main track (do NOT pause bed; starting main replaces it) ---
+        # --- Play main track ---
         if play_track:
             if _start_track(track.spotify_track_id, device_id):
-                _set_volume(100, device_id)  # restore volume
-                await asyncio.sleep(60)      # play main for 1 minute
+                _set_volume(100, device_id)
+                await asyncio.sleep(60)
 
         results.append({"rank": rank, "track": track.track_name, "artist": artist.artist_name})
 
     return {
         "status": "completed",
         "mode": mode,
+        "language": lang,
         "starting_rank": starting_rank,
         "tracks_played": results
     }
