@@ -33,7 +33,8 @@ from backend.routers.insert_specialty_json import router as specialty_insert_rou
 
 # ✅ ensure this matches the actual file location:
 from backend.routers.generate_poprock import router as poprock_router
-# from backend.routes.generate_poprock import router as poprock_router  # <-- use this instead if file is in routes/
+
+
 
 logger = logging.getLogger(__name__)
 

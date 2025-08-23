@@ -288,6 +288,8 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.tts_detail": "DEBUG",
     "backend.routers.supabase_loader": "DEBUG",
     "backend.routers.insert_specialty": "DEBUG",
+    "backend.routers.generate_poprock": "DEBUG",
+    "backend.routers.llm_client": "DEBUG",
 
     # Utilities
     "backend.utils.normalize": "INFO",

@@ -2,7 +2,11 @@
 import os
 import json
 import re
+import time
+import logging
 import httpx
+
+logger = logging.getLogger(__name__)
 
 # --- JSON extraction helpers -------------------------------------------------
 
@@ -24,24 +28,30 @@ def _extract_json_object(text: str) -> dict:
     if not isinstance(text, str):
         raise ValueError("LLM response is not text")
 
+    logger.debug("llm_client: starting JSON extraction (len=%d)", len(text))
+
     # 1) Try fenced block first
     m = _FENCED_OBJ_RE.search(text)
     if m:
         candidate = m.group(1).strip()
+        logger.debug("llm_client: found fenced json block (len=%d)", len(candidate))
         try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            # fall through to other strategies
-            pass
+            parsed = json.loads(candidate)
+            logger.debug("llm_client: fenced block parsed OK")
+            return parsed
+        except json.JSONDecodeError as e:
+            logger.debug("llm_client: fenced block JSON decode failed: %s", e)
 
     s = text.strip()
 
     # 2) If it starts with '{', try parse whole string
     if s.startswith("{"):
         try:
-            return json.loads(s)
-        except json.JSONDecodeError:
-            pass
+            parsed = json.loads(s)
+            logger.debug("llm_client: full-string JSON parsed OK")
+            return parsed
+        except json.JSONDecodeError as e:
+            logger.debug("llm_client: full-string JSON decode failed: %s", e)
 
     # 3) If not starting with '{', jump to the first '{' and try from there
     idx = s.find("{")
@@ -50,7 +60,6 @@ def _extract_json_object(text: str) -> dict:
     s = s[idx:]
 
     # 4) Bracket-match the first complete top-level object.
-    #    Be careful to ignore braces inside JSON strings.
     depth = 0
     start = None
     in_string = False
@@ -68,7 +77,6 @@ def _extract_json_object(text: str) -> dict:
                 in_string = False
             continue
 
-        # not in string
         if ch == '"':
             in_string = True
             continue
@@ -82,16 +90,21 @@ def _extract_json_object(text: str) -> dict:
             if depth == 0 and start is not None:
                 candidate = s[start:i + 1]
                 try:
-                    return json.loads(candidate)
+                    parsed = json.loads(candidate)
+                    logger.debug("llm_client: bracket-matched JSON parsed OK (len=%d)", len(candidate))
+                    return parsed
                 except json.JSONDecodeError as e:
                     preview = candidate[:200].replace("\n", " ")
+                    logger.debug("llm_client: bracket-matched JSON decode failed: %s; preview=%r...", e, preview)
                     raise ValueError(
                         f"Found object but JSON parsing failed: {e}; preview: {preview}..."
                     )
 
     raise ValueError("Unbalanced braces; could not extract a complete JSON object.")
 
-# --- Providers ---------------------------------------------------------------
+# --- Provider calls ----------------------------------------------------------
+
+_DEFAULT_TIMEOUT = float(os.getenv("LLM_HTTP_TIMEOUT", "90"))
 
 def _openai_complete(prompt: str) -> dict:
     """
@@ -115,13 +128,24 @@ def _openai_complete(prompt: str) -> dict:
         "messages": [{"role": "user", "content": prompt}],
     }
 
-    with httpx.Client(timeout=90) as http:
-        r = http.post(url, headers=headers, json=payload)
-        r.raise_for_status()
-        data = r.json()
+    logger.info("llm_client: OpenAI request model=%s timeout=%.0fs prompt_chars=%d",
+                model, _DEFAULT_TIMEOUT, len(prompt))
 
-    text = data["choices"][0]["message"]["content"]
-    return _extract_json_object(text)
+    t0 = time.perf_counter()
+    try:
+        with httpx.Client(timeout=_DEFAULT_TIMEOUT) as http:
+            r = http.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+            data = r.json()
+        elapsed = time.perf_counter() - t0
+        logger.info("llm_client: OpenAI response OK in %.2fs", elapsed)
+
+        text = data["choices"][0]["message"]["content"]
+        logger.debug("llm_client: OpenAI content len=%d", len(text))
+        return _extract_json_object(text)
+    except Exception:
+        logger.exception("llm_client: OpenAI call failed")
+        raise
 
 def _xai_complete(prompt: str) -> dict:
     """
@@ -141,13 +165,24 @@ def _xai_complete(prompt: str) -> dict:
         "messages": [{"role": "user", "content": prompt}],
     }
 
-    with httpx.Client(timeout=90) as http:
-        r = http.post(url, headers=headers, json=payload)
-        r.raise_for_status()
-        data = r.json()
+    logger.info("llm_client: xAI request model=%s timeout=%.0fs prompt_chars=%d",
+                model, _DEFAULT_TIMEOUT, len(prompt))
 
-    text = data["choices"][0]["message"]["content"]
-    return _extract_json_object(text)
+    t0 = time.perf_counter()
+    try:
+        with httpx.Client(timeout=_DEFAULT_TIMEOUT) as http:
+            r = http.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+            data = r.json()
+        elapsed = time.perf_counter() - t0
+        logger.info("llm_client: xAI response OK in %.2fs", elapsed)
+
+        text = data["choices"][0]["message"]["content"]
+        logger.debug("llm_client: xAI content len=%d", len(text))
+        return _extract_json_object(text)
+    except Exception:
+        logger.exception("llm_client: xAI call failed")
+        raise
 
 # --- Public API --------------------------------------------------------------
 
@@ -161,13 +196,18 @@ def complete_json(prompt: str) -> dict:
       - For mock: MOCK_POPROCK_JSON must point to a local JSON file.
     """
     provider = os.getenv("LLM_PROVIDER", "openai").lower()
+    logger.info("llm_client: provider=%s", provider)
 
     if provider == "mock":
         path = os.getenv("MOCK_POPROCK_JSON")
         if not path:
+            logger.error("llm_client: MOCK_POPROCK_JSON not set while provider=mock")
             raise RuntimeError("MOCK_POPROCK_JSON env var not set for LLM_PROVIDER=mock")
+        logger.info("llm_client: loading mock JSON from %s", path)
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        logger.debug("llm_client: mock JSON loaded (top-level keys=%s)", list(data) if isinstance(data, dict) else type(data))
+        return data
 
     if provider == "openai":
         return _openai_complete(prompt)
@@ -175,4 +215,5 @@ def complete_json(prompt: str) -> dict:
     if provider == "xai":
         return _xai_complete(prompt)
 
+    logger.error("llm_client: unknown provider=%s", provider)
     raise NotImplementedError(f"Unknown LLM_PROVIDER: {provider}")
