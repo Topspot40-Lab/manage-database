@@ -211,10 +211,8 @@ DEFAULT_TTS_LANGUAGE   = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
 # Camilo multilingual voice PGggLl3Am9ns1ICvp3DO
 TTS_PROFILES = {
     "en": {
-        # "intro":  {"voice_id": "BYzs2jBcHhCzX4QmS6fd",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
-        "intro":  {"voice_id": "PGggLl3Am9ns1ICvp3DO",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
-        # "detail": {"voice_id": "4XUsiqPDK4UACIM2BILe", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
-        "detail": {"voice_id": "PGggLl3Am9ns1ICvp3DO", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
+        "intro":  {"voice_id": "BYzs2jBcHhCzX4QmS6fd",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
+        "detail": {"voice_id": "4XUsiqPDK4UACIM2BILe", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
         "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
