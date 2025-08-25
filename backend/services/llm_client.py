@@ -5,10 +5,80 @@ import re
 import time
 import logging
 import httpx
+from httpx import ReadTimeout, ConnectTimeout, RemoteProtocolError
+
+from backend.config import (
+    XAI_API_KEY,
+    XAI_MODEL,
+    # OPENAI_API_KEY, OPENAI_MODEL,   # ok to keep for future flexibility
+)
 
 logger = logging.getLogger(__name__)
 
-# --- JSON extraction helpers -------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment / tunables
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)).strip())
+    except Exception:
+        return default
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)).strip())
+    except Exception:
+        return default
+
+# Shared HTTP tuning (used for both xAI and OpenAI)
+XAI_CONNECT_TIMEOUT = _env_int("XAI_CONNECT_TIMEOUT", 15)
+XAI_READ_TIMEOUT    = _env_int("XAI_READ_TIMEOUT", 180)   # main fix (bigger reads)
+XAI_WRITE_TIMEOUT   = _env_int("XAI_WRITE_TIMEOUT", 60)
+XAI_POOL_TIMEOUT    = _env_int("XAI_POOL_TIMEOUT", 180)
+XAI_MAX_RETRIES     = _env_int("XAI_MAX_RETRIES", 5)
+XAI_BACKOFF_FACTOR  = _env_float("XAI_BACKOFF_FACTOR", 1.8)
+
+# Legacy default for ad-hoc single-use clients (kept for compatibility)
+_DEFAULT_TIMEOUT = float(os.getenv("LLM_HTTP_TIMEOUT", "90"))
+
+# One shared client (HTTP/2 + connection pooling + gzip/br)
+_HTTP = httpx.Client(
+    http2=True,
+    timeout=httpx.Timeout(
+        connect=XAI_CONNECT_TIMEOUT,
+        read=XAI_READ_TIMEOUT,
+        write=XAI_WRITE_TIMEOUT,
+        pool=XAI_POOL_TIMEOUT,
+    ),
+    limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
+    headers={
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Content-Type": "application/json",
+    },
+)
+
+def _post_with_retries(url: str, *, headers: dict, json_payload: dict) -> httpx.Response:
+    """POST with exponential-backoff retries on transient network errors."""
+    attempt = 0
+    while True:
+        try:
+            return _HTTP.post(url, headers=headers, json=json_payload)
+        except (ReadTimeout, ConnectTimeout, RemoteProtocolError) as e:
+            attempt += 1
+            if attempt > XAI_MAX_RETRIES:
+                raise
+            sleep_s = XAI_BACKOFF_FACTOR ** attempt
+            logger.warning(
+                "HTTP retry %d/%d after %s — sleeping %.1fs",
+                attempt, XAI_MAX_RETRIES, type(e).__name__, sleep_s
+            )
+            time.sleep(sleep_s)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JSON extraction helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
 # Accepts fenced ```json or ```jsonc blocks
 _FENCED_OBJ_RE = re.compile(
@@ -102,9 +172,9 @@ def _extract_json_object(text: str) -> dict:
 
     raise ValueError("Unbalanced braces; could not extract a complete JSON object.")
 
-# --- Provider calls ----------------------------------------------------------
-
-_DEFAULT_TIMEOUT = float(os.getenv("LLM_HTTP_TIMEOUT", "90"))
+# ─────────────────────────────────────────────────────────────────────────────
+# Provider calls
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _openai_complete(prompt: str) -> dict:
     """
@@ -128,15 +198,16 @@ def _openai_complete(prompt: str) -> dict:
         "messages": [{"role": "user", "content": prompt}],
     }
 
-    logger.info("llm_client: OpenAI request model=%s timeout=%.0fs prompt_chars=%d",
-                model, _DEFAULT_TIMEOUT, len(prompt))
+    logger.info(
+        "llm_client: OpenAI request model=%s timeouts(c/r/w/p)=%ds/%ds/%ds/%ds prompt_chars=%d",
+        model, XAI_CONNECT_TIMEOUT, XAI_READ_TIMEOUT, XAI_WRITE_TIMEOUT, XAI_POOL_TIMEOUT, len(prompt)
+    )
 
     t0 = time.perf_counter()
     try:
-        with httpx.Client(timeout=_DEFAULT_TIMEOUT) as http:
-            r = http.post(url, headers=headers, json=payload)
-            r.raise_for_status()
-            data = r.json()
+        r = _post_with_retries(url, headers=headers, json_payload=payload)
+        r.raise_for_status()
+        data = r.json()
         elapsed = time.perf_counter() - t0
         logger.info("llm_client: OpenAI response OK in %.2fs", elapsed)
 
@@ -152,28 +223,34 @@ def _xai_complete(prompt: str) -> dict:
     Calls xAI Grok via HTTP and asks for JSON in the content.
     Env:
       - XAI_API_KEY (required)
-      - XAI_MODEL (optional, default: grok-beta)
+      - XAI_MODEL (optional, default from backend.config)
+      - XAI_* timeout/retry envs (optional)
     """
-    api_key = os.environ["XAI_API_KEY"]
-    model = os.getenv("XAI_MODEL", "grok-beta")
+    api_key = XAI_API_KEY
+    if not api_key:
+        raise RuntimeError("XAI_API_KEY is not set (provider=xai).")
+    model = XAI_MODEL
 
     url = "https://api.x.ai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}"}
     payload = {
         "model": model,
         "temperature": 0.2,
         "messages": [{"role": "user", "content": prompt}],
+        # Optionally: "max_tokens": 8192,
+        # "stream": False,
     }
 
-    logger.info("llm_client: xAI request model=%s timeout=%.0fs prompt_chars=%d",
-                model, _DEFAULT_TIMEOUT, len(prompt))
+    logger.info(
+        "llm_client: xAI request model=%s timeouts(c/r/w/p)=%ds/%ds/%ds/%ds prompt_chars=%d",
+        model, XAI_CONNECT_TIMEOUT, XAI_READ_TIMEOUT, XAI_WRITE_TIMEOUT, XAI_POOL_TIMEOUT, len(prompt)
+    )
 
     t0 = time.perf_counter()
     try:
-        with httpx.Client(timeout=_DEFAULT_TIMEOUT) as http:
-            r = http.post(url, headers=headers, json=payload)
-            r.raise_for_status()
-            data = r.json()
+        r = _post_with_retries(url, headers=headers, json_payload=payload)
+        r.raise_for_status()
+        data = r.json()
         elapsed = time.perf_counter() - t0
         logger.info("llm_client: xAI response OK in %.2fs", elapsed)
 
@@ -184,36 +261,39 @@ def _xai_complete(prompt: str) -> dict:
         logger.exception("llm_client: xAI call failed")
         raise
 
-# --- Public API --------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API
+# ─────────────────────────────────────────────────────────────────────────────
 
-def complete_json(prompt: str) -> dict:
+def complete_json(prompt: str, provider: str | None = None) -> dict:
     """
-    Call your configured LLM and return a Python dict shaped like:
-    {"pop":[...], "rock":[...]}
+    Ask the configured LLM to return a JSON object.
+    Honors LLM_PROVIDER env:
+      - xai (default)
+      - openai
+      - mock (reads MOCK_POPROCK_JSON path)
+    """
+    cfg_provider = os.getenv("LLM_PROVIDER", "xai").lower()
+    if provider and provider.lower() != cfg_provider:
+        logger.warning(
+            "complete_json: ignoring provider=%s; using LLM_PROVIDER=%s",
+            provider, cfg_provider
+        )
 
-    Config:
-      - LLM_PROVIDER in {"openai","xai","mock"} (default "openai")
-      - For mock: MOCK_POPROCK_JSON must point to a local JSON file.
-    """
-    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+    provider = cfg_provider
     logger.info("llm_client: provider=%s", provider)
 
     if provider == "mock":
         path = os.getenv("MOCK_POPROCK_JSON")
         if not path:
-            logger.error("llm_client: MOCK_POPROCK_JSON not set while provider=mock")
             raise RuntimeError("MOCK_POPROCK_JSON env var not set for LLM_PROVIDER=mock")
-        logger.info("llm_client: loading mock JSON from %s", path)
         with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        logger.debug("llm_client: mock JSON loaded (top-level keys=%s)", list(data) if isinstance(data, dict) else type(data))
-        return data
-
-    if provider == "openai":
-        return _openai_complete(prompt)
+            return json.load(f)
 
     if provider == "xai":
         return _xai_complete(prompt)
 
-    logger.error("llm_client: unknown provider=%s", provider)
+    if provider == "openai":
+        return _openai_complete(prompt)
+
     raise NotImplementedError(f"Unknown LLM_PROVIDER: {provider}")

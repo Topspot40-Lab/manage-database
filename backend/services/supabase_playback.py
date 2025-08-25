@@ -6,11 +6,46 @@ import os
 from pathlib import Path
 import asyncio
 import httpx
+from httpx import ReadTimeout, ConnectTimeout, RemoteProtocolError
 
 from backend.config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 logger = logging.getLogger("supabase_playback")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Robust HTTP client (shared) for audio downloads
+# Timeouts & retries are env-tunable; safe defaults provided
+# ─────────────────────────────────────────────────────────────────────────────
+PLAYBACK_CONNECT_TIMEOUT = int(os.getenv("PLAYBACK_CONNECT_TIMEOUT", "15"))
+PLAYBACK_READ_TIMEOUT    = int(os.getenv("PLAYBACK_READ_TIMEOUT", "180"))
+PLAYBACK_WRITE_TIMEOUT   = int(os.getenv("PLAYBACK_WRITE_TIMEOUT", "30"))
+PLAYBACK_POOL_TIMEOUT    = int(os.getenv("PLAYBACK_POOL_TIMEOUT", "180"))
+PLAYBACK_MAX_RETRIES     = int(os.getenv("PLAYBACK_MAX_RETRIES", "3"))
+PLAYBACK_BACKOFF_FACTOR  = float(os.getenv("PLAYBACK_BACKOFF_FACTOR", "1.8"))
+
+_async_http = httpx.AsyncClient(
+    http2=True,
+    timeout=httpx.Timeout(
+        connect=PLAYBACK_CONNECT_TIMEOUT,
+        read=PLAYBACK_READ_TIMEOUT,
+        write=PLAYBACK_WRITE_TIMEOUT,
+        pool=PLAYBACK_POOL_TIMEOUT,
+    ),
+    limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+    headers={"Accept": "*/*", "Accept-Encoding": "gzip, deflate, br"},
+)
+
+async def _get_with_retries(url: str, *, headers: dict | None = None) -> httpx.Response:
+    for attempt in range(1, PLAYBACK_MAX_RETRIES + 1):
+        try:
+            r = await _async_http.get(url, headers=headers)
+            return r
+        except (ReadTimeout, ConnectTimeout, RemoteProtocolError) as e:
+            if attempt >= PLAYBACK_MAX_RETRIES:
+                raise
+            sleep_s = PLAYBACK_BACKOFF_FACTOR ** attempt
+            logger.warning("Audio GET retry %d after %s → sleep %.1fs", attempt, e.__class__.__name__, sleep_s)
+            await asyncio.sleep(sleep_s)
 
 # ------------------------------
 # Low-level: sync player (bytes)
@@ -27,12 +62,7 @@ def play_mp3_bytes_sync(mp3_bytes: bytes, *, block: bool = True, diagnostics: bo
         tmp.flush()
         tmp.close()  # important on Windows
 
-        # Build command (no shell; args as list)
         base_args = ["ffplay", "-nodisp", "-autoexit", "-hide_banner", "-loglevel", "error"]
-        if diagnostics:
-            # You can tweak loglevel here if you want more noise while debugging
-            pass
-
         cmd = base_args + [str(tmp_path)]
         logger.debug("▶ ffplay starting")
 
@@ -62,7 +92,6 @@ def play_mp3_bytes_sync(mp3_bytes: bytes, *, block: bool = True, diagnostics: bo
             os.remove(tmp_path)
         except Exception as e:
             logger.warning("⚠️ Could not remove temp file %s: %s", tmp_path, e)
-
 
 # ---------------------------------------------------
 # High-level: async wrapper (backward-compatible API)
@@ -97,12 +126,17 @@ async def play_mp3(*args, block: bool = True, diagnostics: bool = False) -> int:
             path = second
             url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{path}"
             headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"}
-            async with httpx.AsyncClient(timeout=30) as client:
-                r = await client.get(url, headers=headers)
-                if r.status_code != 200:
-                    logger.error("Failed to fetch %s/%s: %s %s", bucket, path, r.status_code, r.text[:200])
-                    return 1
-                mp3_bytes = r.content
+            try:
+                r = await _get_with_retries(url, headers=headers)
+            except Exception as e:
+                logger.error("❌ HTTP GET failed for %s/%s: %r", bucket, path, e)
+                return 1
+
+            if r.status_code != 200:
+                logger.error("❌ Fetch %s/%s failed: %s %s", bucket, path, r.status_code, r.text[:200])
+                return 1
+
+            mp3_bytes = r.content
             return await asyncio.to_thread(play_mp3_bytes_sync, mp3_bytes, block=block, diagnostics=diagnostics)
 
     raise TypeError("play_mp3(...) expected (bytes) or (bucket, bytes|path)")

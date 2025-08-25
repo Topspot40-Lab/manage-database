@@ -1,30 +1,200 @@
 # backend/routers/supabase_loader.py
-
 from fastapi import APIRouter, Query, Depends
 from typing import Literal
 from sqlmodel import Session, select
 from backend.database import get_db
-from backend.models import TrackRanking, Track, Artist, Decade, Genre, DecadeGenre
-from backend.utils.tts_diagnostics import normalize_for_filename
+from backend.models import TrackRanking, Track, Artist
 from backend.services.spotify.playback import play_spotify_track
 from backend.state import current_decade_genre, skip_event
-from backend.config import BED_VOLUME_PERCENT, BUCKETS, AUDIO_PREFIXES
+from backend.config import SPOTIFY_BED_TRACK_ID
+
+from backend.services.db_queries import (
+    get_decade_genre, get_rankings_for_combo, get_random_track,
+    get_rankings_for_track, get_artist_by_id
+)
+from backend.services.playback_helpers import (
+    canon_lang, bucket_for, key_for,
+    build_intro_filename, build_detail_filename, build_artist_filename,
+    log_narration_texts, safe_play   # ⬅️ add this
+)
+
+import asyncio
 import logging
 
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
 logger = logging.getLogger("supabase_loader")
 
-# --- helpers for language-aware buckets/keys ---
-def _canon_lang(code: str) -> str:
-    m = (code or "en").strip().lower()
-    return {"en": "en", "es": "es", "ptbr": "pt-BR"}.get(m, "en")
+# ─────────────────────────────────────────────────────────────────────────────
+# existing endpoints (skip-current-track, load-decade-genre-data, etc.)
+# NOTE: keep your current ones; below we show only the NEW endpoint for brevity
+# ─────────────────────────────────────────────────────────────────────────────
 
-def _bucket_for(language: str, kind: Literal["intro", "detail", "artist"]) -> str:
-    lang = _canon_lang(language)
-    return BUCKETS.get(lang, BUCKETS["en"])[kind]
+@router.get("/play-random-track-from-db")
+async def play_random_track_from_db(
+    play_intro: bool = Query(True, description="Play intro MP3(s) if available"),
+    play_detail: bool = Query(True, description="Play detail MP3 if available"),
+    play_artist_description: bool = Query(True, description="Play artist description MP3 if available"),
+    play_track: bool = Query(True, description="Play the Spotify track for 60 seconds"),
+    num_tracks: int = Query(1, description="How many random tracks to play (-1 = keep playing forever)"),
+    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
+    db: Session = Depends(get_db)
+):
+    """
+    Pick a random Track and:
+      - play ALL matching intros (if multiple TrackRanking rows exist for the track_id),
+      - play the detail MP3 and artist description MP3 if requested,
+      - then play the Spotify track for ~60s.
 
-def _key_for(kind: Literal["intro", "detail", "artist"], filename: str) -> str:
-    return f"{AUDIO_PREFIXES[kind]}/{filename}"
+    num_tracks:
+      - 1..N : plays that many tracks, then returns
+      - -1   : loops forever (request won't return unless cancelled)
+    """
+    lang = canon_lang(tts_language)
+
+    async def _maybe_play_bed():
+        if not SPOTIFY_BED_TRACK_ID:
+            return
+        try:
+            play_spotify_track(SPOTIFY_BED_TRACK_ID)
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.warning("Bed track failed: %s", e)
+
+    async def _play_one() -> dict | None:
+        # 1) Random track
+        track = get_random_track(db)
+        if not track:
+            logger.warning("No playable tracks found (need spotify_track_id != NULL).")
+            return None
+
+        artist = get_artist_by_id(db, track.artist_id)
+        if not artist:
+            logger.warning("Artist id=%s not found.", track.artist_id)
+            return None
+        # 2) All intros for this track_id
+        tr_rows = get_rankings_for_track(db, track.id)  # [(TrackRanking, decade, genre), ...]
+
+        # Single pretty header
+        decades = ", ".join(sorted({d for (_, d, _) in tr_rows})) if tr_rows else "—"
+        genres = ", ".join(sorted({g for (_, _, g) in tr_rows})) if tr_rows else "—"
+
+        logger.info(
+            "===================================================\n"
+            "RANDOM TRACK PICK\n"
+            "Decade: %s\tGenre: %s\n"
+            "Title: %s\tArtist: %s\n"
+            "track_id: %s\tlang: %s\n"
+            "===================================================",
+            decades, genres,
+            track.track_name, artist.artist_name,
+            (track.spotify_track_id or track.id), lang,
+        )
+        # ────────────────────────────────────────────────────────────────────────────
+
+        intro_jobs, intro_texts, intro_files = [], [], []
+        if play_intro and tr_rows:
+            for tr, decade_name, genre_name in tr_rows:
+                intro_filename = build_intro_filename(decade_name, genre_name, tr.ranking)
+                intro_key = key_for("intro", intro_filename)
+                intro_bucket = bucket_for(lang, "intro")
+
+                intro_files.append(intro_filename)
+                if tr.intro:
+                    intro_texts.append((decade_name, genre_name, tr.ranking, tr.intro))
+                intro_jobs.append((intro_bucket, intro_key, decade_name, genre_name, tr.ranking))
+        # 3) Detail + artist narration keys
+        detail_filename = build_detail_filename(track.spotify_track_id)
+        detail_key      = key_for("detail", detail_filename) if detail_filename else None
+        detail_bucket   = bucket_for(lang, "detail") if detail_filename else None
+
+        artist_filename = build_artist_filename(artist.spotify_artist_id)
+        artist_key      = key_for("artist", artist_filename) if artist_filename else None
+        artist_bucket   = bucket_for(lang, "artist") if artist_filename else None
+
+        # 4) Log texts to terminal
+        intro_text_joined = "\n\n".join(
+            [f"[{d}/{g} #{rk:02}] {txt.strip()}" for (d, g, rk, txt) in intro_texts]
+        ) if intro_texts else None
+
+        # right before log_narration_texts(...)
+        intro_file_display = ", ".join(intro_files) if intro_files else None
+
+        log_narration_texts(
+            intro=intro_text_joined,
+            detail=(track.detail or None),
+            artist=(artist.artist_description or None),
+            intro_file=intro_file_display,  # ⬅️ show all intro mp3s, if multiple
+            detail_file=detail_filename,  # ⬅️ single detail mp3
+            artist_file=artist_filename,  # ⬅️ single artist mp3
+        )
+
+        # 5) Bed under narrations
+        await _maybe_play_bed()
+        # 6) Play all intros (sequential)
+        if play_intro and intro_jobs:
+            for bkt, key, d, g, rk in intro_jobs:
+                # logger.info("▶ Intro: %s / %s  #%02d  (%s)", d, g, rk, key)
+                await safe_play("Intro", bkt, key)
+
+        # 7) Play detail + artist description MP3s
+        if play_detail and detail_bucket and detail_key:
+            # logger.info("▶ Detail MP3: %s", detail_key)
+            await safe_play("Detail", detail_bucket, detail_key)
+
+        if play_artist_description and artist_bucket and artist_key:
+            # logger.info("▶ Artist MP3: %s", artist_key)
+            await safe_play("Artist", artist_bucket, artist_key)
+
+        # 8) Play the track for 60 seconds
+        try:
+            if play_track and track.spotify_track_id:
+                logger.info("🎵 Now playing track: %s (%s) for 60s", track.track_name, track.spotify_track_id)
+                play_spotify_track(track.spotify_track_id)
+                await asyncio.sleep(60)
+        except Exception as e:
+            logger.exception("Failed to play track: %s", e)
+
+        return {
+            "track": {
+                "id": track.id,
+                "name": track.track_name,
+                "spotify_track_id": track.spotify_track_id,
+            },
+            "artist": {
+                "id": artist.id,
+                "name": artist.artist_name,
+                "spotify_artist_id": artist.spotify_artist_id,
+            },
+            "intros_played": [{"decade": d, "genre": g, "rank": rk} for (_, _, d, g, rk) in intro_jobs],
+            "detail_played": bool(play_detail and detail_bucket and detail_key),
+            "artist_played": bool(play_artist_description and artist_bucket and artist_key),
+        }
+
+    played: list[dict] = []
+    count = 0
+    while True:
+        # stop if finite
+        if num_tracks != -1 and count >= num_tracks:
+            break
+        # optional: allow external stop via /skip-current-track
+        if skip_event.is_set():
+            skip_event.clear()
+            break
+
+        res = await _play_one()
+        if res:
+            played.append(res)
+        count += 1
+
+        # small gap between tracks (optional)
+        await asyncio.sleep(0.3)
+
+    return {"status": "ok", "language": lang, "played_count": len(played), "played": played}
+
+# ⬇️ Add BELOW your existing imports and router definition in
+# backend/routers/supabase_loader.py
+
+# --- keep the random endpoint you added ---
 
 @router.post("/skip-current-track")
 async def skip_current_track():
@@ -37,134 +207,96 @@ async def play_track_by_rank_only(
     play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
-    play_artist_mp3: bool = Query(True),
+    play_artist_description: bool = Query(True),
     tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
     decade = current_decade_genre.get("decade")
-    genre = current_decade_genre.get("genre")
-
+    genre  = current_decade_genre.get("genre")
     if not decade or not genre:
-        return {"error": "No track data loaded. Please load with /load-decade-genre-data first."}
-
-    logger.info(f"🎯 Playing rank #{rank} using cached: {decade} / {genre}")
+        return {"error": "No track data loaded. Use /supabase/load-decade-genre-data first."}
     return await play_track_by_rank(
-        decade=decade,
-        genre=genre,
-        rank=rank,
-        play_intro=play_intro,
-        play_detail=play_detail,
-        play_track=play_track,
-        play_artist_mp3=play_artist_mp3,
-        tts_language=tts_language,
-        db=db
+        decade=decade, genre=genre, rank=rank,
+        play_intro=play_intro, play_detail=play_detail,
+        play_track=play_track, play_artist_description=play_artist_description,
+        tts_language=tts_language, db=db
     )
 
 @router.get("/play-track-by-rank")
 async def play_track_by_rank(
-    decade: str = Query(..., description="Decade name, e.g., '1980s'"),
-    genre: str = Query(..., description="Genre name, e.g., 'country'"),
-    rank: int = Query(..., description="Rank of the track"),
+    decade: str = Query(..., description="e.g., 1980s"),
+    genre: str  = Query(..., description="e.g., pop"),
+    rank: int   = Query(..., description="Rank to play"),
     play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
-    play_artist_mp3: bool = Query(True),
+    play_artist_description: bool = Query(True),
     tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    from backend.services.supabase_playback import play_mp3
+    lang = canon_lang(tts_language)
 
-    lang = _canon_lang(tts_language)
-    logger.info(f"🎯 Playing track by rank: {decade} / {genre} / #{rank} (lang={lang})")
-
-    # Step 1: Lookup DecadeGenre
-    stmt = (
-        select(DecadeGenre)
-        .join(Decade, DecadeGenre.decade_id == Decade.id)
-        .join(Genre, DecadeGenre.genre_id == Genre.id)
-        .where(Decade.decade_name == decade)
-        .where(Genre.genre_name == genre)
-    )
-    decade_genre = db.exec(stmt).first()
-    if not decade_genre:
+    # Resolve (decade, genre) -> decade_genre_id
+    dg = get_decade_genre(db, decade, genre)
+    if not dg:
         return {"error": f"No DecadeGenre found for {decade} / {genre}"}
 
-    # Step 2: Lookup TrackRanking
-    tr_stmt = select(TrackRanking).where(
-        TrackRanking.decade_genre_id == decade_genre.id,
-        TrackRanking.ranking == rank
+    # Find ranking row for the rank
+    rk = db.exec(
+        select(TrackRanking).where(
+            TrackRanking.decade_genre_id == dg.id,
+            TrackRanking.ranking == rank
+        )
+    ).first()
+    if not rk:
+        return {"error": f"No ranking #{rank} in {decade}/{genre}"}
+
+    track  = db.get(Track, rk.track_id)
+    artist = db.get(Artist, track.artist_id) if track else None
+    if not track or not artist:
+        return {"error": "Track or Artist not found"}
+
+    # Build filenames/keys/buckets
+    intro_fn   = build_intro_filename(decade, genre, rank)
+    detail_fn  = build_detail_filename(track.spotify_track_id)
+    artist_fn  = build_artist_filename(artist.spotify_artist_id)
+
+    intro_key  = key_for("intro",  intro_fn)
+    detail_key = key_for("detail", detail_fn) if detail_fn else None
+    artist_key = key_for("artist", artist_fn) if artist_fn else None
+
+    intro_bucket  = bucket_for(lang, "intro")
+    detail_bucket = bucket_for(lang, "detail") if detail_key else None
+    artist_bucket = bucket_for(lang, "artist") if artist_key else None
+
+    # Log/print texts (include filenames)
+    log_narration_texts(
+        intro=rk.intro,  # TrackRanking
+        detail=track.detail,  # Track
+        artist=getattr(artist, "artist_description", None),
+        intro_file=intro_fn,
+        detail_file=detail_fn,
+        artist_file=artist_fn,
     )
-    ranking = db.exec(tr_stmt).first()
-    if not ranking:
-        return {"error": f"No ranking #{rank} found in {decade} / {genre}"}
 
-    # Step 3: Load Track
-    track = db.get(Track, ranking.track_id)
-    if not track:
-        return {"error": f"Track ID {ranking.track_id} not found"}
-
-    # Step 4: Load Artist
-    artist = db.get(Artist, track.artist_id)
-    if not artist:
-        return {"error": f"Artist ID {track.artist_id} not found"}
-
-    # === Filenames (unchanged) ===
-    intro_filename  = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
-    detail_filename = f"{track.spotify_track_id}.mp3"
-    artist_filename = f"{artist.spotify_artist_id}.mp3"
-
-    # === Keys (prefix folders) ===
-    intro_key  = _key_for("intro", intro_filename)
-    detail_key = _key_for("detail", detail_filename)
-    artist_key = _key_for("artist", artist_filename)
-
-    # === Buckets (per language) ===
-    intro_bucket  = _bucket_for(lang, "intro")
-    detail_bucket = _bucket_for(lang, "detail")
-    artist_bucket = _bucket_for(lang, "artist")
-
-    logger.info("=" * 90)
-    logger.info(
-        f"🎯 {decade} / {genre} — Rank #{rank} | 🎵 {track.track_name} by {artist.artist_name} | lang={lang}"
-    )
-
-    # === Playback ===
+    # Playback narration MP3s (safe)
     if play_intro:
-        if ranking.intro:
-            logger.info(f"\n📢 Intro Text (→ {intro_key} in {intro_bucket}):\n{ranking.intro.strip()}")
-        await play_mp3(intro_bucket, intro_key)
+        await safe_play("Intro", intro_bucket, intro_key)
+    if play_detail and detail_bucket and detail_key:
+        await safe_play("Detail", detail_bucket, detail_key)
+    if play_artist_description and artist_bucket and artist_key:
+        await safe_play("Artist", artist_bucket, artist_key)
 
-    if play_detail:
-        if track.detail:
-            logger.info(f"\n📝 Detail Text (→ {detail_key} in {detail_bucket}):\n{track.detail.strip()}")
-        await play_mp3(detail_bucket, detail_key)
-
-    if play_artist_mp3:
-        if artist.artist_description:
-            logger.info(f"\n🎙️ Artist Description (→ {artist_key} in {artist_bucket}):\n{artist.artist_description.strip()}")
-        await play_mp3(artist_bucket, artist_key)
-
-    # === Log Artwork URLs After Playback Starts ===
-    logger.info(f"🖼️ Artist Artwork: {artist.artist_artwork or '[None]'}")
-    logger.info(f"💿 Album Artwork: {track.album_artwork or '[None]'}")
-
-    if play_track:
-        logger.debug(f"🎵 Playing track on Spotify: {track.spotify_track_id}")
+    # Main track (60s)
+    if play_track and track.spotify_track_id:
         play_spotify_track(track.spotify_track_id)
+        await asyncio.sleep(60)
 
     return {
         "status": "success",
-        "language": lang,
-        "track": track.track_name,
-        "artist": artist.artist_name,
-        "played": {"intro": play_intro, "detail": play_detail, "track": play_track, "artist": play_artist_mp3},
-        "keys": {
-            "intro":  {"bucket": intro_bucket,  "key": intro_key},
-            "detail": {"bucket": detail_bucket, "key": detail_key},
-            "artist": {"bucket": artist_bucket, "key": artist_key},
-        },
+        "decade": decade, "genre": genre, "rank": rank,
+        "played": {"intro": play_intro, "detail": play_detail, "track": play_track, "artist": play_artist_description}
     }
-
 @router.get("/load-decade-genre-data")
 def load_decade_genre_data(
     decade: str = Query(..., description="Decade name, e.g., '1980s'"),
@@ -175,35 +307,26 @@ def load_decade_genre_data(
     # ✅ Remember the context
     current_decade_genre["decade"] = decade
     current_decade_genre["genre"] = genre
-    lang = _canon_lang(tts_language)
+    lang = canon_lang(tts_language)
     logger.info(f"📌 Stored context for play-by-rank-only: {decade} / {genre} (lang={lang})")
 
-    # Step 1: Lookup DecadeGenre
-    stmt = (
-        select(DecadeGenre)
-        .join(Decade, DecadeGenre.decade_id == Decade.id)
-        .join(Genre, DecadeGenre.genre_id == Genre.id)
-        .where(Decade.decade_name == decade)
-        .where(Genre.genre_name == genre)
-    )
-    decade_genre = db.exec(stmt).first()
-    if not decade_genre:
+    # Resolve DecadeGenre
+    dg = get_decade_genre(db, decade, genre)
+    if not dg:
         return {"error": f"No DecadeGenre found for {decade} / {genre}"}
 
-    # Step 2: Get all TrackRanking entries for this combo
-    rankings = db.exec(
-        select(TrackRanking).where(TrackRanking.decade_genre_id == decade_genre.id)
-    ).all()
+    # Get rankings for this combo
+    rankings = get_rankings_for_combo(db, dg.id)
 
-    intro_bucket  = _bucket_for(lang, "intro")
-    detail_bucket = _bucket_for(lang, "detail")
-    artist_bucket = _bucket_for(lang, "artist")
+    intro_bucket  = bucket_for(lang, "intro")
+    detail_bucket = bucket_for(lang, "detail")
+    artist_bucket = bucket_for(lang, "artist")
 
     response = []
-    for rank_entry in rankings:
-        track = db.get(Track, rank_entry.track_id)
+    for r in rankings:
+        track = db.get(Track, r.track_id)
         if not track:
-            logger.warning(f"⚠️ Track ID {rank_entry.track_id} not found")
+            logger.warning(f"⚠️ Track ID {r.track_id} not found")
             continue
 
         artist = db.get(Artist, track.artist_id)
@@ -211,25 +334,20 @@ def load_decade_genre_data(
             logger.warning(f"⚠️ Artist ID {track.artist_id} not found")
             continue
 
-        intro_filename  = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank_entry.ranking:02}.mp3"
-        detail_filename = f"{track.spotify_track_id}.mp3"
-        artist_filename = f"{artist.spotify_artist_id}.mp3" if artist.spotify_artist_id else None
+        intro_filename  = build_intro_filename(decade, genre, r.ranking)
+        detail_filename = build_detail_filename(track.spotify_track_id)
+        artist_filename = build_artist_filename(artist.spotify_artist_id) if artist.spotify_artist_id else None
 
         response.append({
-            "rank": rank_entry.ranking,
+            "rank": r.ranking,
             "trackName": track.track_name,
             "artistName": artist.artist_name,
-            "intro": getattr(rank_entry, "intro", None) or getattr(track, "intro", None),
-            "detail": getattr(rank_entry, "detail", None) or getattr(track, "detail", None),
-            "artistDescription": getattr(artist, "artist_description", None) or getattr(artist, "description", None) or getattr(artist, "bio", None),
-            # filenames (legacy)
-            "introMp3": intro_filename,
-            "detailMp3": detail_filename,
-            "artistMp3": artist_filename,
-            # language-aware bucket + prefixed keys (new)
-            "introKey":  {"bucket": intro_bucket,  "key": _key_for("intro", intro_filename)},
-            "detailKey": {"bucket": detail_bucket, "key": _key_for("detail", detail_filename)},
-            "artistKey": {"bucket": artist_bucket, "key": _key_for("artist", artist_filename)} if artist_filename else None,
+            "intro": r.intro,                       # ← from TrackRanking
+            "detail": track.detail,                 # ← from Track
+            "artistDescription": getattr(artist, "artist_description", None),
+            "introKey":  {"bucket": intro_bucket,  "key": key_for("intro",  intro_filename)},
+            "detailKey": {"bucket": detail_bucket, "key": key_for("detail", detail_filename)} if detail_filename else None,
+            "artistKey": {"bucket": artist_bucket, "key": key_for("artist", artist_filename)} if artist_filename else None,
             "artistArtwork": artist.artist_artwork,
             "albumArtwork": track.album_artwork
         })
@@ -246,179 +364,87 @@ def load_decade_genre_data(
 @router.get("/play-tracks-with-starting-rank")
 async def play_tracks_with_starting_rank(
     starting_rank: int = Query(...),
-    mode: str = Query("count_up"),
+    mode: Literal["count_up","count_down","random"] = Query("count_up"),
     play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
-    play_artist_mp3: bool = Query(True),
+    play_artist_description: bool = Query(True),
     tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    import random, asyncio
-    from sqlmodel import select
-    from backend.config import SPOTIFY_BED_TRACK_ID
-    from backend.services.supabase_playback import play_mp3
-    from backend.services.spotify.spotify_auth_user import get_spotify_user_client
-    from backend.models import Decade, Genre, DecadeGenre, TrackRanking, Track, Artist
-    from backend.state import current_decade_genre
-
-    lang = _canon_lang(tts_language)
-
+    lang   = canon_lang(tts_language)
     decade = current_decade_genre.get("decade")
-    genre = current_decade_genre.get("genre")
+    genre  = current_decade_genre.get("genre")
     if not decade or not genre:
-        return {"error": "No track data loaded. Please load with /load-decade-genre-data first."}
+        return {"error": "No context. Use /supabase/load-decade-genre-data first."}
 
-    # --- Resolve DecadeGenre
-    stmt = (
-        select(DecadeGenre)
-        .join(Decade, DecadeGenre.decade_id == Decade.id)
-        .join(Genre, DecadeGenre.genre_id == Genre.id)
-        .where(Decade.decade_name == decade)
-        .where(Genre.genre_name == genre)
-    )
-    decade_genre = db.exec(stmt).first()
-    if not decade_genre:
+    dg = get_decade_genre(db, decade, genre)
+    if not dg:
         return {"error": f"No DecadeGenre found for {decade} / {genre}"}
 
-    rankings = db.exec(
-        select(TrackRanking)
-        .where(TrackRanking.decade_genre_id == decade_genre.id)
-        .order_by(TrackRanking.ranking)
+    rows = db.exec(
+        select(TrackRanking).where(TrackRanking.decade_genre_id == dg.id)
     ).all()
-    if not rankings:
-        return {"error": "No rankings found."}
+    if not rows:
+        return {"error": "No rankings found for this combo."}
 
-    total_tracks = len(rankings)
-    available_ranks = list(range(1, total_tracks + 1))
-
+    max_rank = max(r.ranking for r in rows)
+    order = list(range(1, max_rank+1))
     if mode == "count_up":
-        play_order = [r for r in available_ranks if r >= starting_rank]
+        play_order = [r for r in order if r >= starting_rank]
     elif mode == "count_down":
-        play_order = [r for r in available_ranks if r <= starting_rank][::-1]
-    elif mode == "random":
-        play_order = [r for r in available_ranks if r >= starting_rank]
-        random.shuffle(play_order)
+        play_order = [r for r in order if r <= starting_rank][::-1]
     else:
-        return {"error": f"Invalid mode: {mode}"}
+        import random
+        play_order = [r for r in order if r >= starting_rank]; random.shuffle(play_order)
 
-    # --- Spotify client + helpers
-    sp = get_spotify_user_client()
-
-    def _pick_device_id():
-        try:
-            devices = sp.devices().get("devices", [])
-            if not devices:
-                logger.error("No Spotify devices. Open the Spotify app and play something once to activate.")
-                return None
-            active = next((d for d in devices if d.get("is_active")), None)
-            chosen = active or devices[0]
-            logger.info(f"Using device: {chosen.get('name')} ({chosen.get('id')}) active={chosen.get('is_active')}")
-            return chosen.get("id")
-        except Exception as e:
-            logger.exception(f"Failed to list devices: {e}")
-            return None
-
-    def _set_volume(vol: int, device_id: str):
-        vol = max(0, min(100, int(vol)))
-        try:
-            sp.volume(vol, device_id=device_id)
-            logger.debug(f"volume -> {vol}")
-        except Exception as e:
-            logger.exception(f"volume failed -> {vol}: {e}")
-
-    def _start_track(track_id: str, device_id: str, position_ms: int = 0) -> bool:
-        try:
-            sp.start_playback(
-                device_id=device_id,
-                uris=[f"spotify:track:{track_id}"],
-                position_ms=position_ms,
-            )
-            logger.debug(f"▶ start_playback track={track_id} pos={position_ms}ms")
-            return True
-        except Exception as e:
-            logger.exception(f"start_playback failed for track={track_id}: {e}")
-            return False
-
-    device_id = _pick_device_id()
-    if not device_id:
-        return {"error": "No active Spotify device. Open Spotify and play any track once, then try again."}
-
-    try:
-        sp.transfer_playback(device_id=device_id, force_play=False)
-        logger.debug("transfer_playback OK")
-    except Exception as e:
-        logger.warning(f"transfer_playback failed (continuing): {e}")
+    intro_bucket  = bucket_for(lang, "intro")
+    detail_bucket = bucket_for(lang, "detail")
+    artist_bucket = bucket_for(lang, "artist")
 
     results = []
+    for rk in play_order:
+        r = next((x for x in rows if x.ranking == rk), None)
+        if not r: continue
+        track  = db.get(Track, r.track_id)
+        artist = db.get(Artist, track.artist_id) if track else None
+        if not track or not artist: continue
 
-    intro_bucket  = _bucket_for(lang, "intro")
-    detail_bucket = _bucket_for(lang, "detail")
-    artist_bucket = _bucket_for(lang, "artist")
+        intro_fn   = build_intro_filename(decade, genre, rk)
+        detail_fn  = build_detail_filename(track.spotify_track_id)
+        artist_fn  = build_artist_filename(artist.spotify_artist_id)
 
-    for rank in play_order:
-        ranking = next((rk for rk in rankings if rk.ranking == rank), None)
-        if not ranking:
-            continue
-
-        track = db.get(Track, ranking.track_id)
-        if not track:
-            logger.warning(f"Missing Track for ranking {rank}")
-            continue
-        artist = db.get(Artist, track.artist_id)
-
-        intro_filename  = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
-        detail_filename = f"{track.spotify_track_id}.mp3"
-        artist_filename = f"{artist.spotify_artist_id}.mp3" if artist and artist.spotify_artist_id else None
-
-        intro_key  = _key_for("intro", intro_filename)
-        detail_key = _key_for("detail", detail_filename)
-        artist_key = _key_for("artist", artist_filename) if artist_filename else None
-
-        logger.info("=" * 90)
-        logger.info(f"▶ Rank #{rank} | {track.track_name} by {artist.artist_name} (lang={lang})")
-
-        # Log texts (what we’ll play)
-        intro_text = getattr(ranking, "intro", None) or getattr(track, "intro", None)
-        detail_text = getattr(ranking, "detail", None) or getattr(track, "detail", None)
-        artist_text = (
-            getattr(artist, "artist_description", None)
-            or getattr(artist, "description", None)
-            or getattr(artist, "bio", None)
+        # Log narration text to terminal (include filenames)
+        log_narration_texts(
+            intro=r.intro,  # TrackRanking.intro
+            detail=track.detail,  # Track.detail
+            artist=getattr(artist, "artist_description", None),
+            intro_file=intro_fn,
+            detail_file=detail_fn,
+            artist_file=artist_fn,
         )
-        if play_intro and intro_text:
-            logger.info("📣 INTRO TEXT:\n%s", intro_text)
-        if play_detail and detail_text:
-            logger.info("📝 DETAIL TEXT:\n%s", detail_text)
-        if play_artist_mp3 and artist_text:
-            logger.info("👤 ARTIST TEXT:\n%s", artist_text)
 
-        # --- Start bed track (if configured) ---
-        if SPOTIFY_BED_TRACK_ID:
-            if _start_track(SPOTIFY_BED_TRACK_ID, device_id):
-                await asyncio.sleep(0.6)
-                _set_volume(BED_VOLUME_PERCENT, device_id)
+        # Start a soft bed under the narration (main track will replace it)
+        if SPOTIFY_BED_TRACK_ID and (play_intro or play_detail or play_artist_description):
+            try:
+                play_spotify_track(SPOTIFY_BED_TRACK_ID)
+                await asyncio.sleep(0.5)
+            except Exception as e:
+                logger.warning("Bed track failed: %s", e)
 
-        # --- Play narration MP3s ---
+        # Narration MP3s (safe)
         if play_intro:
-            await play_mp3(intro_bucket, intro_key)
-        if play_detail:
-            await play_mp3(detail_bucket, detail_key)
-        if play_artist_mp3 and artist_key:
-            await play_mp3(artist_bucket, artist_key)
+            await safe_play("Intro", intro_bucket, key_for("intro", intro_fn))
+        if play_detail and detail_fn:
+            await safe_play("Detail", detail_bucket, key_for("detail", detail_fn))
+        if play_artist_description and artist_fn:
+            await safe_play("Artist", artist_bucket, key_for("artist", artist_fn))
 
-        # --- Play main track ---
-        if play_track:
-            if _start_track(track.spotify_track_id, device_id):
-                _set_volume(100, device_id)
-                await asyncio.sleep(60)
+        # Main track for 60s (this replaces the bed automatically)
+        if play_track and track.spotify_track_id:
+            play_spotify_track(track.spotify_track_id)
+            await asyncio.sleep(60)
 
-        results.append({"rank": rank, "track": track.track_name, "artist": artist.artist_name})
+        results.append({"rank": rk, "track": track.track_name})
 
-    return {
-        "status": "completed",
-        "mode": mode,
-        "language": lang,
-        "starting_rank": starting_rank,
-        "tracks_played": results
-    }
+    return {"status": "completed", "mode": mode, "language": lang, "tracks_played": results}
