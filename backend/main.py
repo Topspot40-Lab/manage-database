@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 import io
+import logging
 
 # --- put the path fix FIRST, before any backend.* imports ---
 project_root = Path(__file__).resolve().parent.parent
@@ -12,29 +13,30 @@ if str(project_root) not in sys.path:
 sys.stdout = io.TextIOWrapper(getattr(sys.stdout, "buffer", sys.stdout), encoding="utf-8")
 
 from fastapi import FastAPI, Query
-import logging
+
 from backend import config
 from backend.logging_setup import setup_logging
 
-# Routers
+# Routers (specific)
 from backend.routers.tts_intro import intro_router
 from backend.routers.tts_detail import detail_router
 from backend.routers.tts_artist import artist_router
-from backend.routers import supabase_summary
 from backend.routers.play_json_track_by_rank import router as playback_router
 from backend.routers.tts_regenerator import router as tts_regen_router
-from backend.routers.locales import router as locales_router
-from backend.routers import artist_locales
-from backend.routers import track_detail_locales
-from backend.routers import supabase_loader
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
 from backend.routers.insert_specialty_json import router as specialty_insert_router
-
-# ✅ ensure this matches the actual file location:
 from backend.routers.generate_poprock import router as poprock_router
 
-
+# Routers (modules we include with .router)
+from backend.routers import (
+    supabase_summary,
+    supabase_loader,
+    locales as locales_router,
+    artist_locales,
+    track_detail_locales,
+    intros_locales,   # ← NEW
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,18 +73,25 @@ def auth_callback(code: str = Query(...)):
     logger.info(f"🔁 Received auth callback with code: {code}")
     return {"message": "✅ Auth callback handled"}
 
-# Routers
+# ------------------------ Include Routers ------------------------
+
+# Generic / JSON / playback / TTS
 app.include_router(json_router)
 app.include_router(save_router)
 app.include_router(playback_router, prefix="/json")
 app.include_router(intro_router)
 app.include_router(detail_router)
 app.include_router(artist_router)
-app.include_router(supabase_summary.router)
-app.include_router(supabase_loader.router)
 app.include_router(tts_regen_router)
 app.include_router(specialty_insert_router, prefix="/json/insert")
-app.include_router(locales_router)
-app.include_router(artist_locales.router)
-app.include_router(track_detail_locales.router)
-app.include_router(poprock_router)  # <-- new joint generator
+app.include_router(poprock_router)
+
+# Supabase utilities
+app.include_router(supabase_summary.router)
+app.include_router(supabase_loader.router)
+
+# Locales group (keep them together under /locales for clean Swagger)
+app.include_router(locales_router.router,            prefix="/locales", tags=["locales"])
+app.include_router(artist_locales.router,            prefix="/locales", tags=["artist-locales"])
+app.include_router(track_detail_locales.router,      prefix="/locales", tags=["track-detail-locales"])
+app.include_router(intros_locales.router,            prefix="/locales", tags=["intros-locales"])  # ← NEW

@@ -45,6 +45,10 @@ def _extract_spotify_track_id(value: str | None) -> str | None:
         return v_no_q
     return None
 
+
+# Allow turning DB query logs up/down from .env (DEBUG/INFO/WARNING/ERROR)
+DB_QUERIES_LOG_LEVEL = os.getenv("DB_QUERIES_LOG_LEVEL", "DEBUG").upper()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 📦 App metadata
 # ─────────────────────────────────────────────────────────────────────────────
@@ -251,22 +255,25 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.insert_json": "INFO",
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
-    "backend.routers.supabase_summary": "DEBUG",
+    "backend.routers.supabase_summary": "INFO",
     "backend.routers.tts_intro": "INFO",
-    "backend.routers.tts_detail": "DEBUG",
-    "backend.routers.supabase_loader": "DEBUG",
-    "backend.routers.insert_specialty": "DEBUG",
-    "backend.routers.generate_poprock": "DEBUG",
-    "backend.routers.llm_client": "DEBUG",
+    "backend.routers.tts_detail": "INFO",
+    "backend.routers.supabase_loader": "INFO",
+    "backend.routers.insert_specialty": "INFO",
+    "backend.routers.generate_poprock": "INFO",
+    "backend.routers.llm_client": "INFO",
+
+    # Services (add db_queries here, env-driven)
+    "backend.services.db_queries": DB_QUERIES_LOG_LEVEL,
     # Utilities
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
-    "backend.utils.tts_diagnostics": "DEBUG",
+    "backend.utils.tts_diagnostics": "INFO",
     # Custom
     "backend.logging.track_logging": "INFO",
-    "tts_logger": "DEBUG",
+    "tts_logger": "INFO",
     "supabase_summary": "INFO",
-    "tts_diagnostics": "DEBUG",
+    "tts_diagnostics": "INFO",
     # Third-party
     "spotipy": "WARNING",
     "urllib3": "WARNING",

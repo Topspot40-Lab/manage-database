@@ -74,21 +74,44 @@ async def play_random_track_from_db(
         # 2) All intros for this track_id
         tr_rows = get_rankings_for_track(db, track.id)  # [(TrackRanking, decade, genre), ...]
 
-        # Single pretty header
+        # Pretty headers
         decades = ", ".join(sorted({d for (_, d, _) in tr_rows})) if tr_rows else "—"
         genres = ", ".join(sorted({g for (_, _, g) in tr_rows})) if tr_rows else "—"
+
+        # Prefer the rank for the *active* decade/genre if you know them; else fallback
+        # Replace `active_decade_name` / `active_genre_name` with your current context vars if available.
+        active_decade_name = None  # e.g., decade.decade_name
+        active_genre_name = None  # e.g., genre.genre_name
+
+        rank_val = next(
+            (tr.ranking for (tr, d, g) in tr_rows
+             if active_decade_name and active_genre_name and d == active_decade_name and g == active_genre_name),
+            None
+        )
+
+        if rank_val is None and tr_rows:
+            # If only one unique ranking exists across all decade/genre pairs, use it; else mark as multiple
+            unique_ranks = {tr.ranking for (tr, _, _) in tr_rows}
+            rank_val = next(iter(unique_ranks)) if len(unique_ranks) == 1 else None
+
+        rank_str = f"#{rank_val}" if rank_val is not None else "multiple" if tr_rows and len(tr_rows) > 1 else "—"
 
         logger.info(
             "===================================================\n"
             "RANDOM TRACK PICK\n"
-            "Decade: %s\tGenre: %s\n"
+            "Rank: %s  Decade: %s\tGenre: %s\n"
             "Title: %s\tArtist: %s\n"
             "track_id: %s\tlang: %s\n"
             "===================================================",
-            decades, genres,
-            track.track_name, artist.artist_name,
-            (track.spotify_track_id or track.id), lang,
+            rank_str,
+            decades,
+            genres,
+            track.track_name,
+            artist.artist_name,
+            (track.spotify_track_id or track.id),
+            lang,
         )
+
         # ────────────────────────────────────────────────────────────────────────────
 
         intro_jobs, intro_texts, intro_files = [], [], []
