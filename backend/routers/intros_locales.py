@@ -213,20 +213,26 @@ def strip_inline_markdown(s: str) -> str:
     s = _BACKTICK_RE.sub(r"\1", s)
     return s
 
-# --- Allow localized rank phrases for es/pt-BR ---
+# --- Allow localized rank phrases for es/pt-BR; disallow 'number' there ---
 def _rank_ok(text: str, rank: int, lang: str) -> bool:
-    """
-    Always accept 'number {rank}'.
-    For es/pt-BR also accept: 'número {rank}', 'numero {rank}', 'nº {rank}', 'no. {rank}'.
-    """
-    patterns = [rf"\bnumber\s+{rank}\b"]
+    r = str(rank)
+
+    def has(p: str) -> bool:
+        return re.search(p, text, flags=re.IGNORECASE) is not None
+
     if lang in ("es", "pt-BR"):
-        patterns += [
-            rf"\bn[úu]mero\s+{rank}\b",
-            rf"\bno\.?\s*{rank}\b",
-            rf"\bnº\.?\s*{rank}\b",
+        # Accept common localized variants:
+        #   "número 4", "número: 4", "número-4"
+        #   "nº 4" / "n.º 4" (º or °), and "no. 4" (seen in some texts)
+        pats = [
+            rf"\bn[úu]mero\s*[:\-]?\s*{r}\b",  # número 4 / número: 4
+            rf"\bn[º°]\.?\s*{r}\b",            # nº 4 / n.º 4
+            rf"\bno\.?\s*{r}\b",               # no. 4
         ]
-    return any(re.search(p, text, flags=re.IGNORECASE) for p in patterns)
+        return any(has(p) for p in pats)
+
+    # Default (English or others): allow "number 4", "number: 4", "number-4"
+    return has(rf"\bnumber\s*[:\-]?\s*{r}\b")
 
 
 
@@ -319,7 +325,6 @@ def _quote_title_once(text: str, title: str) -> str:
         return text.replace(title, f"'{title}'", 1)
     return text
 
-
 def translate_intro_from_en(en_text: str, lang: str, rank: int, track: str, artist: str) -> str:
     protected = _protect_names(en_text, track, artist)
     system = f"Translate English to {lang}. Natural, concise. Do NOT add or remove facts."
@@ -332,8 +337,12 @@ Constraints (hard):
 - DO NOT translate or alter song/artist names; placeholders appear as [[TRACK_NAME]] and [[ARTIST_NAME]] and must remain EXACTLY as written.
 - Preserve diacritics; 1–3 sentences; announcer tone; TTS-friendly."""
     draft = call_llm(system=system, user=user).strip()
-    draft = _ensure_language(draft, lang, system, user)   # <— add this
+    draft = _ensure_language(draft, lang, system, user)
     draft = _strip_llm_brackets(draft)
+
+    # 👇 add this line
+    draft = localize_rank_word(draft, lang)
+
     out = _restore_names(draft, track, artist)
     out = _force_exact_casing(out, track, artist)
     if "#" in out:
@@ -341,7 +350,6 @@ Constraints (hard):
     if rank and not _rank_ok(out, rank, lang):
         out = f"{out.rstrip('.')} (number {rank})"
     return out
-
 def polish_locale(text: str, lang: str, rank: int, track: str, artist: str) -> str:
     system = f"Polish this {lang} text for radio-host delivery. Keep facts identical."
     user = f"""Text:
@@ -355,9 +363,13 @@ Hard constraints:
 - If placeholders [[TRACK_NAME]] or [[ARTIST_NAME]] appear, keep them EXACTLY as written.
 Output only the revised text. Do not add explanations, headings, labels, language tags, or quotes."""
     polished = call_llm(system=system, user=user).strip()
-    polished = _ensure_language(polished, lang, system, user)   # <— add this
+    polished = _ensure_language(polished, lang, system, user)
     polished = _strip_llm_preface(polished)
     polished = _strip_llm_brackets(polished)
+
+    # 👇 add this line
+    polished = localize_rank_word(polished, lang)
+
     polished = _restore_names(polished, track, artist)
     polished = _force_exact_casing(polished, track, artist)
     return polished
@@ -489,6 +501,7 @@ def translate_intros_from_english(
                     continue
 
                 to_save = strip_inline_markdown(text) if strip_markdown_for_tts else text
+                to_save = localize_rank_word(to_save, lang)  # 👈 optional safeguard
                 to_save = _force_exact_casing(to_save, track_name, artist_name)
                 to_save = _quote_title_once(to_save, track_name)
 
@@ -530,3 +543,17 @@ def translate_intros_from_english(
         "strip_markdown_for_tts": strip_markdown_for_tts
 
     }
+
+# backend/services/locales_postprocess.py
+import re
+
+_NUMBER_RE = re.compile(r"\bnumber\s*[:#]?\s*(\d+)\b", flags=re.IGNORECASE)
+
+def localize_rank_word(text: str, lang: str) -> str:
+    """
+    Replace 'number 4'/'Number: 4'/'number #4' with 'número 4'
+    for es and pt-BR outputs. Leaves everything else untouched.
+    """
+    if lang in ("es", "pt-BR"):
+        return _NUMBER_RE.sub(r"número \1", text)
+    return text
