@@ -1,110 +1,66 @@
 # backend/routers/intros_locales.py
-from typing import Any, Dict, List, Optional
-from enum import Enum
+from __future__ import annotations
+from typing import Any, Dict, List, Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+import logging, time, requests
+import re  # ensure imported at top
 
-# ✅ use your actual modules
 from backend.database import get_db
 from backend.models.dbmodels import TrackRanking, TrackRankingLocale, Track, Artist
+from backend.services.locales_common import (
+    strip_inline_markdown, strip_llm_brackets, force_exact_casing,
+    quote_title_once, rebalance_parens_quotes, localize_rank_word, rank_ok
+)
+from backend.services.qafix_es import qa_fix_spanish_intro, qa_intro_errors_es
 
-# SQLAlchemy Tables (helps IDE understand .isnot/.asc/.in_)
+from backend.config import XAI_API_KEY, XAI_API_URL, XAI_MODEL, TEMPERATURE_DEFAULT
+from backend.services.qafix_es import ensure_artist_after_title
+
 TR  = TrackRanking.__table__
 TRL = TrackRankingLocale.__table__
-
-import re
-
-# Matches <<...>>, <<'...'>>, <<"...">> (with optional spaces)
-_BRACKET_WRAP_RE = re.compile(r"<<\s*(['\"]?)([^<>]+?)\1\s*>>")
-
-def _strip_llm_brackets(text: str) -> str:
-    """
-    Remove LLM-added angle-bracket wrappers like:
-      <<Randy Travis>>, <<'Forever and Ever Amen'>>, <<"A Song">>
-    → returns the inner text without brackets/quotes.
-    """
-    return _BRACKET_WRAP_RE.sub(r"\2", text)
-
-
-
-
-# --- XAI client ---
-import time, requests
-from backend.config import XAI_API_KEY, XAI_API_URL, XAI_MODEL, TEMPERATURE_DEFAULT
-import logging
 log = logging.getLogger("intros_locales")
+router = APIRouter(prefix="/intros", tags=["Locales"])
 
+# ── XAI client (unchanged behavior) ──────────────────────────────────────────
 def call_llm(system: str, user: str) -> str:
-    """
-    Translate/polish via XAI (Grok). Returns plain text content.
-    Retries on 429/5xx with exponential backoff.
-    """
     api_key = (XAI_API_KEY or "").strip()
     if not api_key:
         raise RuntimeError("Missing XAI_API_KEY env var")
-
-    url = XAI_API_URL  # from config: https://api.x.ai/v1/chat/completions
     payload = {
-        "model": XAI_MODEL,            # from config, defaults to grok-3-latest
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user",   "content": user},
-        ],
+        "model": XAI_MODEL,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user",   "content": user}],
         "temperature": TEMPERATURE_DEFAULT,
         "max_tokens": 240,
         "stream": False,
     }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-
-    if log.isEnabledFor(logging.DEBUG):
-        log.debug("POST %s model=%s", url, payload["model"])
-
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type":"application/json"}
     last_err = None
     for attempt in range(3):
         try:
-            r = requests.post(url, headers=headers, json=payload, timeout=(10, 60))
+            r = requests.post(XAI_API_URL, headers=headers, json=payload, timeout=(10, 60))
             if r.status_code in (429, 500, 502, 503, 504):
                 last_err = r
-                time.sleep(1.5 * (attempt + 1))
-                continue
+                time.sleep(1.5 * (attempt + 1)); continue
             r.raise_for_status()
             data = r.json()
             return data["choices"][0]["message"]["content"]
         except requests.RequestException as ex:
             last_err = ex
             if attempt < 2:
-                time.sleep(1.5 * (attempt + 1))
-                continue
+                time.sleep(1.5 * (attempt + 1)); continue
             raise RuntimeError(f"XAI request failed: {type(ex).__name__}: {ex}")
         except (KeyError, IndexError) as ex:
-            raise RuntimeError(
-                f"Unexpected XAI response shape: {ex}; body={getattr(last_err, 'text', '')[:300]}"
-            )
+            body = getattr(last_err, 'text', '')[:300]
+            raise RuntimeError(f"Unexpected XAI response shape: {ex}; body={body}")
+    raise RuntimeError(f"XAI request failed after retries: {getattr(last_err, 'status_code','?')}")
 
-    raise RuntimeError(
-        f"XAI request failed after retries: "
-        f"{getattr(last_err, 'status_code', '?')} {getattr(last_err, 'text', '')[:300]}"
-    )
-
-router = APIRouter()
-
-# --- Swagger dropdown for languages ---
-class LocaleEnum(str, Enum):
-    es = "es"
-    pt_BR = "pt-BR"
-
-# -------- PG upsert helper ----------
+# ── PG upsert helper ─────────────────────────────────────────────────────────
 def upsert_intro(db: Session, tr_id: int, lang: str, text: str, overwrite: bool) -> None:
-    ins = pg_insert(TRL).values(
-        track_ranking_id=tr_id,
-        language_code=lang,
-        intro_text=text
-    )
+    ins = pg_insert(TRL).values(track_ranking_id=tr_id, language_code=lang, intro_text=text)
     stmt = (
         ins.on_conflict_do_update(
             index_elements=[TRL.c.track_ranking_id, TRL.c.language_code],
@@ -116,328 +72,56 @@ def upsert_intro(db: Session, tr_id: int, lang: str, text: str, overwrite: bool)
     )
     db.exec(stmt)
 
-# --- reuse _normalize_langs from artist_locales (with safe fallback) ---
-try:
-    from backend.routers.artist_locales import _normalize_langs as _normalize_langs_base
-except Exception:
-    def _normalize_langs_base(langs: List[str]) -> List[str]:
-        SUPPORTED_LANGS = {"es", "pt-BR"}
-        out, seen = [], set()
-        for l in langs or []:
-            if l in SUPPORTED_LANGS and l not in seen:
-                out.append(l); seen.add(l)
-        return out
-
-# -------- Helpers for name protection & QA ----------
-
-_SENT_TRACK = "[[TRACK_NAME]]"
-_SENT_ARTIST = "[[ARTIST_NAME]]"
-# --- in _protect_one, compile wrapper with (?i) at start and insert the raw pattern string ---
-def _protect_one(text: str, name: str, sentinel: str) -> str:
-    if not name:
-        return text
-    core = _name_core_regex(name)
-    if core is None:
-        return text
-    wrapper = re.compile(
-        rf'(?i)(?P<pre>["\'_*«»“”‘’()\[\]<>]*)'
-        rf'(?P<core>{core})'
-        rf'(?P<post>["\'_*«»“”‘’()\[\]<>]*)'
-    )
-    return wrapper.sub(lambda m: f'{m.group("pre")}{sentinel}{m.group("post")}', text)
-
-# --- replace the old _name_core_regex with this (returns a pattern STRING) ---
-def _name_core_regex(name: str) -> Optional[str]:
-    """
-    Build a punctuation-agnostic core pattern for the name, WITHOUT inline flags.
-    Example return: r"\b(Forever\W+and\W+Ever\W+Amen)\b"
-    """
-    if not name:
-        return None
-    tokens = re.findall(r"\w+", name, flags=re.UNICODE)
-    if not tokens:
-        return None
-    core = r"\W+".join(map(re.escape, tokens))
-    return rf"\b({core})\b"
-
-
-
-def _protect_names(text: str, track: str, artist: str) -> str:
-    # First, strip markdown so *Name* becomes Name and can be matched
-    base = strip_inline_markdown(text)
-    base = _protect_one(base, track, _SENT_TRACK)
-    base = _protect_one(base, artist, _SENT_ARTIST)
-    return base
-
-def _strip_llm_preface(s: str) -> str:
-    """Remove short 'reviewed text' headers and keep the main paragraph."""
-    s = s.strip()
-    # Remove one-line headers ending with colon (Portuguese/Spanish/English variants)
-    s = re.sub(
-        r'^\s*(?:texto|vers[aã]o|revisad[oa]|revis[aã]o)\b.*?:\s*\n+',
-        '',
-        s,
-        flags=re.IGNORECASE
-    )
-    # If multiple paragraphs, keep the longest non-empty
-    parts = [p.strip() for p in re.split(r'\n{2,}', s) if p.strip()]
-    if len(parts) >= 1:
-        s = max(parts, key=len)
-    return s
-
-# --- in _force_exact_casing, compile with flags instead of relying on inline (?i) ---
-def _force_exact_casing(text: str, track: str, artist: str) -> str:
-    def fix(s: str, name: str) -> str:
-        pat = _name_core_regex(name)
-        if not name or pat is None:
-            return s
-        return re.compile(pat, flags=re.IGNORECASE).sub(name, s)
-    text = fix(text, track)
-    text = fix(text, artist)
-    return text
-
-
-def _restore_names(text: str, track: str, artist: str) -> str:
-    text = text.replace(_SENT_TRACK, track)
-    text = text.replace(_SENT_ARTIST, artist)
-    return text
-
-# put these near _MD_EMPH_RE
-_MD_EMPH_RE   = re.compile(r'(?<!\\)([*_])((?:(?!\1).)+?)\1')   # *text* or _text_, not escaped
-_BACKTICK_RE  = re.compile(r'(?<!\\)`([^`]+?)`')                # `code`, not escaped
-
-def strip_inline_markdown(s: str) -> str:
-    if not s:
-        return s
-    s = _MD_EMPH_RE.sub(r"\2", s)
-    s = _BACKTICK_RE.sub(r"\1", s)
-    return s
-
-# --- Allow localized rank phrases for es/pt-BR; disallow 'number' there ---
-def _rank_ok(text: str, rank: int, lang: str) -> bool:
-    r = str(rank)
-
-    def has(p: str) -> bool:
-        return re.search(p, text, flags=re.IGNORECASE) is not None
-
-    if lang in ("es", "pt-BR"):
-        # Accept common localized variants:
-        #   "número 4", "número: 4", "número-4"
-        #   "nº 4" / "n.º 4" (º or °), and "no. 4" (seen in some texts)
-        pats = [
-            rf"\bn[úu]mero\s*[:\-]?\s*{r}\b",  # número 4 / número: 4
-            rf"\bn[º°]\.?\s*{r}\b",            # nº 4 / n.º 4
-            rf"\bno\.?\s*{r}\b",               # no. 4
-        ]
-        return any(has(p) for p in pats)
-
-    # Default (English or others): allow "number 4", "number: 4", "number-4"
-    return has(rf"\bnumber\s*[:\-]?\s*{r}\b")
-
-
-
-def qa_intro(text: str, rank: int, track: str, artist: str, lang: str) -> List[str]:
-    errs: List[str] = []
-
-    # 1) forbid stray '#'
-    if "#" in text:
-        errs.append("Contains '#'.")
-
-    # 2) es/pt-BR must NOT contain English 'number'
-    if lang in ("es", "pt-BR") and re.search(r"\bnumber\s*[:#-]?\s*\d+\b", text, flags=re.IGNORECASE):
-        errs.append("English 'number' token present for localized language.")
-
-    # 3) require a valid rank phrase for the locale (número / nº / no. or number in other langs)
-    if not _rank_ok(text, rank, lang):
-        errs.append(f"Missing localized rank phrase for {lang} (e.g., 'número {rank}').")
-
-    # 4) names must be present (tolerate punctuation/casing differences)
-    if track and not _contains_name(text, track):
-        errs.append("Track name altered/missing.")
-    if artist and not _contains_name(text, artist):
-        errs.append("Artist name altered/missing.")
-
-    return errs
-
-def _rebalance_parens_quotes(s: str) -> str:
-    # collapse accidental double right-parens
-    s = re.sub(r"\)\)+", ")", s)
-    # trim extra trailing ) if counts don't match
-    left, right = s.count("("), s.count(")")
-    while right > left and s.rstrip().endswith(")"):
-        s = s.rstrip()[:-1]
-        right -= 1
-    return s
-
-# put near your other helpers
-def _contains_name(text: str, name: str) -> bool:
-    pat = _name_core_regex(name)
-    return bool(pat and re.search(pat, text, flags=re.IGNORECASE))
-
-
-def _qa_relaxed(text: str) -> List[str]:
-    return ["Contains '#'."] if "#" in text else []
-
-def _looks_like_english(s: str) -> bool:
-    # super-light heuristic: lots of common English glue-words
-    EN_HINTS = r"\b(the|and|of|to|in|with|for|on|at|from|this|that|is|are|was|were|as|by|it|its|his|her|their)\b"
-
-    return bool(re.search(EN_HINTS, s, flags=re.IGNORECASE)) and not re.search(r"[áéíóúñçãõ]", s)
-
-def _ensure_language(text: str, lang: str, system: str, user: str, *, max_retry: int = 1) -> str:
-    if lang not in ("es", "pt-BR"):
-        return text
-    bad = _looks_like_english(text)
-    if not bad:
-        return text
-    # one stricter retry
-    strict_user = user + f"\n\nHARD OUTPUT RULE: Respond ONLY in {lang}. Do not use English."
-    try:
-        retried = call_llm(system=system, user=strict_user).strip()
-        return retried if not _looks_like_english(retried) else text
-    except Exception:
-        return text
-
-def _smart_title(s: str) -> str:
-    # tiny helper: title-case but leave all-caps acronyms and small words alone
-    SMALL = {"and","or","the","of","in","on","for","a","an"}
-    parts = re.split(r"(\W+)", s)
-    out = []
-    for i, p in enumerate(parts):
-        if not p or not p.isalpha():
-            out.append(p); continue
-        upper = p.isupper()
-        lower = p.islower()
-        if upper: out.append(p)                 # keep acronyms
-        elif lower and p.lower() in SMALL and i != 0: out.append(p.lower())
-        else: out.append(p.capitalize())
-    return "".join(out)
-
-def _canonicalize_name(name: str) -> str:
-    return _smart_title(name) if name and name.islower() else name
-
-_OPENERS_ES = [
-    "Con un toque", "Con un aire", "Llegando con", "Presentamos", "Aquí llega", "Atentos"
-]
-_OPENERS_PT = [
-    "Com uma carga", "Trazendo", "Chegando com", "Apresentamos", "Aqui vem", "Prepare-se"
-]
-
-def _looks_repetitive_open(text: str, lang: str) -> bool:
-    starters = _OPENERS_ES if lang == "es" else _OPENERS_PT
-    return any(text.strip().lower().startswith(s.lower()) for s in starters)
-
-def _repolish_if_repetitive(text: str, lang: str, rank: int, track: str, artist: str) -> str:
-    if not _looks_repetitive_open(text, lang):
-        return text
-    system = f"Rewrite in {lang} with a different opening phrase than common clichés. Keep facts identical."
-    user = f"""Text:
-{text}
-
-Rules:
-- Keep the exact phrase 'number {rank}'.
-- No '#'.
-- Do not change song or artist names: {track} — {artist}.
-- 1–3 sentences. Announcer tone. TTS-friendly.
-- Use a different opening than the original."""
-    try:
-        alt = call_llm(system=system, user=user).strip()
-        return alt if len(alt) >= 20 else text
-    except Exception:
-        return text
-
-def _quote_title_once(text: str, title: str) -> str:
-    # If title appears unquoted but not quoted, add single quotes around first occurrence
-    if title and (title in text) and (f"'{title}'" not in text) and (f"“{title}”" not in text) and (f"\"{title}\"" not in text):
-        return text.replace(title, f"'{title}'", 1)
-    return text
-
-def translate_intro_from_en(en_text: str, lang: str, rank: int, track: str, artist: str) -> str:
-    protected = _protect_names(en_text, track, artist)
-    system = f"Translate English to {lang}. Natural, concise. Do NOT add or remove facts."
+# ── Translation/polish helpers (minimal) ─────────────────────────────────────
+def translate_intro_from_en(en_text: str, rank: int, track: str, artist: str, lang: str="es") -> str:
+    system = f"Translate English to {lang}. Natural, concise, 1–3 sentences, announcer tone. Do NOT add or remove facts."
     user = f"""Original:
-{protected}
+{en_text}
 
-Constraints (hard):
-- Keep the exact phrase 'number {rank}' when referring to rank.
-- Never use '#'.
-- DO NOT translate or alter song/artist names; placeholders appear as [[TRACK_NAME]] and [[ARTIST_NAME]] and must remain EXACTLY as written.
-- Preserve diacritics; 1–3 sentences; announcer tone; TTS-friendly."""
-    draft = call_llm(system=system, user=user).strip()
-    draft = _ensure_language(draft, lang, system, user)
-    draft = _strip_llm_brackets(draft)
-
-    # 👇 add this line
-    draft = _strip_llm_brackets(draft)
-    draft = localize_rank_word(draft, lang)
-    draft = _rebalance_parens_quotes(draft)  # ← add here
-
-    out = _restore_names(draft, track, artist)
-    out = _force_exact_casing(out, track, artist)
-    if "#" in out:
-        out = out.replace("#", "number ")
-    if rank and not _rank_ok(out, rank, lang):
-        out = f"{out.rstrip('.')} (number {rank})"
+Constraints:
+- Keep the exact song and artist names: {track} — {artist} (do not translate or recase).
+- Include a localized rank phrase (e.g., 'número {rank}') once. Never use '#'.
+- TTS-friendly; no markdown; no headings; no lists."""
+    out = call_llm(system, user).strip()
+    out = strip_llm_brackets(out)
+    out = localize_rank_word(out, lang)
     return out
-
 
 def polish_locale(text: str, lang: str, rank: int, track: str, artist: str) -> str:
     system = f"Polish this {lang} text for radio-host delivery. Keep facts identical."
     user = f"""Text:
 {text}
 
-Hard constraints:
-- Keep exact 'number {rank}' (do not translate it).
-- No '#'.
-- Do not change song or artist names: {track} — {artist}.
-- Keep 1–3 sentences.
-- If placeholders [[TRACK_NAME]] or [[ARTIST_NAME]] appear, keep them EXACTLY as written.
-Output only the revised text. Do not add explanations, headings, labels, language tags, or quotes."""
-    polished = call_llm(system=system, user=user).strip()
-    polished = _ensure_language(polished, lang, system, user)
-    polished = _strip_llm_preface(polished)
-    polished = _strip_llm_brackets(polished)
+Hard rules:
+- Keep EXACT song/artist spellings: {track} — {artist}.
+- Include exactly one localized rank phrase (e.g., 'número {rank}').
+- No '#'. 1–3 sentences. TTS-friendly. No markdown or labels."""
+    out = call_llm(system, user).strip()
+    out = strip_llm_brackets(out)
+    out = localize_rank_word(out, lang)
+    return out
 
-    # 👇 add this line
-    polished = localize_rank_word(polished, lang)
-    polished = _rebalance_parens_quotes(polished)
-    # ← add here
-    polished = _restore_names(polished, track, artist)
-    polished = _force_exact_casing(polished, track, artist)
-    return polished
-
-
-# ------------- Endpoint -------------------------------------------
-
+# ── Endpoint: ES only (Swagger shows only 'es') ──────────────────────────────
 @router.post(
-    "/intros/translate",
-    summary="Translate EN intros in track_ranking → upsert ES/PT-BR in track_ranking_locale"
+    "/translate",
+    summary="Translate EN intros to ES and upsert into track_ranking_locale"
 )
-
 def translate_intros_from_english(
-    languages: List[LocaleEnum] = Query([LocaleEnum.es, LocaleEnum.pt_BR]),
+    lang: Literal["es"] = Query("es", description="Language (fixed to es)"),
     track_ranking_ids: Optional[List[int]] = Query(None),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=2200),
     offset: int = Query(0, ge=0),
     only_missing_text: bool = Query(True),
-    overwrite: bool = Query(False, description="If true, update existing locales; if false, insert only."),
+    overwrite: bool = Query(False, description="If true, update existing locales; else insert only"),
     dry_run: bool = Query(True),
-    polish: bool = Query(True, description="Run a light localization pass after translation"),
-    strip_markdown_for_tts: bool = Query(True, description="Strip simple inline markdown (* _ `) before save/preview"),
+    polish: bool = Query(False, description="Run a light polish pass after translation"),
+    strip_markdown_for_tts: bool = Query(True, description="Strip simple inline markdown before save/preview"),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    # Convert Enum -> canonical strings and normalize (dedupe/order)
-    langs = _normalize_langs_base([l.value for l in languages])
-    if not langs:
-        return {"processed": 0, "note": "No languages provided (after normalization)."}
-
-    # 1) Select TrackRanking rows that have a non-empty English intro
+    # 1) Select EN intros
     q = (
         select(TrackRanking, Track, Artist)
-        .where(
-            TR.c.intro.isnot(None),
-            func.length(func.trim(TR.c.intro)) > 0
-        )
+        .where(TR.c.intro.isnot(None), func.length(func.trim(TR.c.intro)) > 0)
         .join(Track, Track.id == TrackRanking.track_id)
         .join(Artist, Artist.id == Track.artist_id)
         .order_by(TR.c.id.asc())
@@ -449,7 +133,7 @@ def translate_intros_from_english(
 
     rows = db.exec(q).all()
     if not rows:
-        return {"processed": 0, "note": "No rows found (missing English intro or filter too narrow)."}
+        return {"processed": 0, "langs": [lang], "note": "No rows found (missing English intro or filter too narrow)."}
 
     created = updated = skipped = 0
     preview: List[Dict[str, Any]] = []
@@ -462,97 +146,102 @@ def translate_intros_from_english(
             preview.append({"track_ranking_id": tr.id, "action": "skip (no English intro)"})
             continue
 
-        # Canonicalize once right after fetching from DB
-        track_name = _canonicalize_name((getattr(tk, "track_name", "") or "").strip())
-        artist_name = _canonicalize_name((getattr(ar, "artist_name", "") or getattr(ar, "name", "") or "").strip())
+        track_name  = (getattr(tk, "track_name", "") or "").strip()
+        artist_name = (getattr(ar, "artist_name", "") or getattr(ar, "name", "") or "").strip()
         rank = int(getattr(tr, "ranking", 0) or 0)
 
-        for lang in langs:
-            def run_qa(txt: str) -> List[str]:
-                if rank > 0 and track_name and artist_name:
-                    return qa_intro(txt, rank, track_name, artist_name, lang)
-                return _qa_relaxed(txt)
+        existing = db.exec(
+            select(TrackRankingLocale)
+            .where(TrackRankingLocale.track_ranking_id == tr.id,
+                   TrackRankingLocale.language_code == lang)
+        ).first()
 
-            existing = db.exec(
-                select(TrackRankingLocale)
-                .where(
-                    TrackRankingLocale.track_ranking_id == tr.id,
-                    TrackRankingLocale.language_code == lang
-                )
-            ).first()
+        if only_missing_text and existing and (existing.intro_text or "").strip():
+            skipped += 1
+            preview.append({"track_ranking_id": tr.id, "lang": lang, "action": "skip (already present)"})
+            continue
 
-            if only_missing_text and existing and (existing.intro_text or "").strip():
-                skipped += 1
+        try:
+            # Translate → optional polish → ES QA auto-fix
+            text = translate_intro_from_en(intro_en, rank, track_name, artist_name, lang="es")
+            if polish:
+                text = polish_locale(text, "es", rank, track_name, artist_name)
+
+            # final hardening
+            text, changed, fix_issues = qa_fix_spanish_intro(
+                text, rank=rank, track_name=track_name, artist_name=artist_name
+            )
+            # Final guard against stray '#'
+            text = re.sub(r"#\s*(\d+)\b", r"número \g<1>", text)
+            text = re.sub(r"(?<!\w)#(?!\d)", "", text)
+
+            # QA check (defensive)
+            qa_errs = qa_intro_errors_es(text, rank, track_name, artist_name)
+            # --- AUTO-REPAIR for common QA fails ---
+            if qa_errs:
+                repaired = False
+
+                # If rank phrase is missing, append the Spanish phrase once.
+                if any("Missing localized rank phrase" in e for e in qa_errs) and rank:
+                    text = f"{text.rstrip('.')} (número {rank})."
+                    repaired = True
+
+                # If artist is missing/mutated, force the "'Title' de ARTIST" pattern.
+                if any("Artist name altered/missing" in e for e in qa_errs) and track_name and artist_name:
+                    text = ensure_artist_after_title(text, track_name, artist_name)
+                    text = force_exact_casing(text, track_name, artist_name)
+                    text = rebalance_parens_quotes(text)
+                    repaired = True
+
+                if repaired:
+                    # Run the fixer again and re-check QA
+                    text, _, _ = qa_fix_spanish_intro(
+                        text, rank=rank, track_name=track_name, artist_name=artist_name
+                    )
+                    qa_errs = qa_intro_errors_es(text, rank, track_name, artist_name)
+            # --- /AUTO-REPAIR ---
+
+            if qa_errs:
+                sample = strip_inline_markdown(text) if strip_markdown_for_tts else text
                 preview.append({
-                    "track_ranking_id": tr.id, "lang": lang,
-                    "action": "skip (already present)"
+                    "track_ranking_id": tr.id, "lang": lang, "action": "qa-failed",
+                    "text_sample": sample[:120] + ("…" if len(sample) > 120 else "")
                 })
+                errors.append(f"tr_id={tr.id} lang={lang} QA fail: {', '.join(qa_errs)}")
                 continue
 
-            try:
-                text = translate_intro_from_en(intro_en, lang, rank, track_name, artist_name)
-                if polish:
-                    polished = polish_locale(text, lang, rank, track_name, artist_name)
-                    polished = _repolish_if_repetitive(polished, lang, rank, track_name, artist_name)
-                    if not run_qa(polished):
-                        text = polished
+            # cosmetic tweaks before save
+            text = force_exact_casing(text, track_name, artist_name)
+            text = quote_title_once(text, track_name)
+            text = rebalance_parens_quotes(text)
+            if text and text[-1] not in ".!?…":
+                text += "."
 
-                errs = run_qa(text)
-                if errs:
-                    preview_text = strip_inline_markdown(text) if strip_markdown_for_tts else text
-                    preview.append({
-                        "track_ranking_id": tr.id, "lang": lang,
-                        "action": "qa-failed",
-                        "text_sample": preview_text[:120] + ("…" if len(preview_text) > 120 else "")
-                    })
-                    errors.append(f"tr_id={tr.id} lang={lang} QA fail: {', '.join(errs)}")
-                    continue
+            # preview
+            sample = strip_inline_markdown(text) if strip_markdown_for_tts else text
+            action = "update" if (existing and overwrite) else ("insert" if not existing else "skip (exists, overwrite=false)")
+            preview.append({"track_ranking_id": tr.id, "lang": lang, "action": action, "text_sample": sample[:120] + ("…" if len(sample) > 120 else "")})
 
-                action = "update" if (existing and overwrite) else (
-                    "insert" if not existing else "skip (exists, overwrite=false)")
-                # Enforce final casing before preview/save
-                text = _force_exact_casing(text, track_name, artist_name)
-                text = _quote_title_once(text, track_name)  # 👈 insert here
+            if dry_run:
+                continue
 
-                # Ensure it ends with proper punctuation
-                if text and text[-1] not in ".!?…":
-                    text += "."
+            if existing and not overwrite:
+                skipped += 1
+                continue
 
-                preview_text = strip_inline_markdown(text) if strip_markdown_for_tts else text
-                preview.append({
-                    "track_ranking_id": tr.id, "lang": lang,
-                    "action": action,
-                    "text_sample": preview_text[:120] + ("…" if len(preview_text) > 120 else "")
-                })
+            to_save = strip_inline_markdown(text) if strip_markdown_for_tts else text
+            if rank and not rank_ok(to_save, rank, "es"):
+                # belt-and-suspenders: append the right phrase if somehow missing
+                to_save = f"{to_save.rstrip('.')} (número {rank})."
+            upsert_intro(db, tr.id, lang, to_save, overwrite=overwrite)
 
-                if dry_run:
-                    continue
+            if existing:
+                updated += 1 if overwrite else 0
+            else:
+                created += 1
 
-                if existing and not overwrite:
-                    skipped += 1
-                    continue
-
-                to_save = strip_inline_markdown(text) if strip_markdown_for_tts else text
-                to_save = localize_rank_word(to_save, lang)  # 👈 optional safeguard
-                to_save = _force_exact_casing(to_save, track_name, artist_name)
-                to_save = _quote_title_once(to_save, track_name)
-                text = _rebalance_parens_quotes(text)  # ← add here
-
-                if to_save and to_save[-1] not in ".!?…":
-                    to_save += "."
-
-                upsert_intro(db, tr.id, lang, to_save, overwrite=overwrite)
-
-                if existing:
-                    if overwrite:
-                        updated += 1
-                    else:
-                        skipped += 1
-                else:
-                    created += 1
-
-            except Exception as ex:
-                errors.append(f"tr_id={tr.id} lang={lang} error: {type(ex).__name__}: {ex}")
+        except Exception as ex:
+            errors.append(f"tr_id={tr.id} lang={lang} error: {type(ex).__name__}: {ex}")
 
     if not dry_run:
         try:
@@ -563,30 +252,15 @@ def translate_intros_from_english(
 
     return {
         "processed": len(rows),
-        "langs": langs,
+        "langs": [lang],
         "created": created,
         "updated": updated,
         "skipped": skipped,
         "dry_run": dry_run,
         "overwrite": overwrite,
         "polish": polish,
-        "sample": preview[: min(12, len(preview))],
+        "sample": preview[:12],
         "errors": errors[:10],
         "note": "Dry-run: no DB writes" if dry_run else "Translations upserted",
-        "strip_markdown_for_tts": strip_markdown_for_tts
-
+        "strip_markdown_for_tts": strip_markdown_for_tts,
     }
-
-# backend/services/locales_postprocess.py
-import re
-
-_NUMBER_RE = re.compile(r"\bnumber\s*[:#]?\s*(\d+)\b", flags=re.IGNORECASE)
-
-def localize_rank_word(text: str, lang: str) -> str:
-    """
-    Replace 'number 4'/'Number: 4'/'number #4' with 'número 4'
-    for es and pt-BR outputs. Leaves everything else untouched.
-    """
-    if lang in ("es", "pt-BR"):
-        return _NUMBER_RE.sub(r"número \1", text)
-    return text
