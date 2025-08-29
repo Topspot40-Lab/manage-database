@@ -238,15 +238,42 @@ def _rank_ok(text: str, rank: int, lang: str) -> bool:
 
 def qa_intro(text: str, rank: int, track: str, artist: str, lang: str) -> List[str]:
     errs: List[str] = []
+
+    # 1) forbid stray '#'
     if "#" in text:
         errs.append("Contains '#'.")
+
+    # 2) es/pt-BR must NOT contain English 'number'
+    if lang in ("es", "pt-BR") and re.search(r"\bnumber\s*[:#-]?\s*\d+\b", text, flags=re.IGNORECASE):
+        errs.append("English 'number' token present for localized language.")
+
+    # 3) require a valid rank phrase for the locale (número / nº / no. or number in other langs)
     if not _rank_ok(text, rank, lang):
-        errs.append(f"Missing rank phrase for {lang} (expected 'number {rank}' or locale variant).")
-    if track and track not in text:
+        errs.append(f"Missing localized rank phrase for {lang} (e.g., 'número {rank}').")
+
+    # 4) names must be present (tolerate punctuation/casing differences)
+    if track and not _contains_name(text, track):
         errs.append("Track name altered/missing.")
-    if artist and artist not in text:
+    if artist and not _contains_name(text, artist):
         errs.append("Artist name altered/missing.")
+
     return errs
+
+def _rebalance_parens_quotes(s: str) -> str:
+    # collapse accidental double right-parens
+    s = re.sub(r"\)\)+", ")", s)
+    # trim extra trailing ) if counts don't match
+    left, right = s.count("("), s.count(")")
+    while right > left and s.rstrip().endswith(")"):
+        s = s.rstrip()[:-1]
+        right -= 1
+    return s
+
+# put near your other helpers
+def _contains_name(text: str, name: str) -> bool:
+    pat = _name_core_regex(name)
+    return bool(pat and re.search(pat, text, flags=re.IGNORECASE))
+
 
 def _qa_relaxed(text: str) -> List[str]:
     return ["Contains '#'."] if "#" in text else []
@@ -341,7 +368,9 @@ Constraints (hard):
     draft = _strip_llm_brackets(draft)
 
     # 👇 add this line
+    draft = _strip_llm_brackets(draft)
     draft = localize_rank_word(draft, lang)
+    draft = _rebalance_parens_quotes(draft)  # ← add here
 
     out = _restore_names(draft, track, artist)
     out = _force_exact_casing(out, track, artist)
@@ -350,6 +379,8 @@ Constraints (hard):
     if rank and not _rank_ok(out, rank, lang):
         out = f"{out.rstrip('.')} (number {rank})"
     return out
+
+
 def polish_locale(text: str, lang: str, rank: int, track: str, artist: str) -> str:
     system = f"Polish this {lang} text for radio-host delivery. Keep facts identical."
     user = f"""Text:
@@ -369,7 +400,8 @@ Output only the revised text. Do not add explanations, headings, labels, languag
 
     # 👇 add this line
     polished = localize_rank_word(polished, lang)
-
+    polished = _rebalance_parens_quotes(polished)
+    # ← add here
     polished = _restore_names(polished, track, artist)
     polished = _force_exact_casing(polished, track, artist)
     return polished
@@ -504,6 +536,7 @@ def translate_intros_from_english(
                 to_save = localize_rank_word(to_save, lang)  # 👈 optional safeguard
                 to_save = _force_exact_casing(to_save, track_name, artist_name)
                 to_save = _quote_title_once(to_save, track_name)
+                text = _rebalance_parens_quotes(text)  # ← add here
 
                 if to_save and to_save[-1] not in ".!?…":
                     to_save += "."
