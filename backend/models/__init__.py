@@ -1,32 +1,19 @@
 # backend/models/__init__.py
+
 from .dbmodels import (
-    Genre,
-    Decade,
-    Artist,
-    Track,
-    TrackRanking,
-    DecadeGenre,
-    ArtistGenre,
-    Specialty,
-    SpecialtyRanking,
-    Tracklist,
-    Top40GenreRanking,
-    DecadeGenreTrivia,
-    TrackGenre
+    # taxonomy / linking
+    Genre, Decade, DecadeGenre, ArtistGenre,
+    # core entities
+    Artist, Track, TrackRanking,
+    # locales
+    TrackRankingLocale, TrackLocale, ArtistLocale, Language,
 )
 
 __all__ = [
-    "Genre",
-    "Decade",
-    "Artist",
-    "Track",
-    "TrackRanking",
-    "DecadeGenre",
-    "ArtistGenre",
-    "Specialty",
-    "SpecialtyRanking",
-    "Tracklist",
-    "Top40GenreRanking",
-    "DecadeGenreTrivia",
-    "TrackGenre"
+    # taxonomy / linking
+    "Genre", "Decade", "DecadeGenre", "ArtistGenre",
+    # core entities
+    "Artist", "Track", "TrackRanking",
+    # locales
+    "TrackRankingLocale", "TrackLocale", "ArtistLocale", "Language",
 ]

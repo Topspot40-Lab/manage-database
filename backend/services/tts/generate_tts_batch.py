@@ -58,6 +58,8 @@ def generate_tts_batch(
             continue
 
         logger.debug("🎧 Generating %s → %s", log_prefix, out_path)
+        logger.debug("🎧 ElevenLabs Voice ID: %s | log_prefix=%s | out_path=%s",
+                     voice_id, log_prefix, out_path)
 
         # Create the MP3 via ElevenLabs
         generate_tts_mp3(tts_text, out_path, voice_id, overwrite=overwrite, play=play)

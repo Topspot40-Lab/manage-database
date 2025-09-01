@@ -25,7 +25,7 @@ from backend.routers.play_json_track_by_rank import router as playback_router
 from backend.routers.tts_regenerator import router as tts_regen_router
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
-from backend.routers.insert_specialty_json import router as specialty_insert_router
+# from backend.routers.insert_specialty_json import router as specialty_insert_router
 from backend.routers.generate_poprock import router as poprock_router
 
 # Routers (modules we include with .router)
@@ -83,13 +83,12 @@ app.include_router(intro_router)
 app.include_router(detail_router)
 app.include_router(artist_router)
 app.include_router(tts_regen_router)
-app.include_router(specialty_insert_router, prefix="/json/insert")
+# app.include_router(specialty_insert_router, prefix="/json/insert")
 app.include_router(poprock_router)
 
 # Supabase utilities
 app.include_router(supabase_summary.router)
 app.include_router(supabase_loader.router)
-
 # Locales group (keep them together under /locales for clean Swagger)
 app.include_router(locales_router.router,            prefix="/locales", tags=["locales"])
 app.include_router(artist_locales.router,            prefix="/locales", tags=["artist-locales"])

@@ -211,7 +211,7 @@ TTS_PROFILES = {
         "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
-        "intro":  {"voice_id": "pNInz6obpgDQGcFmaJgB",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
+        "intro":  {"voice_id": "AcERRlWeeyUhaV8Z6nI7",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
         "detail": {"voice_id": "7EjKsW93fhgPskc2LsT1", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
         "artist": {"voice_id": "w7IU2bIH6xHcyfkUUWi3", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
     },
@@ -256,7 +256,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.routers.supabase_summary": "INFO",
-    "backend.routers.tts_intro": "INFO",
+    "backend.routers.tts_intro": "DEBUG",
     "backend.routers.tts_detail": "INFO",
     "backend.routers.supabase_loader": "INFO",
     "backend.routers.insert_specialty": "INFO",
@@ -271,7 +271,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.utils.tts_diagnostics": "INFO",
     # Custom
     "backend.logging.track_logging": "INFO",
-    "tts_logger": "INFO",
+    "tts_logger": "DEBUG",
     "supabase_summary": "INFO",
     "tts_diagnostics": "INFO",
     # Third-party

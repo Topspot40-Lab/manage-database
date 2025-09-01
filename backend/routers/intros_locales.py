@@ -15,6 +15,7 @@ from backend.services.locales_common import (
     quote_title_once, rebalance_parens_quotes, localize_rank_word, rank_ok
 )
 from backend.services.qafix_es import qa_fix_spanish_intro, qa_intro_errors_es
+from backend.services.tts_prep import prepare_for_tts_es
 
 from backend.config import XAI_API_KEY, XAI_API_URL, XAI_MODEL, TEMPERATURE_DEFAULT
 from backend.services.qafix_es import ensure_artist_after_title
@@ -210,12 +211,16 @@ def translate_intros_from_english(
                 errors.append(f"tr_id={tr.id} lang={lang} QA fail: {', '.join(qa_errs)}")
                 continue
 
-            # cosmetic tweaks before save
-            text = force_exact_casing(text, track_name, artist_name)
-            text = quote_title_once(text, track_name)
-            text = rebalance_parens_quotes(text)
-            if text and text[-1] not in ".!?…":
-                text += "."
+            # Final Spanish TTS prep (locks casing/quotes, balances punctuation,
+            # ensures rank phrase, and normalizes numbers/decades to Spanish words)
+            text = prepare_for_tts_es(
+                text,
+                rank=rank,
+                track_name=track_name,
+                artist_name=artist_name,
+                strip_markdown=True,  # keep true so previews/DB are TTS-safe
+                number_normalize=True,  # makes "número 1" → "número uno", "años 50" → "años cincuenta"
+            )
 
             # preview
             sample = strip_inline_markdown(text) if strip_markdown_for_tts else text
@@ -229,7 +234,8 @@ def translate_intros_from_english(
                 skipped += 1
                 continue
 
-            to_save = strip_inline_markdown(text) if strip_markdown_for_tts else text
+            to_save = text
+
             if rank and not rank_ok(to_save, rank, "es"):
                 # belt-and-suspenders: append the right phrase if somehow missing
                 to_save = f"{to_save.rstrip('.')} (número {rank})."
