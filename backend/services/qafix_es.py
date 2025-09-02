@@ -12,7 +12,6 @@ from backend.services.locales_common import (
 # --- Glue + punctuation cleanup ---------------------------------------------
 _CAMEL_GLUE = re.compile(r"(?<=[a-záéíóúüñ])(?=[A-ZÁÉÍÓÚÜÑ])")
 
-
 def _unglue_camelcase(s: str) -> str:
     # Fix "SorryWindsong" → "Sorry Windsong" (safe in our narrow context)
     if not s: return s
@@ -352,15 +351,21 @@ def _force_exact_casing_fuzzy(text: str, name: str) -> str:
     if not pat:
         return text
     return re.sub(pat, name, text, flags=re.IGNORECASE)
+import re
 
 def _dedupe_quotes_around_title(text: str, title: str) -> str:
-    if not text or not title:
+    if not title:
         return text
-    # ''Title'' / “”Title“” / ‘’Title’’ → single pair preserved
-    text = re.sub(rf"([\"'“”‘’])\s*{re.escape(title)}\s*\1", r"\1" + title + r"\1", text)
-    # Mixed stacking: "'Title'" or "’Title’" etc. → 'Title'
-    text = re.sub(rf"[\"“”‘’]\s*{re.escape(title)}\s*[\"“”‘’]", f"'{title}'", text)
-    return text
+
+    # Build a case-insensitive pattern that matches any of these quotes,
+    # optional spaces, the exact title, optional spaces, then the same quote again.
+    pattern = re.compile(
+        rf"([\"'“”‘’])\s*{re.escape(title)}\s*\1",
+        flags=re.IGNORECASE
+    )
+
+    # Use a function replacement to avoid backreference pitfalls
+    return pattern.sub(lambda m: f"{m.group(1)}{title}{m.group(1)}", text)
 
 
 # ── Main fixer ───────────────────────────────────────────────────────────────

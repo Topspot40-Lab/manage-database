@@ -11,6 +11,8 @@ from backend.services.locales_common import (
 # ⬇️ NEW: number/decade normalization for Spanish TTS
 from backend.utils.tts_spanish_normalize import normalize_spanish_tts
 
+from backend.utils.tts_portuguese_normalize import normalize_portuguese_tts
+
 
 def prepare_for_tts_es(
     text: str,
@@ -67,4 +69,43 @@ def prepare_for_tts_es(
         t += "."
     t = re.sub(r"\s{2,}", " ", t)
 
+    return t
+
+
+def prepare_for_tts_pt_br(
+    text: str,
+    *,
+    rank: int,
+    track_name: str,
+    artist_name: str,
+    strip_markdown: bool = True,
+    number_normalize: bool = True,
+) -> str:
+    """
+    Deterministic cleanup for PT-BR before TTS.
+    Similar to ES but uses Portuguese normalization.
+    """
+    t = (text or "").strip()
+
+    from backend.services.locales_common import (
+        strip_inline_markdown, force_exact_casing,
+        quote_title_once, rebalance_parens_quotes
+    )
+
+    if strip_markdown:
+        t = strip_inline_markdown(t)
+
+    # straight quotes
+    t = t.translate(str.maketrans({"“": '"', "”": '"', "‘": "'", "’": "'"}))
+
+    # lock casing, quotes, punctuation
+    t = force_exact_casing(t, track_name, artist_name)
+    t = quote_title_once(t, track_name)
+    t = rebalance_parens_quotes(t)
+
+    if number_normalize:
+        t = normalize_portuguese_tts(t)
+
+    if t and t[-1] not in ".!?…":
+        t += "."
     return t

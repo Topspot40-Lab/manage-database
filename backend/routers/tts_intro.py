@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from backend.services.tts_prep import prepare_for_tts_es
+from backend.services.tts_prep import prepare_for_tts_es, prepare_for_tts_pt_br
 
 from backend.database import get_db
 from backend.models.dbmodels import (
@@ -227,7 +227,6 @@ async def generate_missing_intro_tts(
             "files": [],
             "message": "No eligible tracks to synthesize for requested language.",
         }
-
     # ── FINAL, DEFENSIVE TTS PREP (per item) ─────────────────────────────────────
     # Idempotent: safe for both old rows (pre-change) and new rows (already clean)
     for it in items:
@@ -240,7 +239,15 @@ async def generate_missing_intro_tts(
                 strip_markdown=True,  # strip any lingering inline markdown
                 number_normalize=True,  # 1→uno, 50→cincuenta, etc.
             )
-        # (Optional) when you add pt-BR support, call a pt normalizer here.
+        elif it.get("language") == "pt-BR":
+            it["intro"] = prepare_for_tts_pt_br(
+                it["intro"],
+                rank=int(it["rank"]),
+                track_name=it["track_name"],
+                artist_name=it["artist_name"],
+                strip_markdown=True,  # strip any lingering inline markdown
+                number_normalize=True,  # 1→um, 50→cinquenta, etc.
+            )
 
     # Generate to local disk. Your uploader (if any) can read items[i]["language"]
     # to route to audio-<lang>/intro/ in object storage.

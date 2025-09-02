@@ -211,7 +211,7 @@ TTS_PROFILES = {
         "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
-        "intro":  {"voice_id": "AcERRlWeeyUhaV8Z6nI7",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
+        "intro":  {"voice_id": "Qvbf0AoA7UZSgJUp8Ba5",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
         "detail": {"voice_id": "7EjKsW93fhgPskc2LsT1", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
         "artist": {"voice_id": "w7IU2bIH6xHcyfkUUWi3", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
     },
@@ -237,7 +237,7 @@ LOG_LEVEL_OVERRIDES = {
     "STEP_4": "INFO", "STEP_4.A": "INFO", "STEP_4.B": "INFO", "STEP_4.C": "INFO", "STEP_4.D": "INFO", "STEP_4.E": "INFO",
     # Remaining
     "STEP_5": "INFO", "STEP_6": "INFO", "STEP_7": "INFO", "STEP_8": "INFO",
-    "STEP_9": "INFO", "STEP_9.A": "INFO", "STEP_9.B": "INFO", "STEP_9.C": "INFO",
+    "STEP_9": "DEBUG", "STEP_9.A": "INFO", "STEP_9.B": "INFO", "STEP_9.C": "INFO",
     "STEP_10": "INFO", "STEP_11": "INFO",
 }
 STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
@@ -258,6 +258,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.supabase_summary": "INFO",
     "backend.routers.tts_intro": "DEBUG",
     "backend.routers.tts_detail": "INFO",
+    "track_detail_locales": "DEBUG",
     "backend.routers.supabase_loader": "INFO",
     "backend.routers.insert_specialty": "INFO",
     "backend.routers.generate_poprock": "INFO",
