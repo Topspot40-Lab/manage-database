@@ -1,36 +1,44 @@
 # backend/services/tts/generate_tts_batch.py
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import List, Dict, Any, Optional, Callable
 import logging
+
 from backend.services.tts.elevenlabs_tts import generate_tts_mp3
 from backend.routers.tts_shared import add_metadata_to_mp3, log_tts_action
-from backend.utils.tts_normalize import normalize_tts_text  # ⬅️ add this
+from backend.utils.tts_normalize import normalize_tts_text  # ⬅️ keep
 
 logger = logging.getLogger("tts_logger")
 
 def generate_tts_batch(
     *,
-    items: list,
+    items: List[Dict[str, Any]],
     text_key: str,
     voice_id: str,
     output_dir: Path,
-    filename_func,
+    filename_func: Callable[[Dict[str, Any]], str],
     log_prefix: str,
     overwrite: bool = False,
     play: bool = False,
     default_language: str = "en",
-    normalize: bool = True,               # ⬅️ new: toggle normalization
-):
+    normalize: bool = True,
+    # ⬇️ pass-through knobs to the TTS layer
+    voice_settings: Optional[Dict[str, Any]] = None,
+    model_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Generate TTS MP3s for a batch of items.
 
-    - Looks up the narration text from `text_key` in each item.
+    - Looks up narration text from `text_key` in each item.
     - If `normalize` is True, runs the text through normalize_tts_text(...)
       using per-item `language` if present, else `default_language`.
     - Writes MP3s to `output_dir/filename_func(item)` and tags metadata.
+    - Passes `voice_settings`, `model_id`, and `language` to the TTS provider.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    generated: list[str] = []
+    generated: List[str] = []
 
     for item in items:
         raw_text = item.get(text_key)
@@ -45,7 +53,6 @@ def generate_tts_batch(
         tts_text = normalize_tts_text(text, lang=lang) if normalize else text
 
         filename = filename_func(item)
-        # be safe if filename_func forgot ".mp3"
         if not filename.lower().endswith(".mp3"):
             filename += ".mp3"
         out_path = output_dir / filename
@@ -57,12 +64,22 @@ def generate_tts_batch(
             log_tts_action(log_prefix, item_id, out_path, "⏭️ Skipped (exists)", play)
             continue
 
-        logger.debug("🎧 Generating %s → %s", log_prefix, out_path)
-        logger.debug("🎧 ElevenLabs Voice ID: %s | log_prefix=%s | out_path=%s",
-                     voice_id, log_prefix, out_path)
+        logger.debug(
+            "🎧 Generating %s → %s | voice_id=%s | model_id=%s | settings=%s | lang=%s",
+            log_prefix, out_path, voice_id, model_id, voice_settings, lang
+        )
 
-        # Create the MP3 via ElevenLabs
-        generate_tts_mp3(tts_text, out_path, voice_id, overwrite=overwrite, play=play)
+        # Create/write the MP3 via your ElevenLabs wrapper (forward all knobs)
+        generate_tts_mp3(
+            text=tts_text,
+            out_path=out_path,
+            voice_id=voice_id,
+            overwrite=overwrite,
+            play=play,
+            settings=voice_settings,   # ✅ forward profile settings
+            model_id=model_id,         # ✅ forward model (e.g., eleven_turbo_v2_5)
+            language=lang,             # ✅ forward language (e.g., "es")
+        )
 
         # Tag metadata (fallbacks are safe for missing fields)
         add_metadata_to_mp3(

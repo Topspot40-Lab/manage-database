@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import logging
+import time
+import requests
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from backend.services.tts_prep import prepare_for_tts_es, prepare_for_tts_pt_br
 
 from backend.database import get_db
 from backend.models.dbmodels import (
@@ -22,11 +23,16 @@ from backend.config import (
     TTS_PROFILES,
     MODEL_BY_LANG,
     DEFAULT_TTS_LANGUAGE,
+    XAI_API_KEY,
+    XAI_API_URL,
+    XAI_MODEL,
+    TEMPERATURE_DEFAULT,
 )
 from backend.utils.tts_diagnostics import (
     get_missing_tts_info,
     normalize_for_filename,
 )
+from backend.services.tts_prep import prepare_for_tts_es, prepare_for_tts_pt_br
 from backend.services.tts.generate_tts_batch import generate_tts_batch
 
 logger = logging.getLogger(__name__)  # resolves to "backend.routers.tts_intro"
@@ -80,6 +86,56 @@ def _basename_list(missing_items: Iterable[str]) -> List[str]:
     return ordered
 
 
+_LANG_LABEL = {
+    "en": "English",
+    "es": "Spanish",
+    "pt-BR": "Portuguese (Brazil)",
+}
+
+def _call_llm_translate_intro(en_text: str, lang: str, track_name: str, artist_name: str, rank: int | None) -> str:
+    api_key = (XAI_API_KEY or "").strip()
+    if not api_key:
+        raise RuntimeError("Missing XAI_API_KEY env var")
+
+    target_label = _LANG_LABEL.get(lang, lang)
+    rank_phrase = f"(rank {rank})" if rank else ""
+    system = f"Translate an English radio-style song intro to {target_label}. Keep the announcer tone, concise, punchy. Keep facts identical."
+    user = f"""English intro {rank_phrase}:
+{en_text}
+
+Constraints:
+- Keep EXACT song/artist spellings as provided: {track_name} — {artist_name}.
+- Do NOT add or remove facts.
+- 1–3 sentences max. No markdown."""
+    payload = {
+        "model": XAI_MODEL,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user",   "content": user}],
+        "temperature": TEMPERATURE_DEFAULT,
+        "max_tokens": 240,
+        "stream": False,
+    }
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    last_err: Any = None
+    for attempt in range(3):
+        try:
+            r = requests.post(XAI_API_URL, headers=headers, json=payload, timeout=(10, 60))
+            if r.status_code in (429, 500, 502, 503, 504):
+                last_err = r
+                time.sleep(1.5 * (attempt + 1)); continue
+            r.raise_for_status()
+            data = r.json()
+            return data["choices"][0]["message"]["content"].strip()
+        except requests.RequestException as ex:
+            last_err = ex
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1)); continue
+            raise RuntimeError(f"xAI translate failed: {type(ex).__name__}: {ex}")
+        except (KeyError, IndexError) as ex:
+            body = getattr(last_err, 'text', '')[:300]
+            raise RuntimeError(f"Unexpected xAI response shape: {ex}; body={body}")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Endpoint (LOCAL DISK ONLY)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -98,6 +154,7 @@ async def generate_missing_intro_tts(
 ):
     """
     Find missing INTRO MP3s and generate them for the requested language.
+    If localized text is absent, auto-translate from an English base and upsert TrackRankingLocale.intro_text.
     Filenames are unchanged; callers/uploader should route by language (audio-<lang>/intro/).
     """
 
@@ -125,7 +182,7 @@ async def generate_missing_intro_tts(
     )
     chosen_set = set(chosen_basenames)
 
-    # Load the universe of rankings with relationships needed to rebuild filenames
+    # Load rankings + relationships needed to rebuild filenames
     rankings = db.exec(
         select(TrackRanking).options(
             selectinload(TrackRanking.track),
@@ -145,26 +202,16 @@ async def generate_missing_intro_tts(
             if loc.track_ranking_id and (loc.intro_text or "").strip():
                 localized_text_by_tr[loc.track_ranking_id] = loc.intro_text.strip()
 
+    # Per-language voice / model / settings
+    voice_cfg = (TTS_PROFILES.get(lang, {}).get("intro") or {})
+    voice_id = voice_cfg.get("voice_id") or VOICE_ID_INTRO
+    voice_settings = voice_cfg.get("settings") or {}
+    model_id = voice_cfg.get("model_id") or MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
 
-    # Pick the per-language voice id (falls back to VOICE_ID_INTRO if missing)
-    voice_id = (
-            (TTS_PROFILES.get(lang, {}).get("intro", {}) or {}).get("voice_id")
-            or VOICE_ID_INTRO
-    )
-    model_id = MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
-
-    # ── NEW: log model/voice choice + fallback state ────────────────────────────
-    primary_model = MODEL_BY_LANG.get(lang)
-    primary_voice = (TTS_PROFILES.get(lang, {}).get("intro", {}) or {}).get("voice_id")
-    used_model_fb = primary_model is None
-    used_voice_fb = primary_voice is None and VOICE_ID_INTRO is not None
-
+    # Log model/voice choice
     logger.debug(
-        "🎙️ Intro TTS config | lang=%s | model_id=%s%s | voice_id=%s%s | default_lang=%s",
-        lang,
-        model_id, " [fallback]" if used_model_fb else "",
-        voice_id, " [fallback]" if used_voice_fb else "",
-        DEFAULT_TTS_LANGUAGE,
+        "🎙️ Intro TTS config | lang=%s | model_id=%s | voice_id=%s | settings=%s | default_lang=%s",
+        lang, model_id, voice_id, voice_settings, DEFAULT_TTS_LANGUAGE,
     )
 
     if model_id is None:
@@ -190,71 +237,127 @@ async def generate_missing_intro_tts(
         if basename not in chosen_set:
             continue
 
+        track_name = ranking.track.track_name or ""
+        artist_name = (ranking.track.artist.artist_name if ranking.track.artist else "") or "Unknown Artist"
+        rank_val = int(ranking.ranking or 0)
+
+        # Base English (fallback) intro
+        en_text = (ranking.intro or "").strip()
+        if not en_text:
+            # Try a few common fields; else synthesize a minimal base
+            for attr in ("intro_text", "intro_en", "intro_script"):
+                en_text = (getattr(ranking, attr, None) or "").strip()
+                if en_text:
+                    break
+        if not en_text:
+            en_text = f"At number {rank_val or 'zero'}, '{track_name}' by {artist_name}."
+
         if lang == "en":
-            text = (ranking.intro or "").strip()
+            text = en_text
         else:
             text = localized_text_by_tr.get(ranking.id, "").strip()
+            if not text:
+                # Translate EN → target language
+                translated = _call_llm_translate_intro(en_text, lang, track_name, artist_name, rank_val)
 
-        if not text:
-            missing_text_count += 1
-            continue
+                # Language-specific TTS prep
+                if lang == "es":
+                    translated = prepare_for_tts_es(
+                        translated,
+                        rank=rank_val,
+                        track_name=track_name,
+                        artist_name=artist_name,
+                        strip_markdown=True,
+                        number_normalize=True,
+                    )
+                elif lang == "pt-BR":
+                    translated = prepare_for_tts_pt_br(
+                        translated,
+                        rank=rank_val,
+                        track_name=track_name,
+                        artist_name=artist_name,
+                        strip_markdown=True,
+                        number_normalize=True,
+                    )
+
+                # Upsert TrackRankingLocale.intro_text
+                existing_row = db.exec(
+                    select(TrackRankingLocale).where(
+                        TrackRankingLocale.track_ranking_id == ranking.id,
+                        TrackRankingLocale.language_code == lang
+                    )
+                ).first()
+                if existing_row:
+                    existing_row.intro_text = translated
+                    db.add(existing_row)
+                else:
+                    db.add(TrackRankingLocale(
+                        track_ranking_id=ranking.id,
+                        language_code=lang,
+                        intro_text=translated
+                    ))
+                text = translated
+
+        # Defensive per-language prep (idempotent)
+        if lang == "es":
+            text = prepare_for_tts_es(
+                text,
+                rank=rank_val,
+                track_name=track_name,
+                artist_name=artist_name,
+                strip_markdown=True,
+                number_normalize=True,
+            )
+        elif lang == "pt-BR":
+            text = prepare_for_tts_pt_br(
+                text,
+                rank=rank_val,
+                track_name=track_name,
+                artist_name=artist_name,
+                strip_markdown=True,
+                number_normalize=True,
+            )
 
         items.append(
             {
                 "track_id": ranking.track.id,
-                "track_name": ranking.track.track_name,
-                "artist_name": (
-                    ranking.track.artist.artist_name if ranking.track.artist else "Unknown Artist"
-                ),
+                "track_name": track_name,
+                "artist_name": artist_name,
                 "album_name": ranking.track.album_name or "TopSpot40 Intro Tracks",
                 "intro": text,  # <-- text key used below
-                "rank": ranking.ranking,
+                "rank": rank_val,
                 "decade": decade,
                 "genre": genre,
-                "language": lang,  # <-- downstream/bucket router can use this
-                "model_id": model_id,  # <-- optional: if your generator supports it
+                "language": lang,
             }
         )
 
         if limit is not None and len(items) >= limit:
             break
 
+    # Commit any new/updated TrackRankingLocale rows
+    try:
+        db.commit()
+    except Exception as ex:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Commit failed while saving TrackRankingLocale.intro_text: {ex}")
+
     if not items:
+        logger.info("🚫 No eligible tracks to synthesize (missing intro text in all candidates).")
         return {
             "generated": 0,
-            "skipped": missing_text_count,
+            "skipped": missing_text_count or len(missing_basenames_all),
             "missing_found": len(missing_basenames_all),
             "files": [],
             "message": "No eligible tracks to synthesize for requested language.",
         }
-    # ── FINAL, DEFENSIVE TTS PREP (per item) ─────────────────────────────────────
-    # Idempotent: safe for both old rows (pre-change) and new rows (already clean)
-    for it in items:
-        if it.get("language") == "es":
-            it["intro"] = prepare_for_tts_es(
-                it["intro"],
-                rank=int(it["rank"]),
-                track_name=it["track_name"],
-                artist_name=it["artist_name"],
-                strip_markdown=True,  # strip any lingering inline markdown
-                number_normalize=True,  # 1→uno, 50→cincuenta, etc.
-            )
-        elif it.get("language") == "pt-BR":
-            it["intro"] = prepare_for_tts_pt_br(
-                it["intro"],
-                rank=int(it["rank"]),
-                track_name=it["track_name"],
-                artist_name=it["artist_name"],
-                strip_markdown=True,  # strip any lingering inline markdown
-                number_normalize=True,  # 1→um, 50→cinquenta, etc.
-            )
 
-    # Generate to local disk. Your uploader (if any) can read items[i]["language"]
-    # to route to audio-<lang>/intro/ in object storage.
+    # Generate to local disk. Your uploader (if any) can read items[i]["language"] to route to audio-<lang>/intro/.
     return generate_tts_batch(
         items=items,
         text_key="intro",
         voice_id=voice_id,
+        voice_settings=voice_settings,                # ✅ forward profile settings
         output_dir=Path("data/mp3_files/track_intro_mp3_files"),
         filename_func=generate_intro_filename,
         log_prefix=f"Track Intro [{lang}]",
@@ -262,7 +365,5 @@ async def generate_missing_intro_tts(
         play=play,
         default_language=lang,
         normalize=True,
-        # If your generate_tts_batch supports these kwargs, pass them; else they’re ignored:
-        # model_id=model_id,
-        # bucket_lang=lang,   # e.g., so the uploader stores to audio-es/intro/ or audio-ptbr/intro/
+        model_id=model_id,                            # ✅ forward model
     )

@@ -107,14 +107,16 @@ Constraints:
             r = requests.post(XAI_API_URL, headers=headers, json=payload, timeout=(10, 60))
             if r.status_code in (429, 500, 502, 503, 504):
                 last_err = r
-                time.sleep(1.5 * (attempt + 1)); continue
+                time.sleep(1.5 * (attempt + 1))
+                continue
             r.raise_for_status()
             data = r.json()
             return data["choices"][0]["message"]["content"].strip()
         except requests.RequestException as ex:
             last_err = ex
             if attempt < 2:
-                time.sleep(1.5 * (attempt + 1)); continue
+                time.sleep(1.5 * (attempt + 1))
+                continue
             raise RuntimeError(f"xAI translate failed: {type(ex).__name__}: {ex}")
         except (KeyError, IndexError) as ex:
             body = getattr(last_err, 'text', '')[:300]
@@ -157,13 +159,19 @@ async def generate_missing_detail_tts(
         return {"generated": 0, "skipped": 0, "missing_found": 0, "files": []}
 
     missing_sids = missing_sids_all[:limit] if limit is not None else missing_sids_all
+    if not missing_sids:
+        logger.info("➡️ Limit yielded 0 items; nothing to do.")
+        return {"generated": 0, "skipped": 0, "missing_found": len(missing_sids_all), "files": []}
 
-    q = (
-        select(Track)
-        .where(Track.spotify_track_id.in_(missing_sids))
-        .options(selectinload(Track.artist))
-    )
-    tracks = db.exec(q).all()
+    tracks: List[Track] = []
+    if missing_sids:
+        q = (
+            select(Track)
+            .where(Track.spotify_track_id.in_(missing_sids))
+            .options(selectinload(Track.artist))
+        )
+        tracks = db.exec(q).all()
+
     by_sid = {t.spotify_track_id: t for t in tracks}
     not_found = [sid for sid in missing_sids if sid not in by_sid]
     if not_found:
@@ -173,9 +181,15 @@ async def generate_missing_detail_tts(
     # Prefetch existing locales for this language
     localized_by_track_id: Dict[int, str] = {}
     if lang != "en":
-        loc_rows = db.exec(
-            select(TrackLocale).where(TrackLocale.language_code == lang)
-        ).all()
+        track_ids = [t.id for t in tracks]
+        if track_ids:
+            loc_rows = db.exec(
+                select(TrackLocale)
+                .where(TrackLocale.language_code == lang)
+                .where(TrackLocale.track_id.in_(track_ids))
+            ).all()
+        else:
+            loc_rows = []
         for loc in loc_rows:
             if loc.track_id and (loc.detail_text or "").strip():
                 localized_by_track_id[loc.track_id] = loc.detail_text.strip()
@@ -269,14 +283,15 @@ async def generate_missing_detail_tts(
             "message": "No eligible tracks with detail text to synthesize (or Tracks not found by spotify_track_id).",
         }
 
-    # Per-language voice / model (model_id not passed unless your batch supports it)
-    voice_id = (
-        (TTS_PROFILES.get(lang, {}).get("detail", {}) or {}).get("voice_id")
-        or VOICE_ID_TRACK
-    )
+    # Per-language voice / model
+    voice_cfg = (TTS_PROFILES.get(lang, {}).get("detail") or {})
+    voice_id = voice_cfg.get("voice_id") or VOICE_ID_TRACK
+    voice_settings = voice_cfg.get("settings") or {}
     model_id = MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
-    logger.debug("🎙️ Detail TTS config | lang=%s | model_id=%s | voice_id=%s | default_lang=%s",
-                 lang, model_id, voice_id, DEFAULT_TTS_LANGUAGE)
+    logger.debug(
+        "🎙️ Detail TTS config | lang=%s | model_id=%s | voice_id=%s | settings=%s | default_lang=%s",
+        lang, model_id, voice_id, voice_settings, DEFAULT_TTS_LANGUAGE,
+    )
 
     # Defensive final prep (Spanish/PT-BR) before synth — idempotent
     for it in items:
@@ -293,11 +308,16 @@ async def generate_missing_detail_tts(
                 strip_markdown=True, number_normalize=True,
             )
 
-    # LOCAL-ONLY: write MP3s to disk (no upload)
+    voice_cfg = (TTS_PROFILES.get(lang, {}).get("detail") or {})
+    voice_id = voice_cfg.get("voice_id") or VOICE_ID_TRACK
+    voice_settings = voice_cfg.get("settings") or {}
+    model_id = voice_cfg.get("model_id") or MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
+
     return generate_tts_batch(
         items=items,
         text_key="detail",
         voice_id=voice_id,
+        voice_settings=voice_settings,
         output_dir=Path("data/mp3_files/track_detail_mp3_files"),
         filename_func=generate_detail_filename,
         log_prefix=f"Track Detail [{lang}]",
@@ -305,5 +325,5 @@ async def generate_missing_detail_tts(
         play=play,
         default_language=lang,
         normalize=True,
-        # model_id=model_id,  # enable only if your batch supports it
+        model_id=model_id,  # <-- important
     )

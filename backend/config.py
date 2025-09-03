@@ -174,15 +174,25 @@ VOICE_ID_TRACK  = os.getenv("VOICE_ID_TRACK",  "oWAxZDx7w5VEj9dCyTzz")
 # Default tuning if a profile omits settings
 VOICE_STABILITY   = float(os.getenv("VOICE_STABILITY",  "0.5"))
 VOICE_SIMILARITY  = float(os.getenv("VOICE_SIMILARITY", "0.75"))
-
-# Model selection
-_ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")
-ELEVENLABS_MODEL = _ELEVEN_MODEL_ID_DEFAULT  # back-compat alias
-ELEVEN_MODEL_ID  = _ELEVEN_MODEL_ID_DEFAULT   # 👈 add this line back
+# ── Model selection
+# Use Turbo/Flash v2.5 so we can enforce `language` (UI parity).
+_ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
+ELEVENLABS_MODEL = _ELEVEN_MODEL_ID_DEFAULT      # back-compat alias
+ELEVEN_MODEL_ID  = _ELEVEN_MODEL_ID_DEFAULT      # back-compat alias used elsewhere
 
 # Per-language overrides via env (optional)
-ELEVEN_MODEL_ID_ES    = os.getenv("ELEVENLABS_MODEL_ES",    "eleven_multilingual_v2")
-ELEVEN_MODEL_ID_PT_BR = os.getenv("ELEVENLABS_MODEL_PT_BR", "eleven_multilingual_v2")
+ELEVEN_MODEL_ID_ES    = os.getenv("ELEVENLABS_MODEL_ES",    "eleven_turbo_v2_5")
+ELEVEN_MODEL_ID_PT_BR = os.getenv("ELEVENLABS_MODEL_PT_BR", "eleven_turbo_v2_5")
+
+# Models that support the 'language' parameter explicitly
+ELEVEN_MODELS_SUPPORT_LANGUAGE = {"eleven_turbo_v2_5", "eleven_flash_v2_5"}
+
+# Map our app languages to ElevenLabs ISO codes (pt-BR → pt)
+ELEVEN_LANGUAGE_CODE_MAP = {
+    "en": "en",
+    "es": "es",
+    "pt-BR": "pt",
+}
 
 # Canonical per-language map used by services
 MODEL_BY_LANG = {
@@ -193,17 +203,12 @@ MODEL_BY_LANG = {
 
 SUPPORTED_LANGS  = ["en", "es", "pt-BR"]
 DEFAULT_LANGUAGE = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
-
-# Back-compat alias for legacy imports
-DEFAULT_TTS_LANGUAGE = DEFAULT_LANGUAGE
-
+DEFAULT_TTS_LANGUAGE = DEFAULT_LANGUAGE  # back-compat
 
 # Feature toggles
 SKIP_TTS_IF_EXISTS    = env_bool("SKIP_TTS_IF_EXISTS", True)
 VOICE_PREVIEW_ENABLED = env_bool("VOICE_PREVIEW_ENABLED", False)
 
-# Per-language, per-kind voice profiles (add "model_id" if you want to override model per kind)
-# Camilo multilingual voice PGggLl3Am9ns1ICvp3DO
 TTS_PROFILES = {
     "en": {
         "intro":  {"voice_id": "BYzs2jBcHhCzX4QmS6fd",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
@@ -211,12 +216,16 @@ TTS_PROFILES = {
         "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
-        "intro":  {"voice_id": "Qvbf0AoA7UZSgJUp8Ba5",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
-        "detail": {"voice_id": "7EjKsW93fhgPskc2LsT1", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
-        "artist": {"voice_id": "w7IU2bIH6xHcyfkUUWi3", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
+        "intro": {"voice_id": "Qvbf0AoA7UZSgJUp8Ba5",
+                  "settings": {"stability": 0.5, "similarity_boost": 0.85, "style": 0.5, "use_speaker_boost": True}},
+        "detail": {"voice_id": "94zOad0g7T7K4oa7zhDq",
+                   "settings": {"stability": 0.65, "similarity_boost": 0.7, "style": 0.25, "use_speaker_boost": False}},
+        "artist": {"voice_id": "94zOad0g7T7K4oa7zhDq",
+                   "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
     },
+
     "pt-BR": {
-        "intro":  {"voice_id": "5dF3gH7abcXYZ1234567",  "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
+        "intro":  {"voice_id": "5dF3gH7abcXYZ1234567", "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
         "detail": {"voice_id": "cyD08lEy76q03ER1jZ7y", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
         "artist": {"voice_id": "CstacWqMhJQlnfLPxRG4", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
     },
