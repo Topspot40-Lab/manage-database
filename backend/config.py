@@ -13,6 +13,19 @@ from dotenv import load_dotenv
 load_dotenv()
 log = logging.getLogger("config")
 
+# Spotify creds (client-credentials flow; USER_ID not needed)
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID") or os.getenv("SPOTIPY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET") or os.getenv("SPOTIPY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI") or os.getenv("SPOTIPY_REDIRECT_URI") or "http://127.0.0.1:8888/callback"
+
+# Optional: default market for searches
+SPOTIFY_MARKET = os.getenv("SPOTIFY_MARKET", "US")
+
+def spotify_creds_ok() -> bool:
+    return bool(SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET)
+
+
+
 # Small helpers
 def env_bool(name: str, default: bool = False) -> bool:
     val = os.getenv(name)
@@ -216,7 +229,7 @@ TTS_PROFILES = {
         "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
-        "intro": {"voice_id": "Qvbf0AoA7UZSgJUp8Ba5",
+        "intro": {"voice_id": "94zOad0g7T7K4oa7zhDq",
                   "settings": {"stability": 0.5, "similarity_boost": 0.85, "style": 0.5, "use_speaker_boost": True}},
         "detail": {"voice_id": "94zOad0g7T7K4oa7zhDq",
                    "settings": {"stability": 0.65, "similarity_boost": 0.7, "style": 0.25, "use_speaker_boost": False}},

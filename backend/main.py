@@ -27,6 +27,7 @@ from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
 # from backend.routers.insert_specialty_json import router as specialty_insert_router
 from backend.routers.generate_poprock import router as poprock_router
+from backend.routers.generate_folk_acoustic import folk_router   # ← NEW
 
 # Routers (modules we include with .router)
 from backend.routers import (
@@ -63,6 +64,11 @@ def read_root():
     log_step_test()
     return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator🐴"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/version", summary="Get TopSpot version info")
 def get_version():
     return {"app_version": config.APP_VERSION, "last_updated": config.LAST_UPDATED}
@@ -85,6 +91,7 @@ app.include_router(artist_router)
 app.include_router(tts_regen_router)
 # app.include_router(specialty_insert_router, prefix="/json/insert")
 app.include_router(poprock_router)
+app.include_router(folk_router)  # ← NEW: /generate/folk-acoustic/build
 
 # Supabase utilities
 app.include_router(supabase_summary.router)
