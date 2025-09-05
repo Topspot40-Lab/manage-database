@@ -40,11 +40,13 @@ folk_router = APIRouter(prefix="/generate/folk-acoustic", tags=["Generate – Fo
 # Path helpers + JSON emitter
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _slug(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", s.strip().lower()).strip("_")
+def _slug(label: str) -> str:
+    slug = label.lower().replace(" ", "_").replace("-", "_")
+    slug = slug.strip("_")   # <-- remove leading/trailing underscores
+    return slug
 
 def _outdir_for_decade(decade_name: str) -> Path:
-    d = BASE_DIR / "data" / "json_files" / "decadegenre" / decade_name
+    d = BASE_DIR / "data" / "json_files" / "genredecade" / decade_name
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -257,7 +259,7 @@ def _fetch_ids_page(q, start: int, end: int) -> List[Dict[str, Any]]:
         return []
 
 def get_existing_track_ids_supabase_global(
-    table_name: str = "Track",
+    table_name: str = "track",
     *,
     page_size: int = 1000,
     max_rows: int = 50000,
@@ -282,7 +284,7 @@ def get_existing_track_ids_supabase_global(
 def get_existing_track_ids_supabase_decade(
     year_min: int,
     year_max: int,
-    table_name: str = "Track",
+    table_name: str = "track",
     *,
     page_size: int = 1000,
     max_rows: int = 20000,
@@ -536,7 +538,7 @@ def build_folk_acoustic_catalog(
     page_limit: int = Query(25, ge=5, le=50),
     allow_partial: bool = Query(True),
     market: Optional[str] = Query(None, description="Spotify market like US, GB, IE"),
-    dedupe_table: str = Query("Track", description="Supabase table name to dedupe against"),
+    dedupe_table: str = Query("track", description="Supabase table name to dedupe against"),
     dedupe_scope: Literal["decade", "global", "none"] = Query("decade"),
     dedupe_max_rows: int = Query(20000, ge=1000, le=200000, description="Safety cap for Supabase dedupe fetch"),
     dry_run: bool = Query(False),

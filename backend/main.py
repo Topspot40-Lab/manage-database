@@ -25,9 +25,10 @@ from backend.routers.play_json_track_by_rank import router as playback_router
 from backend.routers.tts_regenerator import router as tts_regen_router
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
-# from backend.routers.insert_specialty_json import router as specialty_insert_router
 from backend.routers.generate_poprock import router as poprock_router
 from backend.routers.generate_folk_acoustic import folk_router   # ← NEW
+from backend.routers.enrich_tv_themes import router as enrich_tv_router  # ← NEW
+from backend.routers.expand_tv_themes import router as expand_tv_router
 
 # Routers (modules we include with .router)
 from backend.routers import (
@@ -101,3 +102,5 @@ app.include_router(locales_router.router,            prefix="/locales", tags=["l
 app.include_router(artist_locales.router,            prefix="/locales", tags=["artist-locales"])
 app.include_router(track_detail_locales.router,      prefix="/locales", tags=["track-detail-locales"])
 app.include_router(intros_locales.router,            prefix="/locales", tags=["intros-locales"])  # ← NEW
+app.include_router(enrich_tv_router)     # /enrich/tv-themes/{decade}  ← NEW
+app.include_router(expand_tv_router)
