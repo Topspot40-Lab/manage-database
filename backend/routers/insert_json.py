@@ -187,6 +187,8 @@ async def upsert_json_and_reset(
                         and_(func.lower(Track.track_name) == name.lower(), Track.artist_id == artist_id)
                     )).first()
 
+
+
                 feat_sid  = _norm(t.get("featured_artist_sid") or t.get("featuredArtistSid"))
                 feat_name = _norm(t.get("featured_artist_name") or t.get("featuredArtistName"))
                 feat_id   = _resolve_artist_id(feat_sid, feat_name)
@@ -226,97 +228,178 @@ async def upsert_json_and_reset(
                     )
                     db.add(track_obj); db.flush()
                     logger.info("Added track: %s", name)
-
             # 6) Rankings
             create_missing_from_rankings = True
 
+            # Determine the model attribute name at runtime to avoid rank/ranking mismatches
+            RANK_ATTR = "rank" if hasattr(TrackRanking, "rank") else (
+                "ranking" if hasattr(TrackRanking, "ranking") else None
+            )
+            if not RANK_ATTR:
+                raise HTTPException(500, "TrackRanking model has neither 'rank' nor 'ranking' attribute")
+
             if replace_rankings:
-                db.exec(
-                    delete(TrackRanking).where(
-                        and_(
-                            TrackRanking.decade_genre_id == decade_genre.id,
-                            TrackRanking.tracklist_id == tracklist_id,
-                        )
-                    )
-                )
+                # NOTE: unique index is (decade_genre_id, track_id), not including tracklist_id,
+                # so deleting by decade_genre_id alone is correct if you want a full rebuild.
+                res = db.exec(delete(TrackRanking).where(TrackRanking.decade_genre_id == decade_genre.id))
+                try:
+                    logger.info("Deleted %s existing rankings for combo %s", res.rowcount, decade_genre.id)
+                except Exception:
+                    pass
+
+            # Normalise rankings input
+            if not isinstance(rankings_in, list):
+                logger.warning("Expected 'track_ranking' to be a list, got %s; skipping rankings.",
+                               type(rankings_in).__name__)
+                rankings_in = []
 
             upserted = 0
-            for r in rankings_in:
-                spotify_tid = _norm(r.get("track_id") or r.get("spotify_track_id") or r.get("spotifyTrackId"))
-                rank_val    = r.get("rank")
-                created_at  = _parse_dt(r.get("created_at") or r.get("createdAt"))
-                intro_text  = _norm(r.get("intro") or r.get("intro_text"))
+            skipped = 0
+            dupes = 0
+            logger.info("Processing %d ranking rows (RANK_ATTR=%s)", len(rankings_in), RANK_ATTR)
 
-                # resolve track
-                track_obj = None
-                if spotify_tid:
-                    track_obj = db.exec(select(Track).where(Track.spotify_track_id == spotify_tid)).first()
+            # Collect exactly one pending row per track_id to avoid duplicate inserts
+            pending_by_tid: dict[int, dict] = {}
 
-                if not track_obj:
-                    tname = _norm(r.get("track_name") or r.get("trackName"))
-                    aname = _norm(r.get("artist_name") or r.get("artistName"))
-                    artist_id = artist_map.get(_norm_key(aname))
-                    if not artist_id and create_missing_from_rankings and aname:
-                        new_artist = Artist(artist_name=aname)
-                        db.add(new_artist); db.flush()
-                        artist_id = new_artist.id
-                        db.add(ArtistGenre(artist_id=artist_id, genre_id=genre_obj.id))
-                        artist_map[_norm_key(aname)] = artist_id
-                    if tname and artist_id:
-                        track_obj = db.exec(select(Track).where(
-                            and_(func.lower(Track.track_name) == tname.lower(), Track.artist_id == artist_id)
+            with db.no_autoflush:
+                for r in rankings_in:
+                    # Prefer 'rank' key in JSON, fall back to 'ranking'
+                    rank_raw = r.get("rank", r.get("ranking"))
+                    try:
+                        rank_val = int(rank_raw) if rank_raw is not None and str(rank_raw).strip() != "" else None
+                    except (TypeError, ValueError):
+                        logger.warning("Skipping ranking with non-integer rank: %r", rank_raw)
+                        skipped += 1
+                        continue
+
+                    if rank_val is None:
+                        logger.warning("Skipping ranking with missing 'rank': %r", r)
+                        skipped += 1
+                        continue
+
+                    spotify_tid = _norm(r.get("track_id") or r.get("spotify_track_id") or r.get("spotifyTrackId"))
+                    created_at = _parse_dt(r.get("created_at") or r.get("createdAt"))
+                    intro_text = _norm(r.get("intro") or r.get("intro_text"))
+
+                    # Resolve/create track (same logic you had)
+                    track_obj = None
+                    if spotify_tid:
+                        track_obj = db.exec(select(Track).where(Track.spotify_track_id == spotify_tid)).first()
+
+                    if not track_obj:
+                        tname = _norm(r.get("track_name") or r.get("trackName"))
+                        aname = _norm(r.get("artist_name") or r.get("artistName"))
+                        artist_id = artist_map.get(_norm_key(aname))
+                        if not artist_id and create_missing_from_rankings and aname:
+                            new_artist = Artist(artist_name=aname)
+                            db.add(new_artist);
+                            db.flush()
+                            artist_id = new_artist.id
+                            db.add(ArtistGenre(artist_id=artist_id, genre_id=genre_obj.id))
+                            artist_map[_norm_key(aname)] = artist_id
+                        if tname and artist_id:
+                            track_obj = db.exec(select(Track).where(
+                                and_(func.lower(Track.track_name) == tname.lower(), Track.artist_id == artist_id)
+                            )).first()
+
+                        # ↓↓↓ ADD THIS FALLBACK RIGHT HERE ↓↓↓
+                        if not track_obj and tname:
+                            # try name-only; only use if it's unique
+                            candidates = db.exec(
+                                select(Track).where(func.lower(Track.track_name) == tname.lower())
+                            ).all()
+                            if len(candidates) == 1:
+                                track_obj = candidates[0]
+                            elif len(candidates) > 1:
+                                logger.warning(
+                                    "Ambiguous track name '%s' across artists; skipping name-only match.", tname
+                                )
+                        # ↑↑↑ END FALLBACK ↑↑↑
+
+                        if not track_obj and create_missing_from_rankings and (spotify_tid or (tname and artist_id)):
+                            track_obj = Track(track_name=tname or "Unknown", artist_id=artist_id,
+                                              spotify_track_id=spotify_tid or None)
+                            db.add(track_obj);
+                            db.flush()
+
+                    if not track_obj:
+                        logger.warning("Skipping ranking; track not found/created: %s", r)
+                        skipped += 1
+                        continue
+
+                    tid = track_obj.id
+
+                    if replace_rankings:
+                        # DEDUPE policy: keep the BEST (lowest) rank for the same track in this run
+                        existing = pending_by_tid.get(tid)
+                        if existing:
+                            dupes += 1
+                            current_best = existing[RANK_ATTR]
+                            if rank_val < current_best:
+                                # better rank wins; update fields
+                                existing[RANK_ATTR] = rank_val
+                                # replace intro/created_at if you want "best rank wins fully"
+                                existing["intro"] = intro_text if intro_text else existing.get("intro")
+                                existing["created_at"] = created_at or existing.get("created_at")
+                            else:
+                                # keep current; optionally fill missing intro/created_at
+                                if (not existing.get("intro")) and intro_text:
+                                    existing["intro"] = intro_text
+                                if (not existing.get("created_at")) and created_at:
+                                    existing["created_at"] = created_at
+                            continue
+
+                        # first time we see this track_id
+                        row = {
+                            "track_id": tid,
+                            "decade_genre_id": decade_genre.id,
+                            "tracklist_id": tracklist_id,
+                            "intro": intro_text,
+                            "created_at": created_at,
+                            RANK_ATTR: rank_val,
+                        }
+                        pending_by_tid[tid] = row
+                    else:
+                        # Update-or-insert path (this cannot violate the unique index)
+                        existing = db.exec(select(TrackRanking).where(
+                            and_(
+                                TrackRanking.track_id == tid,
+                                TrackRanking.decade_genre_id == decade_genre.id,
+                                TrackRanking.tracklist_id == tracklist_id,
+                            )
                         )).first()
-                    if not track_obj and create_missing_from_rankings and (spotify_tid or (tname and artist_id)):
-                        track_obj = Track(track_name=tname or "Unknown", artist_id=artist_id, spotify_track_id=spotify_tid or None)
-                        db.add(track_obj); db.flush()
-
-                if not track_obj:
-                    logger.warning("Skipping ranking; track not found/created: %s", r)
-                    continue
-
-                if replace_rankings:
-                    db.add(TrackRanking(
-                        track_id=track_obj.id,
-                        decade_genre_id=decade_genre.id,
-                        tracklist_id=tracklist_id,
-                        ranking=rank_val,
-                        intro=intro_text,
-                        created_at=created_at,
-                    ))
-                else:
-                    existing = db.exec(select(TrackRanking).where(
-                        and_(
-                            TrackRanking.track_id == track_obj.id,
-                            TrackRanking.decade_genre_id == decade_genre.id,
-                            TrackRanking.tracklist_id == tracklist_id,
-                        )
-                    )).first()
-                    if existing:
-                        existing.ranking = rank_val
-                        existing.created_at = created_at
-                        if preserve_intro_text:
-                            if not _norm(existing.intro):
+                        if existing:
+                            setattr(existing, RANK_ATTR, rank_val)
+                            existing.created_at = created_at
+                            if preserve_intro_text:
+                                if not _norm(existing.intro):
+                                    existing.intro = intro_text
+                            else:
                                 existing.intro = intro_text
                         else:
-                            existing.intro = intro_text
-                    else:
-                        db.add(TrackRanking(
-                            track_id=track_obj.id,
-                            decade_genre_id=decade_genre.id,
-                            tracklist_id=tracklist_id,
-                            ranking=rank_val,
-                            intro=intro_text,
-                            created_at=created_at,
-                        ))
-                upserted += 1
+                            db.add(TrackRanking(
+                                track_id=tid,
+                                decade_genre_id=decade_genre.id,
+                                tracklist_id=tracklist_id,
+                                intro=intro_text,
+                                created_at=created_at,
+                                **{RANK_ATTR: rank_val},
+                            ))
+                        upserted += 1
 
-        # transaction exits here (commit)
+            # After loop: actually add the deduped rows (replace_rankings=True case)
+            if replace_rankings and pending_by_tid:
+                for row in pending_by_tid.values():
+                    db.add(TrackRanking(**row))
+                    upserted += 1
 
+            logger.info("Rankings processed: upserted=%d, skipped=%d, deduped=%d", upserted, skipped, dupes)
     except HTTPException:
         raise
     except Exception as e:
-        # .begin() auto-rolls back on exception
+        logger.exception("Upsert failed")   # <— full traceback in logs
         raise HTTPException(500, f"Upsert failed: {e}")
+
 
     # 7) Storage cleanup (non-fatal if it fails)
     if reset_intro_mp3s:

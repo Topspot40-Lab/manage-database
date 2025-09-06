@@ -5,17 +5,38 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import date
-from fastapi import APIRouter, HTTPException, Query, Body
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from fastapi import APIRouter, HTTPException, Query, Body, status
+from backend.config import (
+    BASE_DIR,
+    SPOTIFY_CLIENT_ID,
+    SPOTIFY_CLIENT_SECRET,
+    spotify_creds_ok,
+)
 
-from backend.config import BASE_DIR, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
 
 logger = logging.getLogger("enrich_tv_themes")
 router = APIRouter(prefix="/enrich/tv-themes", tags=["Enrich – TV Themes"])
 
 # ---------- Core text utils ----------
 _WORDS = re.compile(r"[^\w]+", re.UNICODE)
+
+
+def _ensure_spotify(sp_ref: dict) -> spotipy.Spotify:
+    """Lazy init. sp_ref is a one-slot dict used to hold a singleton client."""
+    sp = sp_ref.get("sp")
+    if sp is not None:
+        return sp
+    if not spotify_creds_ok():
+        # return a 400 that serializes as JSON instead of a vague 500
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Spotify credentials are missing. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET (or SPOTIPY_*).",
+        )
+    sp = _get_spotify()
+    sp_ref["sp"] = sp
+    return sp
 
 
 def _norm(s: str) -> str:
@@ -458,10 +479,17 @@ def enrich_tv_theme_file(
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {path}")
 
-    data = path.read_text(encoding="utf-8")
-    import json
+    try:
+        data = path.read_text(encoding="utf-8")
+    except Exception as ex:
+        logger.exception("Failed reading JSON file %s", path)
+        raise HTTPException(status_code=400, detail=f"Could not read file: {ex}")
 
-    payload = json.loads(data)
+    import json
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError as ex:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON in file: {ex}")
 
     tracks: List[Dict[str, Any]] = payload.get("track") or []
     rankings: List[Dict[str, Any]] = payload.get("track_ranking") or []
@@ -471,7 +499,9 @@ def enrich_tv_theme_file(
     else:
         work_indexes = list(range(len(tracks)))
 
-    sp = _get_spotify()
+    # lazy Spotify holder (init only if/when needed)
+    sp_ref = {"sp": None}
+
     ok, skipped, misses, forced = 0, 0, [], 0
 
     # Quick override dict for O(1) checks
@@ -541,9 +571,12 @@ def enrich_tv_theme_file(
         # 1) If override provided, use it
         forced_id = _find_override(show, theme)
         sp_track = None
+        sp_client = None
+
         if forced_id:
             try:
-                sp_track = sp.track(forced_id, market="US")
+                sp_client = _ensure_spotify(sp_ref)
+                sp_track = sp_client.track(forced_id, market="US")
                 forced += 1
             except Exception as ex:
                 logger.warning(
@@ -553,7 +586,9 @@ def enrich_tv_theme_file(
 
         # 2) Otherwise search
         if sp_track is None:
-            sp_track = _search_spotify_theme(sp, theme, show, ystart, yend)
+            if sp_client is None:
+                sp_client = _ensure_spotify(sp_ref)
+            sp_track = _search_spotify_theme(sp_client, theme, show, ystart, yend)
 
         if sp_track:
             _update_track_fields(t, sp_track)
@@ -581,8 +616,11 @@ def enrich_tv_theme_file(
         aid = t.get("spotify_artist_id") or ""
         if not aid:
             continue
+
         if aid not in artist_image_cache:
-            artist_image_cache[aid] = _best_artist_image(sp, aid)
+            sp_client = _ensure_spotify(sp_ref)
+            artist_image_cache[aid] = _best_artist_image(sp_client, aid)
+
         if aid not in album_art_by_artist and t.get("album_artwork"):
             album_art_by_artist[aid] = t["album_artwork"]
 
