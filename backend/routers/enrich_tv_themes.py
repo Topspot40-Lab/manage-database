@@ -15,13 +15,18 @@ from backend.config import (
     spotify_creds_ok,
 )
 
-
 logger = logging.getLogger("enrich_tv_themes")
 router = APIRouter(prefix="/enrich/tv-themes", tags=["Enrich – TV Themes"])
 
 # ---------- Core text utils ----------
 _WORDS = re.compile(r"[^\w]+", re.UNICODE)
 
+# Basic emoji ranges (BMP + supplemental symbols); conservative on purpose
+_EMOJI = re.compile(r"[\U0001F300-\U0001FAFF\U00002700-\U000027BF]+")
+
+def de_emoji(s: str | None) -> str:
+    """Remove emoji-like characters from text."""
+    return _EMOJI.sub("", s or "")
 
 def _ensure_spotify(sp_ref: dict) -> spotipy.Spotify:
     """Lazy init. sp_ref is a one-slot dict used to hold a singleton client."""
@@ -38,7 +43,6 @@ def _ensure_spotify(sp_ref: dict) -> spotipy.Spotify:
     sp_ref["sp"] = sp
     return sp
 
-
 def _norm(s: str) -> str:
     return _WORDS.sub("", (s or "").lower())
 
@@ -52,7 +56,6 @@ def _clean_years(yoa: str | None) -> str:
     s = re.sub(r"\s*[–-]\s*", "–", s)
     return s
 
-
 def _clean_genre(g: str | None) -> str:
     g = (g or "").strip()
     if not g:
@@ -60,7 +63,6 @@ def _clean_genre(g: str | None) -> str:
     # title case but keep slashes lowercase, e.g., "Anthology/Thriller"
     parts = [p.strip().title() for p in re.split(r"[/]", g)]
     return "/".join(parts)
-
 
 def _first_nonempty(d: Dict[str, Any], keys: List[str]) -> str:
     for k in keys:
@@ -71,14 +73,12 @@ def _first_nonempty(d: Dict[str, Any], keys: List[str]) -> str:
             return ", ".join([str(x).strip() for x in v if str(x).strip()][:6])
     return ""
 
-
 def _split_names(s: str) -> List[str]:
     if not s:
         return []
     s = re.sub(r"\s*&\s*", ",", s)
     parts = [p.strip() for p in re.split(r",|\band\b", s, flags=re.I)]
     return [p for p in parts if p]
-
 
 def _pick_cast(meta: Dict[str, Any]) -> List[str]:
     raw = _first_nonempty(
@@ -97,26 +97,161 @@ def _pick_cast(meta: Dict[str, Any]) -> List[str]:
     names = _split_names(raw)
     return names[:4]
 
+# ---- scoring boosts/penalties for Spotify search ----
+def _has_token(s: str | None, toks: List[str]) -> bool:
+    s = (s or "").lower()
+    return any(t in s for t in toks)
+
+_PENALTY_TOKENS_ARTIST = [
+    "8-bit", "8bit", "lounge", "lofi", "lo-fi", "karaoke", "tribute",
+    "kids", "crew", "tunesters", "players", "orchestra", "pops",
+    "factory", "tv ", " sounds ", " band", " cast", "dj ", "remix",
+    "re-record", "rerecorded", "sound-a-like", "soundalike"
+]
+_PENALTY_TOKENS_ALBUM = [
+    "tv themes", "television themes", "karaoke", "8-bit", "8bit", "chip",
+    "chiptune", "lofi", "lo-fi", "lounge", "tribute", "cover", "workout",
+    "remix", "re-record", "rerecorded", "kids", "sing-along"
+]
+_BONUS_TOKENS_ALBUM = [
+    "original television soundtrack", "original tv soundtrack",
+    "original soundtrack", "from the television series",
+    "music from the original tv series", "from the series", "original score"
+]
+
+# Show→composer/performer hints (1970s-heavy; add more as needed)
+_SHOW_COMPOSER_HINTS = {
+    _norm("Dallas"): {"jerrold immel"},
+    _norm("The Rockford Files"): {"mike post", "pete carpenter"},
+    _norm("Columbo"): {"henry mancini"},
+    _norm("Kojak"): {"john cacavas"},
+    _norm("Baretta"): {"sammy davis jr", "dave grusin", "rhythm heritage"},
+    _norm("Taxi"): {"bob james"},
+    _norm("Welcome Back, Kotter"): {"john sebastian"},
+    _norm("The Dukes of Hazzard"): {"waylon jennings"},
+    _norm("The Love Boat"): {"jack jones", "dionne warwick"},
+    _norm("The Incredible Hulk"): {"joe harnell"},
+    _norm("Wonder Woman"): {"charles fox"},
+    _norm("The Muppet Show"): {"the muppets", "jim henson", "sam pottle"},
+    _norm("Little House on the Prairie"): {"david rose"},
+    _norm("Charlie's Angels"): {"jack elliott", "allyn ferguson"},
+    _norm("Starsky & Hutch"): {"lalo schifrin", "tom scott"},
+    _norm("S.W.A.T."): {"rhythm heritage", "barry de vorzon"},
+    _norm("The Waltons"): {"jerry goldsmith"},
+    _norm("Three's Company"): {"joe raposo", "ray charles", "julia rinker"},
+    _norm("Happy Days"): {"pratt & mcclain"},
+    _norm("Laverne & Shirley"): {"cyndi grecco"},
+    _norm("The Mary Tyler Moore Show"): {"sonny curtis"},
+    _norm("All in the Family"): {"carroll o'connor", "jean stapleton"},
+    _norm("Sanford and Son"): {"quincy jones"},
+    _norm("The Jeffersons"): {"ja'net dubois", "jeff barry"},
+}
+
+
+
+# ---- generic/cover-artist detection ----
+_GENERIC_EXACT = {
+    # common compilations / cover factories
+    "various artists",
+    "the great tv crew",
+    "music factory",
+    "the hit co.",
+    "8-bit arcade",
+    "soundtrack & theme orchestra",
+    "tv sounds unlimited",
+    "tv tunesters",
+    "hollywood tv players",
+    "the movie pops",
+    "mount royal orchestra",
+    "dj tv",
+    "parry music",
+    "london television orchestra",
+    "sega sound team",
+    "the sesame street kids",
+    # offenders seen in your dump
+    "boom tube",
+    "toners",
+    "los muppets",
+    "sanford and son",  # show title mis-used as “artist”
+}
+
+_GENERIC_TOKENS = [
+    " tv ", "theme", "themes", "soundtrack", "orchestra", "players",
+    "tunesters", "crew", "team", "factory", "kids", "arcade",
+    "karaoke", "tribute", "cover", "movie", "hollywood", "london",
+    "mount royal"
+]
+
+# ---- scoring boosts/penalties for Spotify search ----
+def _has_token(s: str | None, toks: List[str]) -> bool:
+    s = (s or "").lower()
+    return any(t in s for t in toks)
+
+_PENALTY_TOKENS_ARTIST = [
+    "8-bit", "8bit", "lounge", "lofi", "lo-fi", "karaoke", "tribute",
+    "kids", "crew", "tunesters", "players", "orchestra", "pops",
+    "factory", "tv ", " sounds ", " band", " cast", "dj ", "remix",
+    "re-record", "sound-a-like", "soundalike"
+]
+_PENALTY_TOKENS_ALBUM = [
+    "tv themes", "television themes", "karaoke", "8-bit", "8bit", "chip",
+    "chiptune", "lofi", "lo-fi", "lounge", "tribute", "cover", "workout",
+    "remix", "re-record", "kids", "sing-along"
+]
+_BONUS_TOKENS_ALBUM = [
+    "original television soundtrack", "original tv soundtrack",
+    "original soundtrack", "from the television series",
+    "music from the original tv series", "from the series", "original score"
+]
+
+# Show→composer/performer hints (big bonus if artist matches)
+_SHOW_COMPOSER_HINTS = {
+    _norm("Dallas"): {"jerrold immel"},
+    _norm("The Rockford Files"): {"mike post", "pete carpenter"},
+    _norm("Columbo"): {"henry mancini"},
+    _norm("Kojak"): {"john cacavas"},
+    _norm("Baretta"): {"sammy davis jr", "dave grusin", "rhythm heritage"},
+    _norm("Taxi"): {"bob james"},
+    _norm("Welcome Back, Kotter"): {"john sebastian"},
+    _norm("The Dukes of Hazzard"): {"waylon jennings"},
+    _norm("The Love Boat"): {"jack jones", "dionne warwick"},
+    _norm("The Incredible Hulk"): {"joe harnell"},
+    _norm("Wonder Woman"): {"charles fox"},
+    _norm("The Muppet Show"): {"the muppets", "jim henson", "sam pottle"},
+    _norm("Little House on the Prairie"): {"david rose"},
+    _norm("Charlie's Angels"): {"jack elliott", "allyn ferguson"},
+    _norm("Starsky & Hutch"): {"lalo schifrin", "tom scott"},
+    _norm("S.W.A.T."): {"rhythm heritage", "barry de vorzon"},
+    _norm("The Waltons"): {"jerry goldsmith"},
+    _norm("Three's Company"): {"joe raposo", "ray charles", "julia rinker"},
+    _norm("Happy Days"): {"pratt & mcclain"},
+    _norm("Laverne & Shirley"): {"cyndi grecco"},
+    _norm("The Mary Tyler Moore Show"): {"sonny curtis"},
+    _norm("All in the Family"): {"carroll o'connor", "jean stapleton"},
+    _norm("Sanford and Son"): {"quincy jones"},
+    _norm("The Jeffersons"): {"ja'net dubois", "jeff barry"},
+}
+
 
 def _looks_generic_artist(name: str) -> bool:
     n = (name or "").strip().lower()
     if not n:
         return True
-    generic = [
-        "various artists",
-        "tv hits",
-        "television themes",
-        "original tv soundtrack",
-        "soundtrack",
-        "theme orchestra",
-        "studio orchestra",
-        "tv theme players",
-        "the hollywood studio orchestra",
-    ]
-    return any(g == n for g in generic)
+    if n in _GENERIC_EXACT:
+        return True
+    # token check (pad with spaces so " tv " hits and reduce false positives)
+    nn = f" {n} "
+    return any(tok in nn for tok in _GENERIC_TOKENS)
+
+def _normkey(s: str) -> str:
+    import re
+    return re.sub(r"[^\w]+", "", (s or "").lower())
+
+def _is_show_title_as_artist(artist_name: str, show_names_norm: set[str]) -> bool:
+    return _normkey(artist_name) in show_names_norm
 
 
-# Known, tasteful settings for iconic 1950s shows (falls back to genre templates below)
+# Known, tasteful settings for iconic shows (seeded with 1950s; harmless for others)
 _KNOWN_SHOW_SETTINGS = {
     _norm("Peter Gunn"): "smoky jazz clubs and Los Angeles waterfront alleys",
     _norm("Perry Mason"): "Los Angeles courtrooms and sleek law offices",
@@ -213,7 +348,6 @@ _GENRE_TEMPLATES = {
     ),
 }
 
-
 def _match_genre_template(genre_t: str) -> Dict[str, str]:
     """Non-recursive matcher that safely merges common multi-genre phrasings."""
     g = (genre_t or "").lower()
@@ -250,7 +384,6 @@ def _match_genre_template(genre_t: str) -> Dict[str, str]:
         storytelling="clear arcs and strong motifs",
         production="practical staging and economical camera work",
     )
-
 
 def _synth_detail(
     show: str, years: str, genre: str, meta: Optional[Dict[str, Any]] = None
@@ -302,7 +435,6 @@ def _synth_detail(
 
     return " ".join(bits).strip()
 
-
 def _synth_intro(rank: int | None, show: str, years: str, genre: str) -> str:
     show = (show or "").strip()
     years = _clean_years(years)
@@ -321,7 +453,6 @@ def _synth_intro(rank: int | None, show: str, years: str, genre: str) -> str:
         else " — a TV staple whose theme instantly sets the tone."
     )
     return (head + tail).strip()
-
 
 def _best_artist_image(sp, artist_id: str) -> str | None:
     if not artist_id:
@@ -357,37 +488,60 @@ def _best_image(images: List[Dict[str, Any]]) -> Optional[str]:
     if not images:
         return None
     return sorted(images, key=lambda im: (im.get("width") or 0), reverse=True)[0].get("url")
-
-
 def _score_candidate(track: Dict[str, Any], theme: str, show: str) -> float:
-    """Heuristic scoring for TV theme matches."""
     score = 0.0
-    tname = (track.get("name") or "")
-    aname = ((track.get("artists") or [{}])[0].get("name") or "")
+    tname = track.get("name") or ""
     album = (track.get("album") or {}).get("name") or ""
+    artists = track.get("artists") or []
+    aname = (artists[0].get("name") if artists else "") or ""
     pop = track.get("popularity") or 0
+    dur_ms = track.get("duration_ms") or 0
 
     tn, sn, an, alb = _norm(tname), _norm(show), _norm(aname), _norm(album)
     theme_n = _norm(theme)
 
+    # Strong exact-ish matches
     if theme_n and theme_n in tn:
-        score += 6.0
-    keywords = ["theme", "maintitle", "tv", "television", "ost", "originalsoundtrack"]
-    if any(k in tn for k in keywords):
+        score += 7.0
+    if sn and (sn in tn):
+        score += 5.0
+    if sn and (sn in alb):
+        score += 4.0
+
+    # Useful keywords in title/album
+    keywords = ["theme", "maintitle", "main title", "tv", "television", "ost", "originalsoundtrack"]
+    if any(k in tname.lower() for k in keywords):
         score += 2.0
-    if any(k in alb for k in keywords):
+    if any(k in album.lower() for k in keywords):
         score += 2.0
-    if sn and (sn in tn or sn in alb):
-        score += 3.0
-    score += pop / 25.0
-    dur_ms = track.get("duration_ms") or 0
-    if 20_000 <= dur_ms <= 150_000:  # 20s–2:30
-        score += 1.5
-    elif dur_ms < 10_000:
+
+    # Popularity helps a bit
+    score += pop / 20.0
+
+    # Duration: themes are often ~0:30–2:00 (allow up to 2:30)
+    if 25_000 <= dur_ms <= 150_000:
+        score += 2.0
+    elif dur_ms < 12_000 or dur_ms > 240_000:
         score -= 2.0
 
-    return score
+    # Bonus if album smells like the *original* thing
+    if _has_token(album, _BONUS_TOKENS_ALBUM):
+        score += 3.0
 
+    # Big bonus if the artist matches a known composer/performer for this show
+    hints = _SHOW_COMPOSER_HINTS.get(sn, set())
+    if hints and an.lower() in hints:
+        score += 6.0
+
+    # Penalties for cover/compilation factories & novelty acts
+    if _looks_generic_artist(aname):
+        score -= 6.0
+    if _has_token(aname, _PENALTY_TOKENS_ARTIST):
+        score -= 4.0
+    if _has_token(album, _PENALTY_TOKENS_ALBUM):
+        score -= 4.0
+
+    return score
 
 def _search_spotify_theme(
     sp: spotipy.Spotify, theme: str, show: str, start_year: int, end_year: int
@@ -431,9 +585,7 @@ def _search_spotify_theme(
 
     return best[1]
 
-
 def _update_track_fields(track_obj: Dict[str, Any], sp_track: Dict[str, Any]) -> None:
-    """Write Spotify fields into a TopSpot track dict in-place."""
     artists = sp_track.get("artists") or []
     primary_artist = artists[0] if artists else {}
     album = sp_track.get("album") or {}
@@ -445,29 +597,29 @@ def _update_track_fields(track_obj: Dict[str, Any], sp_track: Dict[str, Any]) ->
     track_obj["duration_ms"] = sp_track.get("duration_ms")
     track_obj["popularity"] = sp_track.get("popularity")
     track_obj["is_explicit"] = bool(sp_track.get("explicit"))
-    track_obj.setdefault("artist_artwork", None)
 
+    # ensure we actually keep a human artist name on the track
+    primary_name = (primary_artist.get("name") or "").strip()
+    if primary_name:
+        if not (track_obj.get("artist_display_name") or "").strip():
+            track_obj["artist_display_name"] = primary_name
+        if not (track_obj.get("artist_name") or "").strip():
+            track_obj["artist_name"] = primary_name
 
 # ---------- Endpoint ----------
 @router.post("/{decade}")
 def enrich_tv_theme_file(
     decade: str,
     filename: str = Query(..., description="e.g., 1950s_tv_themes_en.json"),
-    overwrite: bool = Query(
-        True, description="Overwrite existing spotify_* fields if present"
-    ),
+    overwrite: bool = Query(True, description="Overwrite existing spotify_* fields if present"),
     dry_run: bool = Query(False),
-    max_items: int = Query(
-        0, ge=0, le=60, description="0 = all; otherwise limit how many tracks to process"
-    ),
-    overwrite_details: bool = Query(
-        False, description="Regenerate 'detail' even if already present"
-    ),
-    overrides: Optional[List[Dict[str, str]]] = Body(
-        default=None,
-        description="Optional list of {'match_show': str, 'match_theme': str, 'spotify_track_id': str} to force a specific recording",
-    ),
+    max_items: int = Query(0, ge=0, le=60, description="0 = all; otherwise limit how many tracks to process"),
+    overwrite_details: bool = Query(False, description="Regenerate 'detail' even if already present"),
+    overwrite_intros: bool = Query(True, description="Regenerate ranking 'intro' even if already present"),
+    scrub_emojis: bool = Query(True, description="Strip emojis from ALL 'detail' and 'intro' fields"),
+    overrides: Optional[List[Dict[str, str]]] = Body(default=None, description="Optional list of overrides"),
 ) -> Dict[str, Any]:
+
     """
     Enrich a TopSpot TV-themes JSON file with Spotify metadata.
     - Reads data/json_files/genredecade/{decade}/{filename}
@@ -639,6 +791,8 @@ def enrich_tv_theme_file(
             filled_track_artist_artwork += 1
 
     # ---------- Add any missing top-level artists from tracks, then fill their artwork ----------
+    show_names_norm = {_normkey(t.get("show_name") or "") for t in tracks if (t.get("show_name") or "").strip()}
+
     artist_list = payload.get("artist") or []
     artist_by_id: Dict[str, Dict[str, Any]] = {}
     artist_by_name: Dict[str, Dict[str, Any]] = {}
@@ -649,7 +803,6 @@ def enrich_tv_theme_file(
             artist_by_id[aid0] = a
         if nm0:
             artist_by_name[nm0] = a
-
     added_top_artists = 0
 
     for t in tracks:
@@ -657,12 +810,16 @@ def enrich_tv_theme_file(
         anm = (t.get("artist_display_name") or t.get("artist_name") or "").strip()
         anm_l = anm.lower()
 
+        # NEW: skip bad actors
+        if not anm or _looks_generic_artist(anm) or _is_show_title_as_artist(anm, show_names_norm):
+            continue
+
         if aid:
-            already = artist_by_id.get(aid)
+            already = artist_by_id.get(aid) or artist_by_name.get(anm_l)
         else:
             already = artist_by_name.get(anm_l)
 
-        if not already and anm:
+        if not already:
             new_artist = {
                 "artist_name": anm,
                 "spotify_artist_id": aid,
@@ -697,10 +854,58 @@ def enrich_tv_theme_file(
             a["artist_artwork"] = url
             filled_top_artist_artwork += 1
 
+    # ---- Filter & de-duplicate top-level artists (remove generics and show-titles) ----
+    filtered = []
+    seen_ids = set()
+    seen_names = set()
+
+    for a in artist_list:
+        nm = (a.get("artist_name") or "").strip()
+        if not nm:
+            continue
+        if _looks_generic_artist(nm) or _is_show_title_as_artist(nm, show_names_norm):
+            continue
+
+        aid = (a.get("spotify_artist_id") or "").strip()
+        key = aid or nm.lower()
+        if key in seen_ids or nm.lower() in seen_names:
+            continue
+
+        filtered.append(a)
+        if aid:
+            seen_ids.add(aid)
+        seen_names.add(nm.lower())
+
+    # Optional: drop the "Various Artists" stub entirely
+    filtered = [a for a in filtered if a["artist_name"].strip().lower() != "various artists"]
+
+    artist_list = filtered
+    # payload["artist"] = artist_list
+
+    # ---------- Global emoji scrub on existing text ----------
+    scrubbed_details_count = 0
+    scrubbed_intros_count = 0
+    if scrub_emojis:
+        for t in tracks:
+            if t.get("detail"):
+                cleaned = de_emoji(t["detail"])
+                if cleaned != t["detail"]:
+                    t["detail"] = cleaned
+                    scrubbed_details_count += 1
+        for r in rankings:
+            if r.get("intro"):
+                cleaned = de_emoji(r["intro"])
+                if cleaned != r["intro"]:
+                    r["intro"] = cleaned
+                    scrubbed_intros_count += 1
+
+
+
+
     # Persist possibly-extended artist list
     payload["artist"] = artist_list
 
-    # ---------- Fill missing narrative fields ----------
+    # ---------- Indexes for lookups ----------
     track_by_spotify: Dict[str, Dict[str, Any]] = {}
     tracks_by_name: Dict[str, List[Dict[str, Any]]] = {}
     for t in tracks:
@@ -711,7 +916,7 @@ def enrich_tv_theme_file(
         if nm:
             tracks_by_name.setdefault(nm, []).append(t)
 
-    # ---------- Fill missing narrative fields (only for processed subset) ----------
+    # ---------- Fill/overwrite narrative fields ----------
     filled_track_details = 0
     for idx in work_indexes:
         t = tracks[idx]
@@ -719,13 +924,14 @@ def enrich_tv_theme_file(
             show = t.get("show_name") or t.get("track_display_name") or t.get("track_name") or ""
             years = t.get("years_on_air") or ""
             sgenre = t.get("show_genre") or t.get("genre_label") or t.get("genre") or ""
-            t["detail"] = _synth_detail(show, years, sgenre, meta=t)
+            t["detail"] = de_emoji(_synth_detail(show, years, sgenre, meta=t))
             filled_track_details += 1
 
     filled_ranking_intros = 0
     filled_ranking_artist_names = 0
     for r in rankings:
-        if not (r.get("intro") or "").strip():
+        # overwrite or fill missing intro
+        if overwrite_intros or not (r.get("intro") or "").strip():
             tr = None
             rid = (r.get("track_id") or "").strip()
             if rid and rid in track_by_spotify:
@@ -738,7 +944,7 @@ def enrich_tv_theme_file(
             show = (tr.get("show_name") if tr else r.get("track_name")) or ""
             years = (tr.get("years_on_air") if tr else "") or ""
             sgenre = (tr.get("show_genre") if tr else r.get("genre")) or ""
-            r["intro"] = _synth_intro(r.get("rank"), show, years, sgenre)
+            r["intro"] = de_emoji(_synth_intro(r.get("rank"), show, years, sgenre))
             filled_ranking_intros += 1
 
         if not (r.get("artist_name") or "").strip():
@@ -775,7 +981,14 @@ def enrich_tv_theme_file(
         "filled_top_artist_artwork": filled_top_artist_artwork,
         "added_top_artists": added_top_artists,
         "dry_run": dry_run,
+        "overwrite": overwrite,
+        "overwrite_details": overwrite_details,
+        "overwrite_intros": overwrite_intros,
+        "scrub_emojis": scrub_emojis,
+        "scrubbed_details_count": scrubbed_details_count,
+        "scrubbed_intros_count": scrubbed_intros_count,
         "filled_track_details": filled_track_details,
         "filled_ranking_intros": filled_ranking_intros,
         "filled_ranking_artist_names": filled_ranking_artist_names,
+
     }
