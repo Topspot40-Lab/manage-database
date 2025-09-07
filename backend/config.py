@@ -224,16 +224,17 @@ VOICE_PREVIEW_ENABLED = env_bool("VOICE_PREVIEW_ENABLED", False)
 
 TTS_PROFILES = {
     "en": {
-        "intro":  {"voice_id": "BYzs2jBcHhCzX4QmS6fd",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
-        "detail": {"voice_id": "4XUsiqPDK4UACIM2BILe", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
-        "artist": {"voice_id": "oWAxZDx7w5VEj9dCyTzz", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
+        # "intro":  {"voice_id": "XrExE9yKIg1WjnnlVkGX",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
+        "intro":  {"voice_id": "PrwKJdvtTbJVdosRhS1O",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
+        "detail": {"voice_id": "pqHfZKP75CvOlQylNhV4", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
+        "artist": {"voice_id": "94zOad0g7T7K4oa7zhDq", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
     },
     "es": {
-        "intro": {"voice_id": "94zOad0g7T7K4oa7zhDq",
+        "intro": {"voice_id": "PrwKJdvtTbJVdosRhS1O",
                   "settings": {"stability": 0.5, "similarity_boost": 0.85, "style": 0.5, "use_speaker_boost": True}},
         "detail": {"voice_id": "94zOad0g7T7K4oa7zhDq",
                    "settings": {"stability": 0.65, "similarity_boost": 0.7, "style": 0.25, "use_speaker_boost": False}},
-        "artist": {"voice_id": "94zOad0g7T7K4oa7zhDq",
+        "artist": {"voice_id": "bIHbv24MWmeRgasZH58o",
                    "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
     },
 
@@ -259,7 +260,7 @@ LOG_LEVEL_OVERRIDES = {
     "STEP_4": "INFO", "STEP_4.A": "INFO", "STEP_4.B": "INFO", "STEP_4.C": "INFO", "STEP_4.D": "INFO", "STEP_4.E": "INFO",
     # Remaining
     "STEP_5": "INFO", "STEP_6": "INFO", "STEP_7": "INFO", "STEP_8": "INFO",
-    "STEP_9": "DEBUG", "STEP_9.A": "INFO", "STEP_9.B": "INFO", "STEP_9.C": "INFO",
+    "STEP_9": "INFO", "STEP_9.A": "INFO", "STEP_9.B": "INFO", "STEP_9.C": "INFO",
     "STEP_10": "INFO", "STEP_11": "INFO",
 }
 STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
@@ -291,12 +292,12 @@ LOG_LEVELS_BY_MODULE = {
     # Utilities
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
-    "backend.utils.tts_diagnostics": "INFO",
+    "backend.utils.tts_diagnostics": "DEBUG",
     # Custom
     "backend.logging.track_logging": "INFO",
     "tts_logger": "DEBUG",
     "supabase_summary": "INFO",
-    "tts_diagnostics": "INFO",
+    "tts_diagnostics": "DEBUG",
     # Third-party
     "spotipy": "WARNING",
     "urllib3": "WARNING",

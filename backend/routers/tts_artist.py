@@ -36,6 +36,22 @@ ARTIST_MP3_DIR.mkdir(parents=True, exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+import re
+
+# Remove emoji, ZWJ, variation selectors (keeps plain ASCII clean for TTS)
+_EMOJI = re.compile(r"[\u200D\uFE0F\U0001F1E6-\U0001F1FF\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF]+")
+
+def _de_emoji(s: str | None) -> str:
+    return _EMOJI.sub("", s or "").strip()
+
+def _get(obj, field: str, default=None):
+    """Safe attr-or-key access for ORM/Pydantic rows or dicts."""
+    if isinstance(obj, dict):
+        return obj.get(field, default)
+    return getattr(obj, field, default)
+
+
+
 def _canon_lang(language: str) -> str:
     if not language:
         return DEFAULT_TTS_LANGUAGE
@@ -142,6 +158,8 @@ def generate_artist_tts_range(
                 strip_markdown=True, number_normalize=True,
             )
 
+        desc = _de_emoji(desc)
+
         items.append({
             "spotify_artist_id": a["artist_id"],
             "artist_name": a["artist_name"],
@@ -202,13 +220,12 @@ async def generate_missing_artist_tts(
 
     if count > 0:
         missing_artists = missing_artists[:count]
-
     items: List[Dict[str, Any]] = []
     for artist in missing_artists:
-        # artist may be a row-like object or dict depending on diagnostics; handle attributes first
-        artist_id = getattr(artist, "spotify_artist_id", None) or artist.get("spotify_artist_id")
-        artist_name = getattr(artist, "artist_name", None) or artist.get("artist_name")
-        artist_desc = getattr(artist, "artist_description", None) or artist.get("artist_description")
+        # attr-or-dict safe access
+        artist_id = _get(artist, "spotify_artist_id")
+        artist_name = _get(artist, "artist_name") or _get(artist, "name")
+        artist_desc = _get(artist, "artist_description")
 
         if not artist_id or not artist_name:
             continue
@@ -217,19 +234,19 @@ async def generate_missing_artist_tts(
         if not desc:
             continue
 
-        # Defensive language-specific prep (mirrors intro/detail flow)
+        # Language-specific normalization (once)
         if lang == "es":
             desc = prepare_for_tts_es(
-                desc, rank=0,
-                track_name="", artist_name=artist_name,
+                desc, rank=0, track_name="", artist_name=artist_name,
                 strip_markdown=True, number_normalize=True,
             )
         elif lang == "pt-BR":
             desc = prepare_for_tts_pt_br(
-                desc, rank=0,
-                track_name="", artist_name=artist_name,
+                desc, rank=0, track_name="", artist_name=artist_name,
                 strip_markdown=True, number_normalize=True,
             )
+
+        desc = _de_emoji(desc)  # prevent emojibake
 
         items.append({
             "spotify_artist_id": artist_id,
