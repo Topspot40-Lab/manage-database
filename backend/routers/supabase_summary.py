@@ -2,7 +2,6 @@ from fastapi import APIRouter, Query, Depends
 from sqlmodel import Session, select
 from sqlalchemy import func
 import logging
-from typing import Literal  # optional DX improvement
 
 from backend.models import Artist, Track, Genre, Decade, DecadeGenre, TrackRanking
 from backend.database import get_db
@@ -15,9 +14,29 @@ logger = logging.getLogger("supabase_summary")
 
 router = APIRouter(prefix="/supabase", tags=["Supabase Summary"])
 
+# ── helpers (drop this near the top of your file) ─────────────────────────────
 def _canon_lang(code: str) -> str:
-    m = (code or "en").strip().lower()
-    return {"en": "en", "es": "es", "ptbr": "pt-BR"}.get(m, "en")
+    """
+    Normalize user input into your canonical app language code.
+    Returns one of: 'en', 'es', 'pt-BR'
+    """
+    m = (code or "en").strip().lower().replace("_", "-")
+    if m in {"en", "en-us", "en-gb"}:
+        return "en"
+    if m in {"es", "es-mx", "es-419", "es-es"}:
+        return "es"
+    if m in {"pt", "pt-br", "ptbr", "pt-pt"}:
+        return "pt-BR"
+    return "en"
+
+def _lang_prefix(lang: str) -> str:
+    # match LANGUAGE_BUCKETS above
+    return {
+        "en":   "audio-en",
+        "es":   "audio-es",
+        "pt-BR":"audio-ptbr",   # ← match your config
+    }[lang]
+
 @router.get("/summary")
 def get_summary(
     db_name: str = Query("topspot40-dev"),
@@ -69,37 +88,41 @@ def get_summary(
     except Exception as e:
         logger.exception("❌ Failed to summarize DB")
         return {"error": str(e)}
-
 @router.get("/tts/diagnostics")
 async def run_diagnostics(
     db: Session = Depends(get_db),
-    # If you prefer stricter typing in docs/IDE, change type to Literal["en","es","ptbr"]
-    check_tts_language: Literal["en", "es", "ptbr"] = Query(
+    check_tts_language: str = Query(
         "en",
-        description='Language to check MP3s in: "en", "es", or "ptbr"',
+        description='Language to check MP3s. Accepts: "en", "es", "pt-BR", "ptbr", "pt".',
     ),
     check_intro_mp3: bool = Query(False, description="Check for missing intro MP3 files"),
     check_detail_mp3: bool = Query(False, description="Check for missing detail MP3 files"),
     check_artist_mp3: bool = Query(False, description="Check for missing artist MP3 files"),
     show_samples: bool = Query(False, description="Include sample missing entries"),
-    check_decade_genre_summary: bool = Query(
-        False, description="Include the final decade/genre ranking summary table"
-    ),
+    check_decade_genre_summary: bool = Query(False, description="Include the final decade/genre ranking summary table"),
 ):
     lang = _canon_lang(check_tts_language)
+
+    # Optional: show which bucket will be used for sanity
+    from backend.config import BUCKETS
+    intro_bucket = BUCKETS.get(lang, BUCKETS["en"])["intro"]
+
     logger.info(
-        "🧠 TTS diagnostics | samples=%s intro=%s detail=%s artist=%s lang=%s summary=%s",
-        show_samples, check_intro_mp3, check_detail_mp3, check_artist_mp3, lang, check_decade_genre_summary
+        "🧠 TTS diagnostics | samples=%s intro=%s detail=%s artist=%s lang=%s intro_bucket=%s summary=%s",
+        show_samples, check_intro_mp3, check_detail_mp3, check_artist_mp3, lang, intro_bucket, check_decade_genre_summary
     )
 
-    result = await get_missing_tts_info(
-        db,
-        check_intro_mp3=check_intro_mp3,
-        check_detail_mp3=check_detail_mp3,
-        check_artist_mp3=check_artist_mp3,
-        language=lang,
-    )
-
+    try:
+        result = await get_missing_tts_info(
+            db,
+            check_intro_mp3=check_intro_mp3,
+            check_detail_mp3=check_detail_mp3,
+            check_artist_mp3=check_artist_mp3,
+            language=lang,
+        )
+    except Exception as e:
+        logger.exception("❌ get_missing_tts_info crashed")
+        return {"error": f"{type(e).__name__}: {e}"}
     summary = {"missing_text": {}, "missing_mp3": {}}
     missing_text = result.get("missing_text", {})
     if "track_detail" in missing_text:

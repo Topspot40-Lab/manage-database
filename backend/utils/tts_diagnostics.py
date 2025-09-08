@@ -27,6 +27,11 @@ def _prefixed_key(kind: str, filename: str) -> str:
     """Build 'intro/filename.mp3', 'detail/ID.mp3', etc."""
     return f"{AUDIO_PREFIXES[kind]}/{filename}"
 
+def _chunked(seq, size: int):
+    for i in range(0, len(seq), size):
+        yield seq[i:i+size]
+
+
 # ------------------------------------------------------------------------------
 # 🧽 Normalize names for filenames (used in intro MP3 filenames)
 # ------------------------------------------------------------------------------
@@ -36,18 +41,99 @@ def normalize_for_filename(text: str) -> str:
 # ------------------------------------------------------------------------------
 # 🌐 Async check if a file exists in Supabase Storage
 # ------------------------------------------------------------------------------
+MAX_IN_FLIGHT = 24
+HTTP_TIMEOUT  = 12.0
+RETRY_ON      = {429, 500, 502, 503, 504}
+_sem = asyncio.Semaphore(MAX_IN_FLIGHT)
+
+async def _sb_get(client: httpx.AsyncClient, url: str, headers: dict):
+    async with _sem:
+        return await client.get(url, headers=headers, timeout=HTTP_TIMEOUT)
+
+async def _sb_post(client: httpx.AsyncClient, url: str, headers: dict, json: dict | None = None):
+    async with _sem:
+        return await client.post(url, headers=headers, json=json, timeout=HTTP_TIMEOUT)
+
 async def file_exists_async(bucket: str, path: str, client: httpx.AsyncClient) -> bool:
-    try:
-        url = f"{SUPABASE_URL}/storage/v1/object/info/{bucket}/{path}"
-        headers = {
-            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-            "apikey": SUPABASE_SERVICE_ROLE_KEY
-        }
-        response = await client.get(url, headers=headers, timeout=5.0)
-        return response.status_code == 200
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to check {bucket}/{path}: {e}")
+    """
+    Try 1: GET /storage/v1/object/info/{bucket}/{path}
+    Try 2: POST /storage/v1/object/sign/{bucket}/{path} then HEAD the signed URL
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        logger.error("Supabase not configured; cannot check %s/%s", bucket, path)
         return False
+
+    # ----------- Try 1: object/info -----------
+    info_url = f"{SUPABASE_URL}/storage/v1/object/info/{bucket}/{path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+    }
+
+    try:
+        logger.debug("🌐 [info] %s", info_url)
+        r = await _sb_get(client, info_url, headers)
+        if r.status_code == 200:
+            return True
+        if r.status_code in RETRY_ON:
+            await asyncio.sleep(0.5)
+            r = await _sb_get(client, info_url, headers)
+            if r.status_code == 200:
+                return True
+
+        # Not found vs other errors
+        if r.status_code == 404:
+            logger.debug("❌ [info] 404 not found for %s/%s", bucket, path)
+        else:
+            snippet = (r.text or "")[:200].replace("\n", " ")
+            logger.debug("ℹ️ [info] %s -> %s %s", info_url, r.status_code, snippet)
+    except httpx.HTTPError as e:
+        logger.warning("⚠️ [info] %s -> %s", info_url, repr(e))
+    except Exception as e:
+        logger.warning("⚠️ [info] unexpected error for %s: %s", info_url, e)
+
+    # ----------- Try 2: sign + HEAD -----------
+    sign_url = f"{SUPABASE_URL}/storage/v1/object/sign/{bucket}/{path}"
+    try:
+        logger.debug("🌐 [sign] %s", sign_url)
+        # expiresIn is seconds
+        sr = await _sb_post(client, sign_url, headers, json={"expiresIn": 60})
+        if sr.status_code != 200:
+            snippet = (sr.text or "")[:200].replace("\n", " ")
+            logger.debug("ℹ️ [sign] %s -> %s %s", sign_url, sr.status_code, snippet)
+            return False
+
+        data = sr.json()
+        signed_url = data.get("signedURL") or data.get("signedUrl") or data.get("signed_url")
+        if not signed_url:
+            logger.debug("ℹ️ [sign] no signedURL field present in response")
+            return False
+
+        # Signed URL might be relative; prepend origin if needed
+        if signed_url.startswith("/"):
+            signed_url = f"{SUPABASE_URL}{signed_url}"
+
+        # HEAD the signed URL (public fetch)
+        logger.debug("🌐 [head] %s", signed_url)
+        async with _sem:
+            hr = await client.head(signed_url, timeout=HTTP_TIMEOUT, follow_redirects=True)
+        if hr.status_code == 200:
+            return True
+        # Sometimes HEAD is blocked; try a lightweight GET with range header
+        if hr.status_code in RETRY_ON or hr.status_code == 405:
+            async with _sem:
+                gr = await client.get(signed_url, headers={"Range": "bytes=0-0"}, timeout=HTTP_TIMEOUT)
+            if gr.status_code in (200, 206):
+                return True
+            logger.debug("ℹ️ [head->get] %s -> %s", signed_url, gr.status_code)
+        else:
+            logger.debug("ℹ️ [head] %s -> %s", signed_url, hr.status_code)
+    except httpx.HTTPError as e:
+        logger.warning("⚠️ [sign/head] %s -> %s", sign_url, repr(e))
+    except Exception as e:
+        logger.warning("⚠️ [sign/head] unexpected error for %s: %s", sign_url, e)
+
+    return False
 
 # ------------------------------------------------------------------------------
 # 🧩 Helper function to measure time and log a labeled async task
@@ -82,14 +168,21 @@ async def check_intro_mp3s(db: Session, client: httpx.AsyncClient, *, language: 
     for ranking, decade, genre in result:
         filename = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{ranking.ranking:02}.mp3"
         intro_keys.append(_prefixed_key("intro", filename))
+        logger.debug("🔎 Intro probe → bucket=%s key=%s", intro_bucket, intro_keys[-1])
 
         # Check for missing/empty/null text
         if not ranking.intro or ranking.intro.strip().lower() == "null":
             text_missing_entries.append(f"{ranking.ranking:02} — {decade}, {genre}")
 
     # Check missing MP3s (language-scoped bucket + intro/ prefix)
-    intro_tasks = [file_exists_async(intro_bucket, key, client) for key in intro_keys]
-    results = await asyncio.gather(*intro_tasks)
+    results = []
+    for batch in _chunked(intro_keys, 32):
+        # optional: log first few to verify shape
+        for k in batch[:3]:
+            logger.debug("🔎 Intro probe → bucket=%s key=%s", intro_bucket, k)
+        tasks = [file_exists_async(intro_bucket, key, client) for key in batch]
+        results.extend(await asyncio.gather(*tasks))
+
     missing_mp3s = [key for key, exists in zip(intro_keys, results) if not exists]
 
     # Logging missing MP3s
@@ -136,23 +229,33 @@ async def check_detail_mp3s(tracks, client: httpx.AsyncClient, *, language: str 
     # 👇 precompute the storage keys (filename is the track id)
     detail_keys = [_prefixed_key("detail", f"{t.spotify_track_id}.mp3") for t in detail_tracks]
 
-    # existence checks
-    detail_tasks = [file_exists_async(detail_bucket, key, client) for key in detail_keys]
-    results = await asyncio.gather(*detail_tasks)
+    # existence checks (batched)
+    results = []
+    for batch in _chunked(detail_keys, 32):
+        for k in batch[:3]:
+            logger.debug("🔎 Detail probe → bucket=%s key=%s", detail_bucket, k)
+        tasks = [file_exists_async(detail_bucket, key, client) for key in batch]
+        results.extend(await asyncio.gather(*tasks))
 
     # pair back up so we can log the exact key that’s missing
     missing_pairs = [(t, key) for t, key, exists in zip(detail_tracks, detail_keys, results) if not exists]
 
     if missing_pairs:
+        # only print the first N for readability
+        limit = 15
+        mp = list(missing_pairs)  # ensure sliceable/countable
+        total = len(mp)
+
+        lines = []
+        for t, key in mp[:limit]:
+            title = (t.track_name or "").ljust(30)
+            artist = getattr(t, "artist_display_name", None) or "[unknown]"
+            lines.append(f"- title: {title} artist: {artist} file: {detail_bucket}/{key}")
+
+        suffix = "\n… (truncated)" if total > limit else ""
         logger.debug(
-            "🛑 %d detail MP3(s) missing:\n%s",
-            len(missing_pairs),
-            "\n".join(
-                f"- title: {t.track_name.ljust(30)} "
-                f"artist: {getattr(t, 'artist_display_name', None) or '[unknown]'} "
-                f"file: {detail_bucket}/{key}"
-                for (t, key) in missing_pairs
-            ),
+            "🛑 %d detail MP3(s) missing (showing first %d):\n%s%s",
+            total, min(total, limit), "\n".join(lines), suffix
         )
     else:
         logger.debug("✅ All detail MP3s present — no missing files.")
@@ -166,7 +269,10 @@ async def check_detail_mp3s(tracks, client: httpx.AsyncClient, *, language: str 
 # 🎤 Check for missing artist MP3s (concurrent + logs like detail)
 # -------------------------------------------------------------------
 # 🎤 Check for missing artist MP3s (concurrent + logs like detail)
-async def check_artist_mp3s(artists: list, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE) -> list:
+
+async def check_artist_mp3s(
+    artists: list, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE
+) -> list:
     """
     Check which artists are missing TTS MP3 files in Supabase.
     Returns a list of Artist objects that are missing files.
@@ -177,20 +283,26 @@ async def check_artist_mp3s(artists: list, client: httpx.AsyncClient, *, languag
     logger.info(f"🎤 Checking {total_artists} artist MP3s...")
 
     artist_bucket = _bucket_for(language, "artist")
-    tasks = [
-        file_exists_async(artist_bucket, _prefixed_key("artist", f"{a.spotify_artist_id}.mp3"), client)
-        for a in valid_artists
-    ]
-    results = await asyncio.gather(*tasks)
+    artist_keys = [_prefixed_key("artist", f"{a.spotify_artist_id}.mp3") for a in valid_artists]
+
+    results: list[bool] = []
+
+    # 🔄 batch requests to avoid timeouts / rate limits
+    for batch in _chunked(list(zip(valid_artists, artist_keys)), 32):
+        # optional: show first few keys for sanity
+        for a, k in batch[:3]:
+            logger.debug("🔎 Artist probe → bucket=%s key=%s (artist=%s)", artist_bucket, k, a.artist_name)
+        tasks = [file_exists_async(artist_bucket, k, client) for _, k in batch]
+        batch_results = await asyncio.gather(*tasks)
+        results.extend(batch_results)
 
     missing = [a for a, exists in zip(valid_artists, results) if not exists]
 
     if missing:
         logger.debug("🛑 Missing artist MP3s:")
-        logger.debug("\n" + "\n".join(
-            f"- artist: {a.artist_name.ljust(30)}  ID: {a.spotify_artist_id}"
-            for a in missing
-        ))
+        logger.debug(
+            "\n" + "\n".join(f"- artist: {a.artist_name.ljust(30)}  ID: {a.spotify_artist_id}" for a in missing)
+        )
     else:
         logger.debug("✅ All artist MP3s present — no missing files.")
 

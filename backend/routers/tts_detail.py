@@ -4,11 +4,15 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Iterable, Optional, Set, Any, List, Dict, Literal
+from typing import Iterable, Optional, Set, List, Dict, Literal
 
 from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
+# ADD:
+from backend.models.dbmodels import TrackRanking, DecadeGenre, Decade, Genre
+from sqlalchemy import func
+
 
 from backend.database import get_db
 from backend.models.dbmodels import Track, TrackLocale
@@ -38,8 +42,15 @@ detail_router = APIRouter(
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
-def generate_detail_filename(item: Dict[str, str]) -> str:
-    return f"{item['spotify_track_id']}.mp3"
+from typing import Mapping, Any
+
+def generate_detail_filename(item: Mapping[str, Any]) -> str:
+    sid = (str(item.get("spotify_track_id") or "").strip())
+    if sid:
+        return f"{sid}.mp3"
+    if "track_id" not in item:
+        raise KeyError("generate_detail_filename: missing track_id and spotify_track_id")
+    return f"track_{item['track_id']}.mp3"
 
 def _parse_count_to_limit(count_param: Optional[int]) -> Optional[int]:
     try:
@@ -131,17 +142,67 @@ async def generate_missing_detail_tts(
     overwrite: bool = Query(False),
     play: bool = Query(False),
     language: Literal["en", "es", "pt-BR", "ptbr", "pt-br"] = Query("en", description="Target language for TTS (en|es|pt-BR)"),
+    # NEW FILTERS:
+    decade: str = Query("-1", description="Decade name (e.g., '1950s') or -1 for all"),
+    genre: str = Query("-1", description="Genre name (e.g., 'Latin Global') or -1 for all"),
+
     db: Session = Depends(get_db)
 ):
     """
     Finds missing DETAIL MP3s by spotify_track_id (from diagnostics),
+    optionally filters eligible tracks by decade/genre (via TrackRanking → DecadeGenre),
     ensures localized detail text exists for ES/PT-BR (translate+upsert when absent),
     and generates MP3s to local disk.
     """
     lang = "pt-BR" if language.lower() in ("ptbr", "pt-br") else language
 
-    limit = _parse_count_to_limit(count)
-    logger.info("🧠 Generating up to %s missing detail TTS files [lang=%s] (negative → unlimited)", count, lang)
+    # ── Resolve decade/genre names into IDs
+    decade_id: Optional[int] = None
+    genre_id: Optional[int] = None
+
+    if decade not in ("-1", "all"):
+        dec_row = db.exec(select(Decade).where(func.lower(Decade.decade_name) == decade.lower())).first()
+        if not dec_row:
+            raise HTTPException(status_code=400, detail=f"Decade '{decade}' not found")
+        decade_id = dec_row.id
+
+    if genre not in ("-1", "all"):
+        gen_row = db.exec(select(Genre).where(func.lower(Genre.genre_name) == genre.lower())).first()
+        if not gen_row:
+            raise HTTPException(status_code=400, detail=f"Genre '{genre}' not found")
+        genre_id = gen_row.id
+
+    # limit = _parse_count_to_limit(count)
+    logger.info(
+        "🧠 Generating up to %s missing detail TTS files [lang=%s, decade_id=%s, genre_id=%s] (negative → unlimited)",
+        count, lang, decade_id, genre_id
+    )
+    # ── Optional filter: compute allowed track_ids from decade/genre via TrackRanking → DecadeGenre
+    allowed_track_ids: Optional[Set[int]] = None
+    if decade_id is not None or genre_id is not None:
+        stmt = (
+            select(TrackRanking.track_id)
+            .join(DecadeGenre, TrackRanking.decade_genre_id == DecadeGenre.id)
+            .distinct()
+        )
+        if decade_id is not None:
+            stmt = stmt.where(DecadeGenre.decade_id == decade_id)
+        if genre_id is not None:
+            stmt = stmt.where(DecadeGenre.genre_id == genre_id)
+
+        res = db.exec(stmt)
+        rows = res.all()  # works for Result and ScalarResult
+        ids = [r[0] for r in rows] if rows and not isinstance(rows[0], int) else rows
+        allowed_track_ids = set(int(x) for x in ids)
+
+        logger.info("📎 Filtered by decade/genre → %d allowed track_ids", len(allowed_track_ids))
+        if not allowed_track_ids:
+            return {
+                "generated": 0, "skipped": 0, "missing_found": 0, "files": [],
+                "message": f"No tracks match filters decade={decade}, genre={genre}"
+            }
+
+    # ⛔️ REMOVE the earlier "later when applying the filter: q = q.where(...)" block here
 
     diagnostics = await get_missing_tts_info(
         db,
@@ -151,31 +212,70 @@ async def generate_missing_detail_tts(
         language=lang,
     )
     missing_diag = diagnostics.get("missing_mp3", {}).get("track_detail", []) or []
-    missing_sids_all = _collect_missing_spotify_ids(missing_diag)
 
-    logger.info("🧮 Missing detail MP3s detected (pre-limit): %d", len(missing_sids_all))
-    if not missing_sids_all:
+    # 1) Global list of missing SIDs (de-dupe, preserve order, skip empties)
+    all_missing_sids = [sid for sid in dict.fromkeys(_collect_missing_spotify_ids(missing_diag)) if sid]
+    # Back-compat so older references still work:
+    missing_sids_all = all_missing_sids
+
+    logger.info("🧮 Missing detail MP3s detected (pre-limit, all buckets): %d", len(all_missing_sids))
+    if not all_missing_sids:
         logger.info("✅ Nothing to generate; all detail MP3s present.")
         return {"generated": 0, "skipped": 0, "missing_found": 0, "files": []}
 
-    missing_sids = missing_sids_all[:limit] if limit is not None else missing_sids_all
-    if not missing_sids:
-        logger.info("➡️ Limit yielded 0 items; nothing to do.")
-        return {"generated": 0, "skipped": 0, "missing_found": len(missing_sids_all), "files": []}
-
-    tracks: List[Track] = []
-    if missing_sids:
-        q = (
-            select(Track)
-            .where(Track.spotify_track_id.in_(missing_sids))
-            .options(selectinload(Track.artist))
+    # 2) Restrict to selected decade/genre bucket BEFORE applying the count
+    if decade_id is not None or genre_id is not None:
+        stmt = (
+            select(Track.spotify_track_id)
+            .join(TrackRanking, Track.id == TrackRanking.track_id)
+            .join(DecadeGenre, TrackRanking.decade_genre_id == DecadeGenre.id)
+            .where(Track.spotify_track_id.in_(all_missing_sids))
         )
-        tracks = db.exec(q).all()
+        if decade_id is not None:
+            stmt = stmt.where(DecadeGenre.decade_id == decade_id)
+        if genre_id is not None:
+            stmt = stmt.where(DecadeGenre.genre_id == genre_id)
 
+        # Optional: highest-ranked first within the bucket
+        stmt = stmt.order_by(TrackRanking.ranking)
+
+        rows = db.exec(stmt).all()
+        # normalize to list[str]
+        filtered_missing_sids = [r[0] if not isinstance(r, str) else r for r in rows]
+    else:
+        filtered_missing_sids = all_missing_sids
+
+    if not filtered_missing_sids:
+        return {
+            "generated": 0,
+            "skipped": 0,
+            "missing_found": len(all_missing_sids),
+            "files": [],
+            "message": f"No missing detail MP3s match decade={decade}, genre={genre}.",
+        }
+
+    # 3) Apply the count limit AFTER filtering
+    limit = _parse_count_to_limit(count)
+    missing_sids = filtered_missing_sids[:limit] if limit is not None else filtered_missing_sids
+
+    # 4) Build base query to load the Track rows (keep your guardrail too)
+    q = (
+        select(Track)
+        .where(Track.spotify_track_id.in_(missing_sids))
+        .options(selectinload(Track.artist))
+    )
+    if allowed_track_ids:  # redundant but harmless safety
+        q = q.where(Track.id.in_(list(allowed_track_ids)))
+    if allowed_track_ids:  # non-empty set
+        q = q.where(Track.id.in_(list(allowed_track_ids)))
+
+    tracks: List[Track] = db.exec(q).all()
     by_sid = {t.spotify_track_id: t for t in tracks}
+
+    # Log SIDs filtered out either because Track not found or not in allowed set
     not_found = [sid for sid in missing_sids if sid not in by_sid]
     if not_found:
-        logger.warning("⚠️ %d Spotify IDs not found in Track table (first few): %s",
+        logger.warning("⚠️ %d Spotify IDs omitted by filters or not found in Track table (first few): %s",
                        len(not_found), not_found[:5])
 
     # Prefetch existing locales for this language
@@ -200,7 +300,7 @@ async def generate_missing_detail_tts(
     for sid in missing_sids:
         t = by_sid.get(sid)
         if not t:
-            continue
+            continue  # filtered out / not found
 
         track_name = t.track_name or ""
         artist_name = (t.artist.artist_name if t.artist else "") or "Unknown Artist"
@@ -280,14 +380,17 @@ async def generate_missing_detail_tts(
             "skipped": missing_text_count,
             "missing_found": len(missing_sids_all),
             "files": [],
-            "message": "No eligible tracks with detail text to synthesize (or Tracks not found by spotify_track_id).",
+            "language": lang,
+            "decade_id": decade_id,
+            "genre_id": genre_id,
+            "message": "No eligible tracks with detail text to synthesize after applying filters.",
         }
 
     # Per-language voice / model
     voice_cfg = (TTS_PROFILES.get(lang, {}).get("detail") or {})
     voice_id = voice_cfg.get("voice_id") or VOICE_ID_TRACK
     voice_settings = voice_cfg.get("settings") or {}
-    model_id = MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
+    model_id = voice_cfg.get("model_id") or MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
     logger.debug(
         "🎙️ Detail TTS config | lang=%s | model_id=%s | voice_id=%s | settings=%s | default_lang=%s",
         lang, model_id, voice_id, voice_settings, DEFAULT_TTS_LANGUAGE,
@@ -308,11 +411,6 @@ async def generate_missing_detail_tts(
                 strip_markdown=True, number_normalize=True,
             )
 
-    voice_cfg = (TTS_PROFILES.get(lang, {}).get("detail") or {})
-    voice_id = voice_cfg.get("voice_id") or VOICE_ID_TRACK
-    voice_settings = voice_cfg.get("settings") or {}
-    model_id = voice_cfg.get("model_id") or MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
-
     return generate_tts_batch(
         items=items,
         text_key="detail",
@@ -325,5 +423,5 @@ async def generate_missing_detail_tts(
         play=play,
         default_language=lang,
         normalize=True,
-        model_id=model_id,  # <-- important
+        model_id=model_id,
     )
