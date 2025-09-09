@@ -18,6 +18,66 @@ from backend.config import (
 
 logger = logging.getLogger("tts_diagnostics")
 
+# ---- FAST LISTING of a folder ----
+async def _list_keys(bucket: str, prefix: str, client: httpx.AsyncClient, *, page_size: int = 1000) -> set[str]:
+    """
+    Return full keys like 'intro/xxx.mp3' for all objects in the given prefix.
+    Uses POST /storage/v1/object/list/{bucket} with pagination.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        logger.error("Supabase not configured; cannot list %s/%s", bucket, prefix)
+        return set()
+
+    base = f"{SUPABASE_URL}/storage/v1/object/list/{bucket}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Content-Type": "application/json",
+    }
+
+    # Supabase accepts prefix with or without trailing slash; try both
+    prefixes_to_try = [prefix.rstrip("/"), prefix.rstrip("/") + "/"]
+
+    all_names: set[str] = set()
+    for pref in prefixes_to_try:
+        offset = 0
+        while True:
+            body = {
+                "prefix": pref,
+                "limit": page_size,
+                "offset": offset,
+                "sortBy": {"column": "name", "order": "asc"},
+            }
+            r = await client.post(base, headers=headers, json=body, timeout=HTTP_TIMEOUT)
+            if r.status_code != 200:
+                # Log once, then bail to next variant
+                snippet = (r.text or "")[:200].replace("\n", " ")
+                logger.debug("ℹ️ list %s prefix=%s -> %s %s", bucket, pref, r.status_code, snippet)
+                break
+
+            items = r.json() or []
+            if not items:
+                break
+
+            # Items have 'name' relative to the prefix
+            for it in items:
+                name = it.get("name") or ""
+                # exclude "folders" (they come back with no dot or with id==None sometimes)
+                if name and "." in name:
+                    all_names.add(f"{pref}/{name}" if not pref.endswith("/") else f"{pref}{name}")
+
+            if len(items) < page_size:
+                break
+            offset += page_size
+
+        if all_names:
+            # If one variant worked, we’re done
+            break
+
+    logger.debug("📃 Listed %d keys under %s/%s", len(all_names), bucket, prefix)
+    return all_names
+
+
 def _bucket_for(lang: str, kind: str) -> str:
     """Return the correct language-scoped bucket for intro/detail/artist."""
     lang_map = BUCKETS.get(lang) or BUCKETS[DEFAULT_TTS_LANGUAGE]
@@ -27,16 +87,18 @@ def _prefixed_key(kind: str, filename: str) -> str:
     """Build 'intro/filename.mp3', 'detail/ID.mp3', etc."""
     return f"{AUDIO_PREFIXES[kind]}/{filename}"
 
-def _chunked(seq, size: int):
-    for i in range(0, len(seq), size):
-        yield seq[i:i+size]
-
 
 # ------------------------------------------------------------------------------
 # 🧽 Normalize names for filenames (used in intro MP3 filenames)
 # ------------------------------------------------------------------------------
+import unicodedata
+
 def normalize_for_filename(text: str) -> str:
-    return re.sub(r"\W", "", text.lower().replace(" ", "_").replace("-", "_"))
+    # strip accents, then normalize
+    t = unicodedata.normalize("NFKD", text)
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    t = t.lower().replace(" ", "_").replace("-", "_")
+    return re.sub(r"[^a-z0-9_]", "", t)
 
 # ------------------------------------------------------------------------------
 # 🌐 Async check if a file exists in Supabase Storage
@@ -149,7 +211,6 @@ async def measure_and_log(label: str, check_func):
 # ------------------------------------------------------------------------------
 # 🎧 Check for missing intro MP3s
 # ------------------------------------------------------------------------------
-# 🎧 Check for missing intro MP3s
 async def check_intro_mp3s(db: Session, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE):
     stmt = (
         select(TrackRanking, Decade.decade_name, Genre.genre_name)
@@ -157,163 +218,167 @@ async def check_intro_mp3s(db: Session, client: httpx.AsyncClient, *, language: 
         .join(Decade, DecadeGenre.decade_id == Decade.id)
         .join(Genre, DecadeGenre.genre_id == Genre.id)
     )
-    result = db.exec(stmt).all()
+    rows = db.exec(stmt).all()
 
     intro_bucket = _bucket_for(language, "intro")
 
-    # Prepare filename keys and missing text entries
-    intro_keys = []
+    # expected keys
+    expected_keys = []
     text_missing_entries = []
-
-    for ranking, decade, genre in result:
+    for ranking, decade, genre in rows:
         filename = f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{ranking.ranking:02}.mp3"
-        intro_keys.append(_prefixed_key("intro", filename))
-        logger.debug("🔎 Intro probe → bucket=%s key=%s", intro_bucket, intro_keys[-1])
-
-        # Check for missing/empty/null text
+        key = _prefixed_key("intro", filename)
+        expected_keys.append(key)
         if not ranking.intro or ranking.intro.strip().lower() == "null":
             text_missing_entries.append(f"{ranking.ranking:02} — {decade}, {genre}")
 
-    # Check missing MP3s (language-scoped bucket + intro/ prefix)
-    results = []
-    for batch in _chunked(intro_keys, 32):
-        # optional: log first few to verify shape
-        for k in batch[:3]:
-            logger.debug("🔎 Intro probe → bucket=%s key=%s", intro_bucket, k)
-        tasks = [file_exists_async(intro_bucket, key, client) for key in batch]
-        results.extend(await asyncio.gather(*tasks))
+    # existing keys via one list call
+    existing = await _list_keys(intro_bucket, "intro", client)
+    expected_set = set(expected_keys)
+    present = len(existing & expected_set)
+    missing_mp3s = sorted(k for k in expected_keys if k not in existing)
 
-    missing_mp3s = [key for key, exists in zip(intro_keys, results) if not exists]
+    # NEW: orphans (exist in storage but not expected)
+    orphans = sorted(existing - expected_set)
+    if orphans:
+        logger.info("🧹 %d intro orphan file(s) on storage not referenced by DB", len(orphans))
+        logger.debug("\n" + "\n".join(f"- {o}" for o in orphans[:100]))
 
-    # Logging missing MP3s
     if missing_mp3s:
-        logger.info(f"🛑 {len(missing_mp3s)} intro MP3(s) missing out of {len(intro_keys)} total:")
+        logger.info("🛑 %d intro MP3(s) missing out of %d (present: %d)", len(missing_mp3s), len(expected_keys), present)
         logger.debug("\n" + "\n".join(f"- {name}" for name in missing_mp3s[:100]))
     else:
-        logger.info("✅ All intro MP3s present — no missing files.")
+        logger.info("✅ All intro MP3s present — %d/%d", present, len(expected_keys))
 
-    total_rankings = len(result)
-
-    # Logging missing/empty intro texts
+    total_rankings = len(rows)
     if text_missing_entries:
-        logger.info(f"🛑 {len(text_missing_entries)} intro text(s) missing or invalid out of {total_rankings} total:")
+        logger.info("🛑 %d intro text(s) missing/invalid out of %d", len(text_missing_entries), total_rankings)
         logger.debug("\n" + "\n".join(f"- Rank {entry}" for entry in text_missing_entries))
     else:
-        logger.info(f"✅ All {total_rankings} intro text fields present and valid.")
+        logger.info("✅ All %d intro text fields present and valid.", total_rankings)
 
-    return missing_mp3s
+    stats = {
+        "expected": len(expected_keys),
+        "present": present,
+        "missing": len(missing_mp3s),
+        "orphans": len(orphans),
+    }
+    return missing_mp3s, stats
 
-# ------------------------------------------------------------------------------
-# 🎶 Check for missing detail MP3s
-# ------------------------------------------------------------------------------
-# 🎶 Check for missing detail MP3s
-async def check_detail_mp3s(tracks, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE):
+
+# ----------------------------------------------------------------------
+# 🎶 Check for missing detail MP3s (set-diff + stats)
+# ----------------------------------------------------------------------
+async def check_detail_mp3s(
+    tracks, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE
+) -> tuple[list[Track], dict[str, int]]:
     detail_tracks = [t for t in tracks if t.spotify_track_id]
 
-    # Check for missing or invalid detail text
-    text_missing = [
-        t for t in detail_tracks
-        if not t.detail or t.detail.strip().lower() == "null"
-    ]
-
+    # Text presence
+    text_missing = [t for t in detail_tracks if not t.detail or t.detail.strip().lower() == "null"]
     total_tracks = len(detail_tracks)
     if text_missing:
-        logger.info(f"🛑 {len(text_missing)} detail text(s) missing or invalid out of {total_tracks} total:")
+        logger.info("🛑 %d detail text(s) missing/invalid out of %d", len(text_missing), total_tracks)
         logger.debug("\n" + "\n".join(f"- {t.track_name} ({t.spotify_track_id})" for t in text_missing))
     else:
-        logger.info(f"✅ All {total_tracks} detail text fields present and valid.")
+        logger.info("✅ All %d detail text fields present and valid.", total_tracks)
 
-    # Now check for missing detail MP3s (language bucket + detail/ prefix)
+    # Expected keys
     detail_bucket = _bucket_for(language, "detail")
+    expected_map: dict[str, Track] = {}
+    for t in detail_tracks:
+        key = _prefixed_key("detail", f"{t.spotify_track_id}.mp3")
+        expected_map[key] = t
 
-    # 👇 precompute the storage keys (filename is the track id)
-    detail_keys = [_prefixed_key("detail", f"{t.spotify_track_id}.mp3") for t in detail_tracks]
+    # Existing keys (single list) and set-diff
+    existing = await _list_keys(detail_bucket, "detail", client)
+    expected_keys = set(expected_map.keys())
+    present = len(expected_keys & existing)
+    missing_pairs = [(expected_map[k], k) for k in expected_keys if k not in existing]
 
-    # existence checks (batched)
-    results = []
-    for batch in _chunked(detail_keys, 32):
-        for k in batch[:3]:
-            logger.debug("🔎 Detail probe → bucket=%s key=%s", detail_bucket, k)
-        tasks = [file_exists_async(detail_bucket, key, client) for key in batch]
-        results.extend(await asyncio.gather(*tasks))
-
-    # pair back up so we can log the exact key that’s missing
-    missing_pairs = [(t, key) for t, key, exists in zip(detail_tracks, detail_keys, results) if not exists]
+    # Orphans: present in storage but not expected
+    orphans = sorted(existing - expected_keys)
+    if orphans:
+        logger.info("🧹 %d detail orphan file(s) on storage not referenced by DB", len(orphans))
+        logger.debug("\n" + "\n".join(f"- {o}" for o in orphans[:100]))
 
     if missing_pairs:
-        # only print the first N for readability
         limit = 15
-        mp = list(missing_pairs)  # ensure sliceable/countable
-        total = len(mp)
-
         lines = []
-        for t, key in mp[:limit]:
+        for t, key in missing_pairs[:limit]:
             title = (t.track_name or "").ljust(30)
             artist = getattr(t, "artist_display_name", None) or "[unknown]"
             lines.append(f"- title: {title} artist: {artist} file: {detail_bucket}/{key}")
-
-        suffix = "\n… (truncated)" if total > limit else ""
+        suffix = "\n… (truncated)" if len(missing_pairs) > limit else ""
         logger.debug(
-            "🛑 %d detail MP3(s) missing (showing first %d):\n%s%s",
-            total, min(total, limit), "\n".join(lines), suffix
+            "🛑 %d detail MP3(s) missing (present: %d/%d):\n%s%s",
+            len(missing_pairs), present, len(expected_keys), "\n".join(lines), suffix
         )
     else:
-        logger.debug("✅ All detail MP3s present — no missing files.")
+        logger.debug("✅ All detail MP3s present — %d/%d", present, len(expected_keys))
 
-    logger.info(f"🎶 Detail MP3s checked: {len(results)}, missing: {len(missing_pairs)}")
+    logger.info(
+        "🎶 Detail MP3s expected: %d, present: %d, missing: %d",
+        len(expected_keys), present, len(missing_pairs)
+    )
 
-    # preserve previous return shape (list of Track objects)
-    return [t for (t, _key) in missing_pairs]
+    # Return (missing_tracks, stats)
+    stats = {
+        "expected": len(expected_keys),
+        "present":  present,
+        "missing":  len(missing_pairs),
+        "orphans":  len(orphans),
+    }
+    return [t for (t, _key) in missing_pairs], stats
 
 # -------------------------------------------------------------------
-# 🎤 Check for missing artist MP3s (concurrent + logs like detail)
+# 🎤 Check for missing artist MP3s (set-diff + stats)
 # -------------------------------------------------------------------
-# 🎤 Check for missing artist MP3s (concurrent + logs like detail)
-
 async def check_artist_mp3s(
     artists: list, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE
-) -> list:
-    """
-    Check which artists are missing TTS MP3 files in Supabase.
-    Returns a list of Artist objects that are missing files.
-    """
+) -> tuple[list[Artist], dict[str, int]]:
     valid_artists = [a for a in artists if a.spotify_artist_id]
     total_artists = len(valid_artists)
-
-    logger.info(f"🎤 Checking {total_artists} artist MP3s...")
+    logger.info("🎤 Checking %d artist MP3s...", total_artists)
 
     artist_bucket = _bucket_for(language, "artist")
-    artist_keys = [_prefixed_key("artist", f"{a.spotify_artist_id}.mp3") for a in valid_artists]
+    expected_map: dict[str, Artist] = {}
+    for a in valid_artists:
+        key = _prefixed_key("artist", f"{a.spotify_artist_id}.mp3")
+        expected_map[key] = a
 
-    results: list[bool] = []
+    existing = await _list_keys(artist_bucket, "artist", client)
+    expected_keys = set(expected_map.keys())
+    present = len(expected_keys & existing)
+    missing = [expected_map[k] for k in expected_keys if k not in existing]
 
-    # 🔄 batch requests to avoid timeouts / rate limits
-    for batch in _chunked(list(zip(valid_artists, artist_keys)), 32):
-        # optional: show first few keys for sanity
-        for a, k in batch[:3]:
-            logger.debug("🔎 Artist probe → bucket=%s key=%s (artist=%s)", artist_bucket, k, a.artist_name)
-        tasks = [file_exists_async(artist_bucket, k, client) for _, k in batch]
-        batch_results = await asyncio.gather(*tasks)
-        results.extend(batch_results)
-
-    missing = [a for a, exists in zip(valid_artists, results) if not exists]
+    # Orphans: present in storage but not expected
+    orphans = sorted(existing - expected_keys)
+    if orphans:
+        logger.info("🧹 %d artist orphan file(s) on storage not referenced by DB", len(orphans))
+        logger.debug("\n" + "\n".join(f"- {o}" for o in orphans[:100]))
 
     if missing:
-        logger.debug("🛑 Missing artist MP3s:")
+        preview = "\n".join(
+            f"- artist: {a.artist_name.ljust(30)}  ID: {a.spotify_artist_id}" for a in missing[:50]
+        )
         logger.debug(
-            "\n" + "\n".join(f"- artist: {a.artist_name.ljust(30)}  ID: {a.spotify_artist_id}" for a in missing)
+            "🛑 Missing artist MP3s (%d shown):\n%s%s",
+            min(len(missing), 50), preview, "" if len(missing) <= 50 else "\n… (truncated)"
         )
     else:
-        logger.debug("✅ All artist MP3s present — no missing files.")
+        logger.debug("✅ All artist MP3s present — %d/%d", present, total_artists)
 
-    logger.info(f"🎤 Artist MP3s checked: {total_artists}, missing: {len(missing)}")
+    logger.info("🎤 Artist MP3s expected: %d, present: %d, missing: %d",
+                total_artists, present, len(missing))
 
-    return missing
-
-# ------------------------------------------------------------------------------
-# 🔍 Master diagnostic function to gather all missing TTS data
-# ------------------------------------------------------------------------------
-# 🔍 Master diagnostic function to gather all missing TTS data
+    stats = {
+        "expected": len(expected_keys),
+        "present":  present,
+        "missing":  len(missing),
+        "orphans":  len(orphans),
+    }
+    return missing, stats
 async def get_missing_tts_info(
     db: Session,
     check_intro_mp3: bool = False,
@@ -321,50 +386,60 @@ async def get_missing_tts_info(
     check_artist_mp3: bool = False,
     language: str = DEFAULT_TTS_LANGUAGE,
 ):
-    # Load records from DB
-    tracks = db.exec(select(Track)).all()
-    artists = db.exec(select(Artist)).all()
+    # Load records
+    tracks   = db.exec(select(Track)).all()
+    artists  = db.exec(select(Artist)).all()
     rankings = db.exec(select(TrackRanking)).all()
 
-    # 🔤 Check for missing TEXT fields
-    missing_detail_text = [t for t in tracks if not t.detail or not t.detail.strip()]
-    missing_artist_desc = [a for a in artists if not a.artist_description or not a.artist_description.strip()]
-    missing_intro_text = [r for r in rankings if not r.intro or not r.intro.strip()]
+    # Text checks
+    missing_detail_text = [t for t in tracks   if not t.detail or not t.detail.strip()]
+    missing_artist_desc = [a for a in artists  if not a.artist_description or not a.artist_description.strip()]
+    missing_intro_text  = [r for r in rankings if not r.intro or not r.intro.strip()]
 
-    # 🔈 Check for missing MP3s (optional and async)
-    missing_intro_mp3 = []
-    missing_detail_mp3 = []
-    missing_artist_mp3 = []
+    # MP3 results + stats (defaults)
+    missing_intro_mp3:  list = []
+    missing_detail_mp3: list = []
+    missing_artist_mp3: list = []
+
+    intro_stats  = {"expected": 0, "present": 0, "missing": 0, "orphans": 0}
+    detail_stats = {"expected": 0, "present": 0, "missing": 0, "orphans": 0}
+    artist_stats = {"expected": 0, "present": 0, "missing": 0, "orphans": 0}
 
     async with httpx.AsyncClient() as client:
         if check_intro_mp3:
-            missing_intro_mp3 = await measure_and_log(
+            missing_intro_mp3, intro_stats = await measure_and_log(
                 "Intro MP3s", lambda: check_intro_mp3s(db, client, language=language)
             )
-
         if check_detail_mp3:
-            missing_detail_mp3 = await measure_and_log(
+            missing_detail_mp3, detail_stats = await measure_and_log(
                 "Detail MP3s", lambda: check_detail_mp3s(tracks, client, language=language)
             )
-
         if check_artist_mp3:
-            missing_artist_mp3 = await measure_and_log(
+            missing_artist_mp3, artist_stats = await measure_and_log(
                 "Artist MP3s", lambda: check_artist_mp3s(artists, client, language=language)
             )
 
-    return {
+    payload = {
         "missing_text": {
-            "track_detail": missing_detail_text,
+            "track_detail":       missing_detail_text,
             "artist_description": missing_artist_desc,
-            "ranking_intro": missing_intro_text,
+            "ranking_intro":      missing_intro_text,
         },
         "missing_mp3": {
-            "track_intro": missing_intro_mp3,
+            "track_intro":  missing_intro_mp3,
             "track_detail": missing_detail_mp3,
-            "artist_mp3": missing_artist_mp3,
-        }
+            "artist_mp3":   missing_artist_mp3,
+        },
+        "stats": {}
     }
+    if check_intro_mp3:
+        payload["stats"]["intro"] = intro_stats
+    if check_detail_mp3:
+        payload["stats"]["detail"] = detail_stats
+    if check_artist_mp3:
+        payload["stats"]["artist"] = artist_stats
 
+    return payload
 
 # ------------------------------------------------------------------------------
 # 📊 Utility: summary of decade-genre combinations with ranking counts

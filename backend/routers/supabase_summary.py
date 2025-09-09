@@ -14,6 +14,8 @@ logger = logging.getLogger("supabase_summary")
 
 router = APIRouter(prefix="/supabase", tags=["Supabase Summary"])
 
+
+
 # ── helpers (drop this near the top of your file) ─────────────────────────────
 def _canon_lang(code: str) -> str:
     """
