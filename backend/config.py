@@ -279,9 +279,9 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.load_json_track_file": "INFO",
     "backend.routers.validate_json": "INFO",
     "backend.routers.supabase_summary": "INFO",
-    "backend.routers.tts_intro": "DEBUG",
+    "backend.routers.tts_intro": "INFO",
     "backend.routers.tts_detail": "INFO",
-    "track_detail_locales": "DEBUG",
+    "track_detail_locales": "INFO",
     "backend.routers.supabase_loader": "INFO",
     "backend.routers.insert_specialty": "INFO",
     "backend.routers.generate_poprock": "INFO",
@@ -292,12 +292,12 @@ LOG_LEVELS_BY_MODULE = {
     # Utilities
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
-    "backend.utils.tts_diagnostics": "DEBUG",
+    "backend.utils.tts_diagnostics": "INFO",
     # Custom
     "backend.logging.track_logging": "INFO",
-    "tts_logger": "DEBUG",
+    "tts_logger": "INFO",
     "supabase_summary": "INFO",
-    "tts_diagnostics": "DEBUG",
+    "tts_diagnostics": "INFO",
     # Third-party
     "spotipy": "WARNING",
     "urllib3": "WARNING",

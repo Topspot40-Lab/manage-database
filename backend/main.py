@@ -29,6 +29,9 @@ from backend.routers.generate_poprock import router as poprock_router
 from backend.routers.generate_folk_acoustic import folk_router   # ← NEW
 from backend.routers.enrich_tv_themes import router as enrich_tv_router  # ← NEW
 from backend.routers.expand_tv_themes import router as expand_tv_router
+from backend.routers.collections import router as collections_router
+from backend.routers.collections_read import router as collections_read_router
+
 
 # Routers (modules we include with .router)
 from backend.routers import (
@@ -104,3 +107,5 @@ app.include_router(track_detail_locales.router,      prefix="/locales", tags=["t
 app.include_router(intros_locales.router,            prefix="/locales", tags=["intros-locales"])  # ← NEW
 app.include_router(enrich_tv_router)     # /enrich/tv-themes/{decade}  ← NEW
 app.include_router(expand_tv_router)
+app.include_router(collections_router)
+app.include_router(collections_read_router)
