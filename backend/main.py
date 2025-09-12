@@ -31,6 +31,8 @@ from backend.routers.enrich_tv_themes import router as enrich_tv_router  # ← N
 from backend.routers.expand_tv_themes import router as expand_tv_router
 from backend.routers.collections import router as collections_router
 from backend.routers.collections_read import router as collections_read_router
+from backend.routers.collections_generate import router as collections_generate_router
+
 
 
 # Routers (modules we include with .router)
@@ -109,3 +111,5 @@ app.include_router(enrich_tv_router)     # /enrich/tv-themes/{decade}  ← NEW
 app.include_router(expand_tv_router)
 app.include_router(collections_router)
 app.include_router(collections_read_router)
+# include routers (put near your other collections routers)
+app.include_router(collections_generate_router) # /collections/{slug}/generate-json
