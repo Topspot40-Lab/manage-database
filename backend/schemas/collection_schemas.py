@@ -1,48 +1,64 @@
 # backend/schemas/collection_schemas.py
 from __future__ import annotations
-from typing import List, Optional, Literal, Union
-from pydantic import BaseModel, Field
+from typing import List, Optional, Union
+from pydantic import BaseModel, Field, AliasChoices
 
-CollectionType = Literal["DECADE_GENRE", "SPECIALTY"]
+# ----- Collection -----
 
 class CollectionIn(BaseModel):
     name: str
     slug: str
-    type: CollectionType
-    notes: Optional[str] = None
+    intro: Optional[str] = None
+    type: Optional[str] = None  # legacy; accepted but ignored
 
-class TrackItemById(BaseModel):
-    ranking: int
+# ----- Import payload (track variants) -----
+
+class TrackItemBase(BaseModel):
+    ranking: int = Field(..., ge=1)
+    # Accept either "intro" (preferred) OR legacy "note" in requests
+    intro: Optional[str] = Field(default=None, validation_alias=AliasChoices("intro", "note"))
+
+class TrackItemById(TrackItemBase):
     trackId: int = Field(..., ge=1)
 
-class TrackItemByMeta(BaseModel):
-    ranking: int
+class TrackItemByMeta(TrackItemBase):
     title: str
     artistName: str
     year: Optional[int] = None
 
+class TrackItemBySpotifyId(TrackItemBase):
+    spotifyTrackId: str
+
+TrackItem = Union[TrackItemById, TrackItemBySpotifyId, TrackItemByMeta]
+
 class CollectionImportPayload(BaseModel):
     collection: CollectionIn
-    tracks: List[Union[TrackItemById, TrackItemByMeta]]
-    # Optional behaviors
+    tracks: List[TrackItem]
     dry_run: bool = False
-    strict: bool = False  # if True, fail whole import if any unresolved
+    strict: bool = False
+    replace: bool = False
+    skipResolve: bool = False
+
+# ----- Export shapes -----
 
 class CollectionExportTrack(BaseModel):
     ranking: int
     trackId: int
     title: str
-    artistName: str
+    artistName: Optional[str] = None
     year: Optional[int] = None
+    intro: Optional[str] = None  # always emit 'intro' in responses
 
 class CollectionExport(BaseModel):
     collection: CollectionIn
     tracks: List[CollectionExportTrack]
 
+# ----- Import result -----
+
 class ImportResult(BaseModel):
     collectionId: int
     inserted: int
     updated: int
-    unresolved: list[dict]
+    unresolved: List[dict]
     totalIncoming: int
     dry_run: bool

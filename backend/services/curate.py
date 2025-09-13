@@ -1,22 +1,23 @@
 # backend/services/curate.py
 from __future__ import annotations
 import json
+import logging
+from typing import List, Dict, Optional, TypedDict, Any
 
-# ... keep your PROMPTS and ALIASES and _resolve_theme exactly as we set them ...
-# at top of curate.py
-from typing import List, Dict, Optional, TypedDict
+from backend.services.xai_api_client import fetch_xai_tracks  # ✅ use your client
+
+logger = logging.getLogger("curate")
 
 class SeedTrack(TypedDict):
     title: str
     artist: str
     year: Optional[int]
 
-PROMPTS: dict[str, str] = {}  # replace with the full 16-prompt dict we wrote
+PROMPTS: dict[str, str] = {}  # fill with your 16 prompts when ready
 ALIASES: dict[str, str] = {"Protest & Social Anthems": "Protest & Social Justice"}
 
 def _resolve_theme(theme: str) -> str:
     return ALIASES.get(theme, theme)
-
 
 SEEDS: Dict[str, List[SeedTrack]] = {
     "Disney: Classics (pre-1988)": [
@@ -43,37 +44,30 @@ def _try_parse_json_array(text: str) -> List[Dict]:
     except Exception:
         return []
 
-def call_xai(prompt: str, max_items: int) -> List[Dict]:
+def _normalize_items(raw: Any) -> List[Dict[str, Any]]:
     """
-    Replace the try/except body with your real XAI client call.
-    The function must return a JSON-serializable list of dicts.
+    Accept a variety of shapes from XAI/test and normalize to a list of dicts
+    with keys: title, artist, year.
     """
-    try:
-        # Example shapes you might already have in your codebase:
-        # from backend.services.xai_client import chat_text
-        # raw_text = chat_text(system="You are a music curator.",
-        #                      user=prompt + f"\nReturn ONLY a JSON array, up to {max_items} items.")
-        # return _try_parse_json_array(raw_text)[:max_items]
+    if isinstance(raw, str):
+        # Maybe they returned a JSON array as a string
+        arr = _try_parse_json_array(raw)
+        if not arr:
+            return []
+        raw = arr
+
+    if isinstance(raw, dict):
+        # Allow {"tracks": [...]}
+        if "tracks" in raw and isinstance(raw["tracks"], list):
+            raw = raw["tracks"]
+        else:
+            return []
+
+    if not isinstance(raw, list):
         return []
-    except Exception:
-        return []
 
-def curate_tracks_via_xai(theme: str, max_items: int = 45, *, _lang: Optional[str] = None) -> List[Dict]:
-    theme = _resolve_theme(theme)
-    prompt = PROMPTS.get(theme)
-    if not prompt:
-        prompt = f"""
-Curate {max_items} definitive tracks for the theme "{theme}".
-Avoid karaoke, instrumental, tribute versions. Return JSON array: {{ "title", "artist", "year" }}.
-"""
-    raw = call_xai(prompt, max_items=max_items)
-
-    # Fallback to seeds if XAI returns nothing (helps you test end-to-end today)
-    if not raw and theme in SEEDS:
-        raw = SEEDS[theme][:max_items]
-
-    out: List[Dict] = []
-    for it in raw[:max_items]:
+    out: List[Dict[str, Any]] = []
+    for it in raw:
         if not isinstance(it, dict):
             continue
         title = (it.get("title") or "").strip()
@@ -82,3 +76,39 @@ Avoid karaoke, instrumental, tribute versions. Return JSON array: {{ "title", "a
         if title and artist:
             out.append({"title": title, "artist": artist, "year": year})
     return out
+
+def call_xai(prompt: str, max_items: int, *, test_file_number: int = 0) -> List[Dict]:
+    """
+    Uses your xai_api_client.fetch_xai_tracks() which:
+      - Calls the real XAI API when configured
+      - Or returns test JSON if test_file_number>0
+      - Or falls back to test files on error (if enabled in config)
+    Returns a normalized list[dict].
+    """
+    try:
+        raw = fetch_xai_tracks(prompt, test_file_number=test_file_number)
+        items = _normalize_items(raw)
+        logger.info("call_xai: got %d item(s) from xai/test", len(items))
+        return items[:max_items]
+    except Exception as e:
+        logger.exception("call_xai failed: %s", e)
+        return []
+
+def curate_tracks_via_xai(theme: str, max_items: int = 45, *, _lang: Optional[str] = None, test_file_number: int = 0) -> List[Dict]:
+    theme = _resolve_theme(theme)
+    prompt = PROMPTS.get(theme) or (
+        f'Curate {max_items} definitive tracks for the theme "{theme}". '
+        f'Avoid karaoke/tribute/instrumental versions. '
+        f'Return ONLY a JSON array of objects with keys: "title", "artist", "year".'
+    )
+
+    raw = call_xai(prompt, max_items=max_items, test_file_number=test_file_number)
+    source = "xai/test"
+
+    # Fallback to seeds if nothing came back
+    if not raw and theme in SEEDS:
+        raw = SEEDS[theme][:max_items]
+        source = "seed"
+
+    logger.info("curate_tracks_via_xai theme=%r source=%s returned=%d", theme, source, len(raw))
+    return raw

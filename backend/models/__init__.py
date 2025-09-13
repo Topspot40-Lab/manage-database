@@ -9,6 +9,10 @@ from .dbmodels import (
     TrackRankingLocale, TrackLocale, ArtistLocale, Language,
 )
 
+from .collection_models import (
+    Collection, CollectionTrackRanking, CollectionTrackRankingLocale,
+)
+
 __all__ = [
     # taxonomy / linking
     "Genre", "Decade", "DecadeGenre", "ArtistGenre",
@@ -16,4 +20,6 @@ __all__ = [
     "Artist", "Track", "TrackRanking",
     # locales
     "TrackRankingLocale", "TrackLocale", "ArtistLocale", "Language",
+    # collections
+    "Collection", "CollectionTrackRanking", "CollectionTrackRankingLocale",
 ]
