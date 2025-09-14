@@ -51,11 +51,31 @@ logger = logging.getLogger(__name__)
 setup_logging()
 logging.info(f"Starting TopSpot v{config.APP_VERSION} — Updated {config.LAST_UPDATED}")
 
+# ------------------------ Docs / Tag Metadata ------------------------
+TAGS_METADATA = [
+    {"name": "Meta",           "description": "Health, version, and misc app metadata."},
+    {"name": "JSON & Files",   "description": "Read/write JSON and saved-file helpers."},
+    {"name": "Playback",       "description": "Play tracks from JSON/DB (Spotify/local)."},
+    {"name": "TTS",            "description": "Intro/Detail/Artist speech synthesis & regen."},
+    {"name": "Generators",     "description": "Build/enrich data (XAI, Spotify, TV Themes)."},
+    {"name": "Locales",        "description": "ES/PT-BR texts and MP3 generation utilities."},
+    {"name": "Collections",    "description": "Collections import/read/generate pipelines."},
+    {"name": "Supabase/DB",    "description": "DB summaries, loaders, diagnostics."},
+]
+
 app = FastAPI(
     title="TopSpot API",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_tags=TAGS_METADATA,
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": 0,  # hide the Models panel
+        "defaultModelExpandDepth": 0,    # collapse schemas on each endpoint
+        "displayRequestDuration": True,  # show request timings
+        "persistAuthorization": True,    # keep auth between reloads
+        "docExpansion": "list",          # show tag list; endpoints collapsed
+    },
 )
 
 print("🔄 main.py loaded (FastAPI starting up)")
@@ -64,52 +84,58 @@ def log_step_test():
     list(map(lambda name: (logging.getLogger(name).debug(f"{name} — DEBUG test (should NOT appear at INFO level)"),
                            logging.getLogger(name).info(f"{name} — INFO test (should appear at INFO level)")),
              ["STEP_1", "STEP_1.A", "STEP_1.B", "STEP_1.B.1", "STEP_1.C"]))
-
-@app.get("/")
+@app.get("/", tags=["Meta"])
 def read_root():
     log_step_test()
     return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator🐴"}
 
-@app.get("/health")
+@app.get("/health", tags=["Meta"], include_in_schema=False)
+
 def health():
     return {"status": "ok"}
 
-
-@app.get("/version", summary="Get TopSpot version info")
+@app.get("/version", summary="Get TopSpot version info", tags=["Meta"])
 def get_version():
     return {"app_version": config.APP_VERSION, "last_updated": config.LAST_UPDATED}
 
-# ❗ actually expose this endpoint
-@app.get("/auth/callback")
+@app.get("/auth/callback", tags=["Meta"])
 def auth_callback(code: str = Query(...)):
     logger.info(f"🔁 Received auth callback with code: {code}")
     return {"message": "✅ Auth callback handled"}
 
-# ------------------------ Include Routers ------------------------
 
-# Generic / JSON / playback / TTS
-app.include_router(json_router)
-app.include_router(save_router)
-app.include_router(playback_router, prefix="/json")
-app.include_router(intro_router)
-app.include_router(detail_router)
-app.include_router(artist_router)
-app.include_router(tts_regen_router)
-# app.include_router(specialty_insert_router, prefix="/json/insert")
-app.include_router(poprock_router)
-app.include_router(folk_router)  # ← NEW: /generate/folk-acoustic/build
+# ------------------------ Include Routers (organized + tagged) ------------------------
+# 1) Core JSON / Files / Playback / TTS
+app.include_router(json_router, tags=["JSON & Files"])
+app.include_router(save_router, tags=["JSON & Files"])
 
-# Supabase utilities
-app.include_router(supabase_summary.router)
-app.include_router(supabase_loader.router)
-# Locales group (keep them together under /locales for clean Swagger)
-app.include_router(locales_router.router,            prefix="/locales", tags=["locales"])
-app.include_router(artist_locales.router,            prefix="/locales", tags=["artist-locales"])
-app.include_router(track_detail_locales.router,      prefix="/locales", tags=["track-detail-locales"])
-app.include_router(intros_locales.router,            prefix="/locales", tags=["intros-locales"])  # ← NEW
-app.include_router(enrich_tv_router)     # /enrich/tv-themes/{decade}  ← NEW
-app.include_router(expand_tv_router)
-app.include_router(collections_router)
-app.include_router(collections_read_router)
-# include routers (put near your other collections routers)
-app.include_router(collections_generate_router) # /collections/{slug}/generate-json
+# Playback — choose ONE variant to avoid double "/json"
+# (Use this if the router already defines prefix="/json" internally)
+app.include_router(playback_router, tags=["Playback"])
+# (Else) app.include_router(playback_router, prefix="/json", tags=["Playback"])
+
+app.include_router(intro_router,     tags=["TTS"])
+app.include_router(detail_router,    tags=["TTS"])
+app.include_router(artist_router,    tags=["TTS"])
+app.include_router(tts_regen_router, tags=["TTS"])
+
+# 2) Generators / Enrichers
+app.include_router(poprock_router,   tags=["Generators"])
+app.include_router(folk_router,      tags=["Generators"])      # /generate/folk-acoustic/build
+app.include_router(enrich_tv_router, tags=["Generators"])      # /enrich/tv-themes/{decade}
+app.include_router(expand_tv_router, tags=["Generators"])      # /expand/tv-themes/...
+
+# 3) Locales (routers already have /locales prefixes; don't add include-time prefix)
+app.include_router(locales_router.router,       tags=["Locales"])
+app.include_router(artist_locales.router,       tags=["Locales"])
+app.include_router(track_detail_locales.router, tags=["Locales"])
+app.include_router(intros_locales.router,       tags=["Locales"])
+
+# 4) Collections
+app.include_router(collections_router,          tags=["Collections"])
+app.include_router(collections_read_router,     tags=["Collections"])
+app.include_router(collections_generate_router, tags=["Collections"])
+
+# 5) Supabase / DB Utilities
+app.include_router(supabase_summary.router, tags=["Supabase/DB"])
+app.include_router(supabase_loader.router,  tags=["Supabase/DB"])
