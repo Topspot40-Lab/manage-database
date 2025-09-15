@@ -1,15 +1,17 @@
 # backend/main.py
+from __future__ import annotations
+
 import sys
-from pathlib import Path
 import io
 import logging
-logging.getLogger("backend.routers.collections_generate").setLevel(logging.DEBUG)
+from pathlib import Path
+
 # --- put the path fix FIRST, before any backend.* imports ---
 project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# stdout unicode (ok to keep; guard for environments without .buffer if you want)
+# ensure stdout handles UTF-8 (emojis etc.)
 sys.stdout = io.TextIOWrapper(getattr(sys.stdout, "buffer", sys.stdout), encoding="utf-8")
 
 from fastapi import FastAPI, Query
@@ -17,39 +19,44 @@ from fastapi import FastAPI, Query
 from backend import config
 from backend.logging_setup import setup_logging
 
-# Routers (specific)
+# ------------------------ Routers ------------------------
+
+# TTS
 from backend.routers.tts_intro import intro_router
 from backend.routers.tts_detail import detail_router
 from backend.routers.tts_artist import artist_router
-from backend.routers.play_json_track_by_rank import router as playback_router
 from backend.routers.tts_regenerator import router as tts_regen_router
+
+# JSON / Files / Playback
 from backend.routers import router as json_router
 from backend.router_saved_files import router as save_router
+from backend.routers.play_json_track_by_rank import router as playback_router
+
+# Generators / Enrichers
 from backend.routers.generate_poprock import router as poprock_router
-from backend.routers.generate_folk_acoustic import folk_router   # ← NEW
-from backend.routers.enrich_tv_themes import router as enrich_tv_router  # ← NEW
+from backend.routers.generate_folk_acoustic import folk_router
+from backend.routers.enrich_tv_themes import router as enrich_tv_router
 from backend.routers.expand_tv_themes import router as expand_tv_router
+
+# Collections
 from backend.routers.collections import router as collections_router
 from backend.routers.collections_read import router as collections_read_router
 from backend.routers.collections_generate import router as collections_generate_router
 
+# Locales
+from backend.routers import locales as locales_router
+from backend.routers import artist_locales
+from backend.routers import track_detail_locales
+from backend.routers import intros_locales
 
-
-# Routers (modules we include with .router)
-from backend.routers import (
-    supabase_summary,
-    supabase_loader,
-    locales as locales_router,
-    artist_locales,
-    track_detail_locales,
-    intros_locales,   # ← NEW
-)
+# NEW: reorganized upsert/import endpoints
+from backend.routers.upsert_json import router as upsert_router
 
 logger = logging.getLogger(__name__)
 
 # Set up logging BEFORE other logic
 setup_logging()
-logging.info(f"Starting TopSpot v{config.APP_VERSION} — Updated {config.LAST_UPDATED}")
+logger.info("Starting TopSpot v%s — Updated %s", config.APP_VERSION, config.LAST_UPDATED)
 
 # ------------------------ Docs / Tag Metadata ------------------------
 TAGS_METADATA = [
@@ -57,20 +64,21 @@ TAGS_METADATA = [
     {"name": "JSON & Files",   "description": "Read/write JSON and saved-file helpers."},
     {"name": "Playback",       "description": "Play tracks from JSON/DB (Spotify/local)."},
     {"name": "TTS",            "description": "Intro/Detail/Artist speech synthesis & regen."},
-    {"name": "Generators",     "description": "Build/enrich data (XAI, Spotify, TV Themes)."},
+    {"name": "Generators",     "description": "Build/enrich data (xAI, Spotify, TV Themes)."},
     {"name": "Locales",        "description": "ES/PT-BR texts and MP3 generation utilities."},
     {"name": "Collections",    "description": "Collections import/read/generate pipelines."},
     {"name": "Supabase/DB",    "description": "DB summaries, loaders, diagnostics."},
+    {"name": "Upsert/Import",  "description": "Import & upsert JSON track data into DB."},
 ]
 
 app = FastAPI(
     title="TopSpot API",
-    version="0.1.0",
+    version=config.APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_tags=TAGS_METADATA,
     swagger_ui_parameters={
-        "defaultModelsExpandDepth": 0,  # hide the Models panel
+        "defaultModelsExpandDepth": 0,   # hide the Models panel
         "defaultModelExpandDepth": 0,    # collapse schemas on each endpoint
         "displayRequestDuration": True,  # show request timings
         "persistAuthorization": True,    # keep auth between reloads
@@ -80,17 +88,12 @@ app = FastAPI(
 
 print("🔄 main.py loaded (FastAPI starting up)")
 
-def log_step_test():
-    list(map(lambda name: (logging.getLogger(name).debug(f"{name} — DEBUG test (should NOT appear at INFO level)"),
-                           logging.getLogger(name).info(f"{name} — INFO test (should appear at INFO level)")),
-             ["STEP_1", "STEP_1.A", "STEP_1.B", "STEP_1.B.1", "STEP_1.C"]))
+# ------------------------ Meta ------------------------
 @app.get("/", tags=["Meta"])
 def read_root():
-    log_step_test()
-    return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator🐴"}
+    return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator 🐴"}
 
 @app.get("/health", tags=["Meta"], include_in_schema=False)
-
 def health():
     return {"status": "ok"}
 
@@ -100,19 +103,16 @@ def get_version():
 
 @app.get("/auth/callback", tags=["Meta"])
 def auth_callback(code: str = Query(...)):
-    logger.info(f"🔁 Received auth callback with code: {code}")
+    logger.info("🔁 Received auth callback with code: %s", code)
     return {"message": "✅ Auth callback handled"}
-
 
 # ------------------------ Include Routers (organized + tagged) ------------------------
 # 1) Core JSON / Files / Playback / TTS
 app.include_router(json_router, tags=["JSON & Files"])
 app.include_router(save_router, tags=["JSON & Files"])
 
-# Playback — choose ONE variant to avoid double "/json"
-# (Use this if the router already defines prefix="/json" internally)
+# Playback — choose ONE variant to avoid double "/json" (this router already has its own prefix)
 app.include_router(playback_router, tags=["Playback"])
-# (Else) app.include_router(playback_router, prefix="/json", tags=["Playback"])
 
 app.include_router(intro_router,     tags=["TTS"])
 app.include_router(detail_router,    tags=["TTS"])
@@ -137,5 +137,9 @@ app.include_router(collections_read_router,     tags=["Collections"])
 app.include_router(collections_generate_router, tags=["Collections"])
 
 # 5) Supabase / DB Utilities
+from backend.routers import supabase_summary, supabase_loader
 app.include_router(supabase_summary.router, tags=["Supabase/DB"])
 app.include_router(supabase_loader.router,  tags=["Supabase/DB"])
+
+# 6) Upsert / Import (new package)
+app.include_router(upsert_router, tags=["JSON & Files"])

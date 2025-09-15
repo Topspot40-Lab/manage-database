@@ -1,15 +1,24 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import UniqueConstraint, CheckConstraint
+from sqlalchemy import UniqueConstraint, CheckConstraint, Column, ForeignKey
 
-if TYPE_CHECKING:
-    # Simple stubs so the type checker knows these names exist.
-    # No runtime effect; not imported/circular.
-    class Collection(SQLModel): ...
-    class CollectionTrackRankingLocale(SQLModel): ...
+
+class Collection(SQLModel, table=True):
+    __tablename__ = "collection"
+    __table_args__ = (UniqueConstraint("slug", name="uq_collection_slug"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    slug: str = Field(index=True)
+    intro: Optional[str] = None
+
+    rankings: List["CollectionTrackRanking"] = Relationship(
+        back_populates="collection",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
 
 class CollectionTrackRanking(SQLModel, table=True):
     __tablename__ = "collection_track_ranking"
@@ -21,19 +30,22 @@ class CollectionTrackRanking(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    # Works with recent SQLModel: ondelete + foreign_key + index
+    # Apply ondelete to the ForeignKey via sa_column
     collection_id: int = Field(
-        foreign_key="collection.id",
-        ondelete="CASCADE",
-        index=True,
-        nullable=False,
+        sa_column=Column(
+            ForeignKey("collection.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
     )
     track_id: int = Field(
-        foreign_key="track.id",
-        ondelete="CASCADE",
-        index=True,
-        nullable=False,
+        sa_column=Column(
+            ForeignKey("track.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
     )
+
     ranking: int = Field(index=True)
     intro: Optional[str] = None
 
@@ -42,3 +54,26 @@ class CollectionTrackRanking(SQLModel, table=True):
         back_populates="ranking",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
+
+
+class CollectionTrackRankingLocale(SQLModel, table=True):
+    __tablename__ = "collection_track_ranking_locale"
+    __table_args__ = (
+        UniqueConstraint("collection_track_ranking_id", "lang", name="uq_ctr_locale"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    collection_track_ranking_id: int = Field(
+        sa_column=Column(
+            ForeignKey("collection_track_ranking.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+
+    lang: str
+    intro_text: str
+    tts_key: Optional[str] = None
+
+    ranking: "CollectionTrackRanking" = Relationship(back_populates="locales")
