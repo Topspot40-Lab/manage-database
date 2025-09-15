@@ -2,13 +2,13 @@ from fastapi import APIRouter, HTTPException, Path, Depends, Query
 from sqlmodel import Session, select
 import logging, sqlalchemy
 from sqlalchemy import and_, delete, func
-from datetime import datetime
 
 from backend.utils.mode_utils import parse_mode_flag
 from backend.database import get_db
-from backend.models import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
+from backend.models.dbmodels import Genre, Decade, DecadeGenre, Artist, ArtistGenre, Track, TrackRanking
 from backend.utils.json_helpers import load_full_json_file
 from backend.services.supabase_storage import delete_intro_mp3_files_for_combo
+from backend.utils.datetime_utils import parse_dt_utc
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["json-upsert"])
@@ -20,16 +20,6 @@ def _norm_key(s: str | None) -> str:
     # key for maps: strip + lowercase
     return (s or "").strip().lower()
 
-def _parse_dt(val):
-    if not val:
-        return None
-    if isinstance(val, datetime):
-        return val
-    try:
-        # tolerant ISO parse; extend if you have other formats
-        return datetime.fromisoformat(str(val).replace("Z", "+00:00"))
-    except Exception:
-        return None
 
 @router.post("/upsert-json-and-reset/{decade}/{genre}")
 async def upsert_json_and_reset(
@@ -187,8 +177,6 @@ async def upsert_json_and_reset(
                         and_(func.lower(Track.track_name) == name.lower(), Track.artist_id == artist_id)
                     )).first()
 
-
-
                 feat_sid  = _norm(t.get("featured_artist_sid") or t.get("featuredArtistSid"))
                 feat_name = _norm(t.get("featured_artist_name") or t.get("featuredArtistName"))
                 feat_id   = _resolve_artist_id(feat_sid, feat_name)
@@ -204,9 +192,11 @@ async def upsert_json_and_reset(
                     track_obj.album_artwork       = t.get("album_artwork") or t.get("albumArtwork")
                     track_obj.year_released       = t.get("year_released") or t.get("yearReleased")
                     track_obj.is_explicit         = t.get("is_explicit") or t.get("isExplicit")
-                    track_obj.created_at          = t.get("created_at") or t.get("createdAt")
+                    track_obj.created_at          = parse_dt_utc(t.get("created_at") or t.get("createdAt"))
                     track_obj.album_name          = t.get("album_name") or t.get("albumName")
-                    track_obj.mode_flag           = parsed_flag.value if parsed_flag else track_obj.mode_flag
+                    mf_val = getattr(parsed_flag, "value", parsed_flag)
+                    if mf_val:
+                        track_obj.mode_flag = mf_val
                     if (not preserve_detail) or not _norm(track_obj.detail):
                         track_obj.detail = t.get("detail")
                 else:
@@ -221,13 +211,14 @@ async def upsert_json_and_reset(
                         album_artwork=t.get("album_artwork") or t.get("albumArtwork"),
                         year_released=t.get("year_released") or t.get("yearReleased"),
                         is_explicit=t.get("is_explicit") or t.get("isExplicit"),
-                        created_at=t.get("created_at") or t.get("createdAt"),
+                        created_at=parse_dt_utc(t.get("created_at") or t.get("createdAt")),
                         detail=t.get("detail"),
                         album_name=t.get("album_name") or t.get("albumName"),
-                        mode_flag=(parsed_flag.value if parsed_flag else None),
+                        mode_flag=(getattr(parsed_flag, "value", parsed_flag) or None),
                     )
                     db.add(track_obj); db.flush()
                     logger.info("Added track: %s", name)
+
             # 6) Rankings
             create_missing_from_rankings = True
 
@@ -239,11 +230,17 @@ async def upsert_json_and_reset(
                 raise HTTPException(500, "TrackRanking model has neither 'rank' nor 'ranking' attribute")
 
             if replace_rankings:
-                # NOTE: unique index is (decade_genre_id, track_id), not including tracklist_id,
-                # so deleting by decade_genre_id alone is correct if you want a full rebuild.
-                res = db.exec(delete(TrackRanking).where(TrackRanking.decade_genre_id == decade_genre.id))
+                res = db.exec(
+                    delete(TrackRanking).where(
+                        (TrackRanking.decade_genre_id == decade_genre.id) &
+                        (TrackRanking.tracklist_id == tracklist_id)
+                    )
+                )
                 try:
-                    logger.info("Deleted %s existing rankings for combo %s", res.rowcount, decade_genre.id)
+                    logger.info(
+                        "Deleted %s existing rankings for combo=%s tracklist_id=%s",
+                        getattr(res, "rowcount", "?"), decade_genre.id, tracklist_id
+                    )
                 except Exception:
                     pass
 
@@ -278,7 +275,7 @@ async def upsert_json_and_reset(
                         continue
 
                     spotify_tid = _norm(r.get("track_id") or r.get("spotify_track_id") or r.get("spotifyTrackId"))
-                    created_at = _parse_dt(r.get("created_at") or r.get("createdAt"))
+                    created_at = parse_dt_utc(r.get("created_at") or r.get("createdAt"))
                     intro_text = _norm(r.get("intro") or r.get("intro_text"))
 
                     # Resolve/create track (same logic you had)
@@ -292,7 +289,7 @@ async def upsert_json_and_reset(
                         artist_id = artist_map.get(_norm_key(aname))
                         if not artist_id and create_missing_from_rankings and aname:
                             new_artist = Artist(artist_name=aname)
-                            db.add(new_artist);
+                            db.add(new_artist)
                             db.flush()
                             artist_id = new_artist.id
                             db.add(ArtistGenre(artist_id=artist_id, genre_id=genre_obj.id))
@@ -302,9 +299,8 @@ async def upsert_json_and_reset(
                                 and_(func.lower(Track.track_name) == tname.lower(), Track.artist_id == artist_id)
                             )).first()
 
-                        # ↓↓↓ ADD THIS FALLBACK RIGHT HERE ↓↓↓
+                        # Fallback: name-only if unique
                         if not track_obj and tname:
-                            # try name-only; only use if it's unique
                             candidates = db.exec(
                                 select(Track).where(func.lower(Track.track_name) == tname.lower())
                             ).all()
@@ -314,12 +310,11 @@ async def upsert_json_and_reset(
                                 logger.warning(
                                     "Ambiguous track name '%s' across artists; skipping name-only match.", tname
                                 )
-                        # ↑↑↑ END FALLBACK ↑↑↑
 
                         if not track_obj and create_missing_from_rankings and (spotify_tid or (tname and artist_id)):
                             track_obj = Track(track_name=tname or "Unknown", artist_id=artist_id,
                                               spotify_track_id=spotify_tid or None)
-                            db.add(track_obj);
+                            db.add(track_obj)
                             db.flush()
 
                     if not track_obj:
@@ -338,11 +333,9 @@ async def upsert_json_and_reset(
                             if rank_val < current_best:
                                 # better rank wins; update fields
                                 existing[RANK_ATTR] = rank_val
-                                # replace intro/created_at if you want "best rank wins fully"
                                 existing["intro"] = intro_text if intro_text else existing.get("intro")
                                 existing["created_at"] = created_at or existing.get("created_at")
                             else:
-                                # keep current; optionally fill missing intro/created_at
                                 if (not existing.get("intro")) and intro_text:
                                     existing["intro"] = intro_text
                                 if (not existing.get("created_at")) and created_at:
@@ -399,7 +392,6 @@ async def upsert_json_and_reset(
     except Exception as e:
         logger.exception("Upsert failed")   # <— full traceback in logs
         raise HTTPException(500, f"Upsert failed: {e}")
-
 
     # 7) Storage cleanup (non-fatal if it fails)
     if reset_intro_mp3s:

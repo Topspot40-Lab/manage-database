@@ -246,25 +246,17 @@ TTS_PROFILES = {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 🪵 Logging configuration
+# 🪵 Logging configuration (module-only)
 # ─────────────────────────────────────────────────────────────────────────────
+# Root log level for modules not explicitly listed below (INFO/DEBUG/WARNING/ERROR)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_SUMMARY_ENABLED = env_bool("LOG_SUMMARY_ENABLED", False)
 
-LOG_LEVEL_OVERRIDES = {
-    # STEP 1
-    "STEP_1": "INFO", "STEP_1.A": "INFO", "STEP_1.B": "INFO", "STEP_1.C": "INFO",
-    # STEP 3
-    "STEP_3": "INFO", "STEP_3.A": "INFO", "STEP_3.B": "INFO",
-    # STEP 4
-    "STEP_4": "INFO", "STEP_4.A": "INFO", "STEP_4.B": "INFO", "STEP_4.C": "INFO", "STEP_4.D": "INFO", "STEP_4.E": "INFO",
-    # Remaining
-    "STEP_5": "INFO", "STEP_6": "INFO", "STEP_7": "INFO", "STEP_8": "INFO",
-    "STEP_9": "INFO", "STEP_9.A": "INFO", "STEP_9.B": "INFO", "STEP_9.C": "INFO",
-    "STEP_10": "INFO", "STEP_11": "INFO",
-}
-STEP_LOG_LEVELS = LOG_LEVEL_OVERRIDES
+# Optional: force specific loggers to DEBUG via comma-separated env
+#   e.g., DEBUG_LOGGERS="backend.services.xai_descriptions,backend.routers.collections_generate"
+DEBUG_LOGGERS = [s.strip() for s in (os.getenv("DEBUG_LOGGERS") or "").split(",") if s.strip()]
 
+# Per-module level overrides
+# You can still drive some via env: e.g. DB_QUERIES_LOG_LEVEL in your file above
 LOG_LEVELS_BY_MODULE = {
     # Core services
     "backend.services.spotify_service": "INFO",
@@ -273,6 +265,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.xai_service": "INFO",
     "backend.services.xai_api_client": "INFO",
     "backend.services.supabase_playback": "INFO",
+
     # Routers
     "backend.routers.generate_json": "INFO",
     "backend.routers.insert_json": "INFO",
@@ -281,34 +274,35 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.supabase_summary": "INFO",
     "backend.routers.tts_intro": "INFO",
     "backend.routers.tts_detail": "INFO",
-    "track_detail_locales": "INFO",
     "backend.routers.supabase_loader": "INFO",
     "backend.routers.insert_specialty": "INFO",
     "backend.routers.generate_poprock": "INFO",
     "backend.routers.llm_client": "INFO",
+    "backend.routers.collections_generate": os.getenv("LOG_LEVEL_COLLECTIONS_GENERATE", LOG_LEVEL),
 
-    # Services (add db_queries here, env-driven)
+    # Services driven by env
     "backend.services.db_queries": DB_QUERIES_LOG_LEVEL,
-    # Utilities
+
+    # Utilities / custom
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
     "backend.utils.tts_diagnostics": "INFO",
-    # Custom
     "backend.logging.track_logging": "INFO",
     "tts_logger": "INFO",
     "supabase_summary": "INFO",
     "tts_diagnostics": "INFO",
-    # Third-party
+
+    # Third-party noise control
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",
     "httpx": "WARNING",
 }
 
+# Handlers/format adornments (used by logging_setup)
 LOG_FILE_ENABLED = env_bool("LOG_FILE_ENABLED", True)
 LOG_COLOR_ENABLED = env_bool("LOG_COLOR_ENABLED", True)
-LOG_FILE_PATH = "backend/logs/topspot.log"
-
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", "backend/logs/topspot.log")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🔎 Optional: tiny introspection for troubleshooting

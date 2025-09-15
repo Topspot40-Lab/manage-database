@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import io
 import logging
-
+logging.getLogger("backend.routers.collections_generate").setLevel(logging.DEBUG)
 # --- put the path fix FIRST, before any backend.* imports ---
 project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:

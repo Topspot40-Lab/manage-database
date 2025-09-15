@@ -10,7 +10,7 @@ from backend.utils.json_helpers import (
 )
 from backend.utils.mode_utils import ModeFlag
 
-print(">>> 🧙 set_mode_fields loaded fresh <<<")
+# print(">>> 🧙 set_mode_fields loaded fresh <<<")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🗺️ Key Mapping & Validation Rules
@@ -129,7 +129,7 @@ def get_mode_flag_detail_for_tts(track: dict) -> Optional[str]:
 # ─────────────────────────────────────────────────────────────────────────────
 # 🧠 Set Mode Flag, Display Name, and TTS Detail
 # ─────────────────────────────────────────────────────────────────────────────
-def set_mode_fields(track: dict, logger) -> dict:
+def set_mode_fields(track: dict) -> dict:
     """
     Given a track with raw artist_name, determine:
     - mode_flag (solo, duet, featured, group)

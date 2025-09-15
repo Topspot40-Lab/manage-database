@@ -4,7 +4,7 @@ from sqlalchemy import or_
 import logging
 
 from backend.database import get_db
-from backend.models import Artist
+from backend.models.dbmodels import Artist
 from backend.services.xai_track_detail import regenerate_missing_track_details
 from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 

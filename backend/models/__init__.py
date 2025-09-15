@@ -1,25 +1,6 @@
 # backend/models/__init__.py
 
-from .dbmodels import (
-    # taxonomy / linking
-    Genre, Decade, DecadeGenre, ArtistGenre,
-    # core entities
-    Artist, Track, TrackRanking,
-    # locales
-    TrackRankingLocale, TrackLocale, ArtistLocale, Language,
-)
+# Keep ONLY light, non-relational things here.
+from .enums import ModeFlag  # if you want this convenience
 
-from .collection_models import (
-    Collection, CollectionTrackRanking, CollectionTrackRankingLocale,
-)
-
-__all__ = [
-    # taxonomy / linking
-    "Genre", "Decade", "DecadeGenre", "ArtistGenre",
-    # core entities
-    "Artist", "Track", "TrackRanking",
-    # locales
-    "TrackRankingLocale", "TrackLocale", "ArtistLocale", "Language",
-    # collections
-    "Collection", "CollectionTrackRanking", "CollectionTrackRankingLocale",
-]
+__all__ = ["ModeFlag"]

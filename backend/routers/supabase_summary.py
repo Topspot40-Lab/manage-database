@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 import logging
 
-from backend.models import Artist, Track, Genre, Decade, DecadeGenre, TrackRanking
+from backend.models.dbmodels import Artist, Track, Genre, Decade, DecadeGenre, TrackRanking
 from backend.database import get_db
 from backend.utils.tts_diagnostics import (
     get_missing_tts_info,

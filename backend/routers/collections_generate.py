@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -12,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from requests import HTTPError as RequestsHTTPError
 from requests.exceptions import Timeout, RequestException
+from datetime import datetime, timezone
 
 # XAI error helpers (same pattern as decade-genre pipeline)
 from backend.services.xai_errors import XAIQuotaError, XAIRateLimitError
@@ -22,9 +22,9 @@ from backend.services.curate import curate_tracks_via_xai
 # Spotify enrich step (same function used in decade-genre flow)
 from backend.services.track_generator import enrich_tracks_with_spotify
 
-# XAI copy generators (same ones used in decade-genre flow)
-from backend.services.xai_descriptions import get_track_descriptions_from_xai
-from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
+from backend.services.xai_descriptions import get_collection_descriptions_from_xai
+from backend.services.collections_utils import build_ranking_from_tracks, validate_compact_ranks
+
 
 # Helpers consistent with your pipeline
 from backend.utils.naming import slug_underscore, normalize_language_code
@@ -33,6 +33,21 @@ from backend.services.spotify.missing_log import handle_missing_track, reassign_
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/collections", tags=["Collections (Generate JSON)"])
+
+from contextlib import contextmanager
+import backend.config as _cfg
+
+@contextmanager
+def temp_flags(**kw):
+    old = {k: getattr(_cfg, k) for k in kw}
+    try:
+        for k, v in kw.items():
+            setattr(_cfg, k, v)
+        yield
+    finally:
+        for k, v in old.items():
+            setattr(_cfg, k, v)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slug → Display name mapping (kept from your earlier stub)
@@ -125,7 +140,11 @@ class CollectionRequest(BaseModel):
 def generate_collection_json(
     request: CollectionRequest,
     max_step: int = Query(11, ge=1, le=11),
+    enable_rank_intro: Optional[bool] = Query(None),
+    enable_track_detail: Optional[bool] = Query(None),
+    enable_artist_detail: Optional[bool] = Query(None),
 ) -> Dict[str, Any]:
+
     try:
         logger.debug("🟡 STEP 0: Starting collections.generate-json")
 
@@ -258,44 +277,45 @@ def generate_collection_json(
         logger.debug("🔢 STEP 8: Reassign ranks")
         reassign_ranks(tracks)
 
+        # Build a ranking array from tracks (rank + spotify_track_id)
+        ranking = build_ranking_from_tracks(tracks)
+        ok, msg = validate_compact_ranks(ranking)
+        if not ok:
+            logger.warning(f"Ranking validation: {msg}")
+
         if max_step == 8:
             return {"message": "Stopped after STEP 8"}
 
+
         # ───────────────── STEP 9 ─────────────────
-        logger.debug("🖊 STEP 9: Add XAI descriptions (intro/detail) + optional artist bios")
-        # Prepare a minimal payload compatible with your XAI helper
-        payload_for_xai = {"tracks": tracks}
+        logger.debug("🖊 STEP 9: Add XAI descriptions (intro/detail/artist per flags)")
 
-        described = get_track_descriptions_from_xai(
-            track_data=payload_for_xai,
-            language=request.language,
-            decade="Collection",     # label for context
-            genre=theme,             # display theme as "genre" context
-        )
+        flag_kwargs = {}
+        if enable_rank_intro is not None: flag_kwargs["ENABLE_RANK_INTRO"] = enable_rank_intro
+        if enable_track_detail is not None: flag_kwargs["ENABLE_TRACK_DETAIL"] = enable_track_detail
+        if enable_artist_detail is not None: flag_kwargs["ENABLE_ARTIST_DETAIL"] = enable_artist_detail
 
-        if not described or "tracks" not in described or len(described["tracks"]) != len(tracks):
-            raise HTTPException(status_code=500, detail="Failed to generate track descriptions (intro/detail)")
+        def _run_xai():
+            return get_collection_descriptions_from_xai(
+                tracks,
+                language=lang_code,  # normalized "en"/"es"
+                slug=slug,
+                decade=None,
+                genre=theme,
+                ranking=ranking,  # maps intros to both tracks & ranking
+            )
+
+        if flag_kwargs:
+            with temp_flags(**flag_kwargs):
+                described = _run_xai()
+        else:
+            described = _run_xai()
+
+        if not described or "tracks" not in described:
+            raise HTTPException(status_code=500, detail="Failed to generate collection descriptions")
 
         tracks = described["tracks"]
-
-        # Optional: artist bios table then map onto tracks where helpful
-        try:
-            unique_artists = sorted({(t.get("artist_name") or "").strip() for t in tracks if t.get("artist_name")})
-            artist_rows = [{"artist_name": a} for a in unique_artists if a]
-            artist_described = get_artist_descriptions_from_xai(artist_rows, request.language) or []
-            bios = {
-                (a.get("artist_name") or "").strip().lower(): a.get("artist_description")
-                for a in artist_described if a.get("artist_name")
-            }
-            for t in tracks:
-                nm = (t.get("artist_name") or "").strip().lower()
-                if nm in bios and bios[nm]:
-                    t["artist_description"] = bios[nm]
-        except Exception as e:
-            logger.warning("Artist bios step skipped: %s", e)
-
-        if max_step == 9:
-            return {"message": "Stopped after STEP 9"}
+        ranking = described.get("track_ranking", ranking)
 
         # ───────────────── STEP 10 ─────────────────
         logger.debug("💾 STEP 10: Save JSON to data/json_files/collections/{slug}.json")
@@ -313,17 +333,28 @@ def generate_collection_json(
             base = t.get("track_name") or ""
             t["track_display_name"] = f"{base} (feat. {feat})" if feat else base
 
+        created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
         for t in tracks:
             _harmonize_mode_and_feature(t)
-
         out = {
             "collection": {
                 "name": theme,
                 "slug": slug,
                 "type": "COLLECTION",
-                "language": normalize_language_code(request.language),
-                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "language": lang_code,
+                "created_at": created_at,
             },
+            "trackRanking": [
+                {
+                    "rank": r.get("rank"),
+                    "spotifyTrackId": r.get("spotify_track_id"),
+                    "trackId": r.get("track_id"),  # ← add if present
+                    "intro": r.get("intro"),
+                }
+                for r in ranking
+            ],
+
             "tracks": [
                 {
                     "ranking": t.get("rank"),
@@ -333,10 +364,8 @@ def generate_collection_json(
                     "spotifyTrackId": t.get("spotify_track_id"),
                     "albumName": t.get("album_name"),
                     "albumArtUrl": t.get("album_art_url"),
-                    # new copy fields
                     "intro": t.get("intro"),
                     "detail": t.get("detail"),
-                    # optional helpers
                     "modeFlag": (t.get("mode_flag") or "").upper(),
                     "featuredArtist": t.get("featured_artist") or None,
                     "trackDisplayName": t.get("track_display_name"),
