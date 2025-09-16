@@ -67,7 +67,7 @@ from backend.routers import intros_locales
 
 # NEW: reorganized upsert/import endpoints
 from backend.routers.upsert_json import router as upsert_router
-
+from backend.routers.ads_scripts import router as ads_router
 logger = logging.getLogger(__name__)
 
 # Set up logging BEFORE other logic
@@ -161,4 +161,4 @@ app.include_router(supabase_loader.router,  tags=["Supabase/DB"])
 # 6) Upsert / Import (new package)
 app.include_router(upsert_router, tags=["Upsert/Import"])
 
-# 🚫 removed deprecated @app.on_event("startup") handler
+app.include_router(ads_router)
