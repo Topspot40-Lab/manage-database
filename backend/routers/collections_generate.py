@@ -6,12 +6,13 @@ import logging
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone  # ← moved here
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from requests import HTTPError as RequestsHTTPError
 from requests.exceptions import Timeout, RequestException
-from datetime import datetime, timezone
+from backend.services.spotify.enrich_artist_artwork import enrich_artist_table_with_spotify
 
 # XAI error helpers (same pattern as decade-genre pipeline)
 from backend.services.xai_errors import XAIQuotaError, XAIRateLimitError
@@ -24,7 +25,6 @@ from backend.services.track_generator import enrich_tracks_with_spotify
 
 from backend.services.xai_descriptions import get_collection_descriptions_from_xai
 from backend.services.collections_utils import build_ranking_from_tracks, validate_compact_ranks
-
 
 # Helpers consistent with your pipeline
 from backend.utils.naming import slug_underscore, normalize_language_code
@@ -47,7 +47,6 @@ def temp_flags(**kw):
     finally:
         for k, v in old.items():
             setattr(_cfg, k, v)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slug → Display name mapping (kept from your earlier stub)
@@ -152,8 +151,6 @@ def generate_collection_json(
         theme = _theme_from_slug(slug)
         lang_code = normalize_language_code(request.language)  # e.g., "en", "es"
 
-        now_dt = datetime.now()
-        is_test_mode = False  # keep simple; collections filenames are stable
 
         # ───────────────── STEP 1 ─────────────────
         logger.debug("✍️ STEP 1: Curating candidates from XAI")
@@ -286,6 +283,35 @@ def generate_collection_json(
         if max_step == 8:
             return {"message": "Stopped after STEP 8"}
 
+        # ───────────────── STEP 8.5 ─────────────────
+        logger.debug("🧭 STEP 8.5: Build artist table from tracks & enrich with Spotify artwork/IDs")
+
+        # Build a unique artist list from tracks (best-effort IDs from track enrichment)
+        artist_tbl = []
+        seen_artists = set()
+        for t in tracks:
+            name = (t.get("artist_name") or "").strip()
+            if not name:
+                continue
+            k = name.lower()
+            if k in seen_artists:
+                continue
+            seen_artists.add(k)
+            artist_tbl.append({
+                "artist_name": name,
+                # Try to carry over any IDs that the track enrichment already found
+                "spotify_artist_id": t.get("spotify_artist_id") or t.get("artist_id") or None,
+                "artist_artwork": None,
+                "artist_description": None,  # will merge after XAI
+            })
+
+        # Fill artist_artwork (and missing spotify_artist_id) from Spotify
+        artist_tbl = enrich_artist_table_with_spotify(
+            artist_table=artist_tbl,
+            tracks_after_step3=tracks,      # we have enriched tracks here
+            fill_missing_ids_via_search=True
+        )
+
 
         # ───────────────── STEP 9 ─────────────────
         logger.debug("🖊 STEP 9: Add XAI descriptions (intro/detail/artist per flags)")
@@ -317,8 +343,35 @@ def generate_collection_json(
         tracks = described["tracks"]
         ranking = described.get("track_ranking", ranking)
 
+        # Merge artist descriptions (if any) into the artist table
+        # Priority: explicit artist table from XAI → per-track artist_description fields
+        desc_by_name = {}
+        # If your get_collection_descriptions_from_xai returns artist_table, prefer it:
+        if described.get("artist_table"):
+            for a in described["artist_table"]:
+                nm = (a.get("artist_name") or "").strip().lower()
+                if nm and a.get("artist_description"):
+                    desc_by_name[nm] = a["artist_description"]
+
+        # Fallback: scrape from the track items themselves
+        for t in tracks:
+            nm = (t.get("artist_name") or "").strip().lower()
+            ad = t.get("artist_description")
+            if nm and ad and nm not in desc_by_name:
+                desc_by_name[nm] = ad
+
+        # Apply to artist_tbl
+        for a in artist_tbl:
+            nm = (a.get("artist_name") or "").strip().lower()
+            if nm in desc_by_name and not a.get("artist_description"):
+                a["artist_description"] = desc_by_name[nm]
+
+
+
         # ───────────────── STEP 10 ─────────────────
         logger.debug("💾 STEP 10: Save JSON to data/json_files/collections/{slug}.json")
+        # Harmonize mode flag vs featured artist (parity with decade-genre save step)
+
         # Harmonize mode flag vs featured artist (parity with decade-genre save step)
         def _harmonize_mode_and_feature(t: dict) -> None:
             feat = (t.get("featured_artist") or "")
@@ -333,28 +386,81 @@ def generate_collection_json(
             base = t.get("track_name") or ""
             t["track_display_name"] = f"{base} (feat. {feat})" if feat else base
 
-        created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
         for t in tracks:
             _harmonize_mode_and_feature(t)
+
+        # Build a unique artist list from tracks (best-effort if IDs/artwork aren’t present here)
+        # Use the enriched artist table (preserves spotify ids + artwork + descriptions)
+        artists_legacy = [
+            {
+                "artist_name": a.get("artist_name"),
+                "spotify_artist_id": a.get("spotify_artist_id"),
+                "artist_artwork": a.get("artist_artwork"),
+                "artist_description": a.get("artist_description"),
+            }
+            for a in artist_tbl
+        ]
+
+        # Legacy track array (snake_case) expected by the upsert
+        created_iso = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        tracks_legacy = []
+        for t in tracks:
+            mf = (t.get("mode_flag") or "").upper() or None
+            tracks_legacy.append({
+                "track_name": t.get("track_name"),
+                "artist_name": t.get("artist_name"),
+                "spotify_track_id": t.get("spotify_track_id"),
+                "duration_ms": t.get("duration_ms") or None,
+                "popularity": t.get("popularity") or None,
+                "album_artwork": t.get("album_art_url"),
+                "year_released": t.get("year_released"),
+                "is_explicit": t.get("is_explicit"),
+                "created_at": created_iso,  # UTC ISO seconds
+                "detail": t.get("detail"),
+                "album_name": t.get("album_name"),
+                "mode_flag": mf,
+                # Featured artist info if you use it later; keep names, SID unknown here
+                "featured_artist_name": t.get("featured_artist") or None,
+                "featured_artist_sid": None,
+                # Optional display helpers
+                "artist_display_name": t.get("artist_name"),
+            })
+
+        # Legacy ranking array (snake_case) expected by the upsert
+        rankings_legacy = []
+        for r in ranking:
+            rankings_legacy.append({
+                "rank": r.get("rank"),
+                "spotify_track_id": r.get("spotify_track_id"),
+                "track_id": r.get("track_id"),  # keep if present
+                "intro": r.get("intro"),  # XAI intro per rank if you set it
+                "created_at": created_iso,
+            })
+
         out = {
             "collection": {
                 "name": theme,
                 "slug": slug,
                 "type": "COLLECTION",
-                "language": lang_code,
-                "created_at": created_at,
+                "language": normalize_language_code(request.language),
+                "created_at": created_iso,
             },
+
+            # ✅ Legacy sections for the upsert endpoint
+            "artist": artists_legacy,  # list of artists
+            "track": tracks_legacy,  # list of tracks (snake_case)
+            "track_ranking": rankings_legacy,
+
+            # ✅ Keep your current camelCase consumers happy too
             "trackRanking": [
                 {
                     "rank": r.get("rank"),
                     "spotifyTrackId": r.get("spotify_track_id"),
-                    "trackId": r.get("track_id"),  # ← add if present
+                    "trackId": r.get("track_id"),
                     "intro": r.get("intro"),
                 }
                 for r in ranking
             ],
-
             "tracks": [
                 {
                     "ranking": t.get("rank"),

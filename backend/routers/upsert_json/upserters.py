@@ -13,6 +13,11 @@ from backend.utils.datetime_utils import parse_dt_utc
 
 logger = logging.getLogger(__name__)
 
+# ── Local error type to avoid FastAPI coupling
+class SchemaError(Exception):
+    """Raised when the DB schema shape is incompatible with expectations."""
+    pass
+
 # ── Shared string helpers (local)
 def _norm(s: str | None) -> str:
     return (s or "").strip()
@@ -199,7 +204,8 @@ def upsert_rankings(
     # Which attribute does TrackRanking use in this schema?
     RANK_ATTR = "rank" if hasattr(TrackRanking, "rank") else ("ranking" if hasattr(TrackRanking, "ranking") else None)
     if not RANK_ATTR:
-        raise HTTPException(500, "TrackRanking model has neither 'rank' nor 'ranking' attribute")
+        # <-- decoupled from FastAPI
+        raise SchemaError("TrackRanking model has neither 'rank' nor 'ranking' attribute")
 
     if replace_rankings:
         res = db.exec(

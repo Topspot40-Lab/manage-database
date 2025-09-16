@@ -5,10 +5,48 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlmodel import Session
 
 from backend.database import get_db
-from .service import upsert_json_and_reset_service
+from .service import (
+    upsert_json_and_reset_service,
+    upsert_collection_json_service,   # ✅ add this
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["JSON & Files"])
+
+
+@router.post("/collections/upsert-json-and-reset/{slug}")
+async def upsert_collection_json_and_reset(
+    slug: str = Path(..., description="Collection slug, e.g., power_ballads"),  # ✅ optional Path meta
+    replace_rankings: bool = Query(True),
+    reset_intro_mp3s: bool = Query(True),
+    preserve_intro_text: bool = Query(False),
+    preserve_detail: bool = Query(True),
+    preserve_artist_description: bool = Query(True),
+    tracklist_id: int = Query(1),
+    dry_run: bool = Query(False),
+    store_json_copy: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Upsert a collection JSON (data/json_files/collections/{slug}.json) as a virtual (decade='collections', genre='<name>')."""
+    try:
+        return await upsert_collection_json_service(
+            db=db,
+            slug=slug,
+            replace_rankings=replace_rankings,
+            reset_intro_mp3s=reset_intro_mp3s,
+            preserve_intro_text=preserve_intro_text,
+            preserve_detail=preserve_detail,
+            preserve_artist_description=preserve_artist_description,
+            tracklist_id=tracklist_id,
+            dry_run=dry_run,
+            store_json_copy=store_json_copy,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in collections/upsert-json-and-reset")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/upsert-json-and-reset/{decade}/{genre}")
 async def upsert_json_and_reset(
@@ -24,11 +62,9 @@ async def upsert_json_and_reset(
     store_json_copy: bool = Query(False, description="Upload JSON blob to Storage for auditing (optional)"),
     db: Session = Depends(get_db),
 ):
-    """
-    Thin HTTP layer: delegates the heavy lifting to service.py
-    """
+    """Upsert a decade/genre JSON from data/json_files/{decade}/{decade}_{genre}_en.json."""
     try:
-        result = await upsert_json_and_reset_service(
+        return await upsert_json_and_reset_service(
             db=db,
             decade=decade,
             genre=genre,
@@ -41,7 +77,6 @@ async def upsert_json_and_reset(
             dry_run=dry_run,
             store_json_copy=store_json_copy,
         )
-        return result
     except HTTPException:
         raise
     except Exception as e:

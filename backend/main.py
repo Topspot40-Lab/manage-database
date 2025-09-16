@@ -5,6 +5,7 @@ import sys
 import io
 import logging
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # --- put the path fix FIRST, before any backend.* imports ---
 project_root = Path(__file__).resolve().parent.parent
@@ -18,6 +19,21 @@ from fastapi import FastAPI, Query
 
 from backend import config
 from backend.logging_setup import setup_logging
+
+# ------------------------ Lifespan (startup/shutdown) ------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- runs at startup ---
+    log = logging.getLogger(__name__)
+    for r in app.routes:
+        try:
+            methods = ",".join(sorted(getattr(r, "methods", [])))
+        except Exception:
+            methods = ""
+        log.info("Route: %s  Methods: %s", getattr(r, "path", "?"), methods)
+    yield
+    # --- runs at shutdown ---
+    # (nothing to do here)
 
 # ------------------------ Routers ------------------------
 
@@ -78,12 +94,13 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_tags=TAGS_METADATA,
     swagger_ui_parameters={
-        "defaultModelsExpandDepth": 0,   # hide the Models panel
-        "defaultModelExpandDepth": 0,    # collapse schemas on each endpoint
-        "displayRequestDuration": True,  # show request timings
-        "persistAuthorization": True,    # keep auth between reloads
-        "docExpansion": "list",          # show tag list; endpoints collapsed
+        "defaultModelsExpandDepth": 0,
+        "defaultModelExpandDepth": 0,
+        "displayRequestDuration": True,
+        "persistAuthorization": True,
+        "docExpansion": "list",
     },
+    lifespan=lifespan,   # ✅ use lifespan, not @on_event
 )
 
 print("🔄 main.py loaded (FastAPI starting up)")
@@ -111,7 +128,7 @@ def auth_callback(code: str = Query(...)):
 app.include_router(json_router, tags=["JSON & Files"])
 app.include_router(save_router, tags=["JSON & Files"])
 
-# Playback — choose ONE variant to avoid double "/json" (this router already has its own prefix)
+# Playback — choose ONE variant to avoid double "/json"
 app.include_router(playback_router, tags=["Playback"])
 
 app.include_router(intro_router,     tags=["TTS"])
@@ -121,11 +138,11 @@ app.include_router(tts_regen_router, tags=["TTS"])
 
 # 2) Generators / Enrichers
 app.include_router(poprock_router,   tags=["Generators"])
-app.include_router(folk_router,      tags=["Generators"])      # /generate/folk-acoustic/build
-app.include_router(enrich_tv_router, tags=["Generators"])      # /enrich/tv-themes/{decade}
-app.include_router(expand_tv_router, tags=["Generators"])      # /expand/tv-themes/...
+app.include_router(folk_router,      tags=["Generators"])
+app.include_router(enrich_tv_router, tags=["Generators"])
+app.include_router(expand_tv_router, tags=["Generators"])
 
-# 3) Locales (routers already have /locales prefixes; don't add include-time prefix)
+# 3) Locales
 app.include_router(locales_router.router,       tags=["Locales"])
 app.include_router(artist_locales.router,       tags=["Locales"])
 app.include_router(track_detail_locales.router, tags=["Locales"])
@@ -142,4 +159,6 @@ app.include_router(supabase_summary.router, tags=["Supabase/DB"])
 app.include_router(supabase_loader.router,  tags=["Supabase/DB"])
 
 # 6) Upsert / Import (new package)
-app.include_router(upsert_router, tags=["JSON & Files"])
+app.include_router(upsert_router, tags=["Upsert/Import"])
+
+# 🚫 removed deprecated @app.on_event("startup") handler
