@@ -1,129 +1,131 @@
-"""
-Central logging configuration (module-only).
-- Console (optional color) + optional file logging.
-- Root level from env (LOG_LEVEL).
-- Per-module levels from config.LOG_LEVELS_BY_MODULE.
-- Extra DEBUG knobs via config.DEBUG_LOGGERS (comma-separated env).
-- STEP_* loggers are explicitly silenced if any remain in code.
-"""
+# backend/logging_setup.py
+from __future__ import annotations
 
 import os
 import sys
 import logging
 import logging.config
+import backend.config.logging_vars as lv  # <- all vars live here
 
-# ── Prefer logging cfg from backend.config.logging_cfg ───────────────────────
-from backend.config.logging_cfg import (
-    LOG_LEVEL, LOG_LEVELS_BY_MODULE,
-    LOG_FILE_ENABLED, LOG_COLOR_ENABLED, LOG_FILE_PATH,
-    DEBUG_LOGGERS,
-    # NEW Ads knobs
-    LOG_LEVEL_ADS, ADS_LOG_FILE_ENABLED, ADS_LOG_FILE_PATH,
-)
-
-# App metadata (fallback to dev if not available)
+# Optional app metadata (best-effort)
 try:
     from backend.config.app_cfg import APP_VERSION, LAST_UPDATED
 except Exception:
     APP_VERSION, LAST_UPDATED = "dev", "n/a"
 
-# Lightweight ANSI color support (no hard dependency)
+
 def _console_formatter():
+    """
+    Return a console formatter. If LOG_COLOR_ENABLED is True and colorama is
+    available, it applies very light colorization (placeholders by default).
+    """
     base_fmt = "%(asctime)s %(levelname)s [%(name)s] %(module)s.%(funcName)s:%(lineno)d — %(message)s"
     date_fmt = "%Y-%m-%dT%H:%M:%S"
-    if LOG_COLOR_ENABLED:
+    if lv.LOG_COLOR_ENABLED:
         try:
-            from colorama import init as _cinit, Fore, Style
+            from colorama import init as _cinit, Fore, Style  # type: ignore
             _cinit()
 
             class ColorFormatter(logging.Formatter):
                 COLORS = {
-                    "DEBUG": "",            # Fore.CYAN
-                    "INFO": "",             # Fore.GREEN
-                    "WARNING": "",          # Fore.YELLOW
-                    "ERROR": "",            # Fore.RED
-                    "CRITICAL": "",         # Fore.MAGENTA
+                    "DEBUG": "",      # e.g., Fore.CYAN
+                    "INFO": "",       # e.g., Fore.GREEN
+                    "WARNING": "",    # e.g., Fore.YELLOW
+                    "ERROR": "",      # e.g., Fore.RED
+                    "CRITICAL": "",   # e.g., Fore.MAGENTA
                 }
+
                 def format(self, record):
                     msg = super().format(record)
                     color = self.COLORS.get(record.levelname, "")
                     reset = Style.RESET_ALL if color else ""
                     return f"{color}{msg}{reset}"
+
             return ColorFormatter(base_fmt, datefmt=date_fmt)
         except Exception:
             pass
     return logging.Formatter(base_fmt, datefmt=date_fmt)
 
-def setup_logging() -> None:
-    handlers = {}
 
-    # Console handler
-    handlers["console"] = {
-        "class": "logging.StreamHandler",
-        "stream": sys.stdout,
-        "formatter": "console",
+def setup_logging() -> None:
+    """
+    Build and apply a dictConfig based on values in backend.config.logging_vars.
+    Call this *before* importing any routers or backend modules.
+    """
+    # ---------------- Handlers ----------------
+    handlers: dict[str, dict] = {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": sys.stdout,
+            "formatter": "console",
+            "level": str(lv.LOG_LEVEL).upper(),
+        }
     }
 
-    # Optional global file handler
-    if LOG_FILE_ENABLED:
-        os.makedirs(os.path.dirname(LOG_FILE_PATH) or ".", exist_ok=True)
+    if lv.LOG_FILE_ENABLED:
+        os.makedirs(os.path.dirname(lv.LOG_FILE_PATH) or ".", exist_ok=True)
         handlers["file"] = {
             "class": "logging.FileHandler",
-            "filename": LOG_FILE_PATH,
+            "filename": lv.LOG_FILE_PATH,
             "mode": "a",
             "encoding": "utf-8",
             "formatter": "standard",
+            "level": str(lv.LOG_LEVEL).upper(),
         }
 
-    # ── NEW: optional dedicated Ads file handler ─────────────────────────────
-    if ADS_LOG_FILE_ENABLED:
-        os.makedirs(os.path.dirname(ADS_LOG_FILE_PATH) or ".", exist_ok=True)
+    if lv.ADS_LOG_FILE_ENABLED:
+        os.makedirs(os.path.dirname(lv.ADS_LOG_FILE_PATH) or ".", exist_ok=True)
         handlers["ads_file"] = {
             "class": "logging.FileHandler",
-            "filename": ADS_LOG_FILE_PATH,
+            "filename": lv.ADS_LOG_FILE_PATH,
             "mode": "a",
             "encoding": "utf-8",
             "formatter": "standard",
+            "level": str(lv.LOG_LEVEL_ADS).upper(),
         }
 
-    # Ads logger names we want to capture specially
+    # Which logger names count as "ads" (get extra ads_file if enabled)
     ADS_LOGGER_NAMES = {
         "backend.routers.ads_scripts",
         "backend.services.ads.script_generator",
-        "ads_scripts",  # fallback plain name
+        "backend.services.ads.ad_audio",
+        "ads_scripts",  # fallback bare name
     }
 
-    # Build logger map from per-module overrides
-    loggers = {}
-    for module_name, level_name in (LOG_LEVELS_BY_MODULE or {}).items():
-        lvl = getattr(logging, str(level_name).upper(), logging.INFO)
+    # ---------------- Loggers ----------------
+    loggers: dict[str, dict] = {}
 
-        # Default handlers
-        handler_list = ["console"] + (["file"] if LOG_FILE_ENABLED else [])
-
-        # If this module is Ads and we enabled the dedicated file, add it
-        if ADS_LOG_FILE_ENABLED and module_name in ADS_LOGGER_NAMES:
-            handler_list = ["console"] + (["ads_file"] + (["file"] if LOG_FILE_ENABLED else []))
-
+    for module_name, level_name in (lv.LOG_LEVELS_BY_MODULE or {}).items():
+        level = str(level_name).upper()
+        handler_list = ["console"] + (["file"] if "file" in handlers else [])
+        if "ads_file" in handlers and module_name in ADS_LOGGER_NAMES:
+            handler_list = ["console"] + (["ads_file"] + (["file"] if "file" in handlers else []))
         loggers[module_name] = {
             "handlers": handler_list,
-            "level": lvl,
-            "propagate": False,
+            "level": level,       # dictConfig accepts string levels
+            "propagate": False,   # prevent double-logging
         }
 
-    # Force DEBUG via env list (comma-separated names)
-    for name in DEBUG_LOGGERS:
+    # Force DEBUG from env list (comma-separated)
+    for name in lv.DEBUG_LOGGERS:
         if not name:
             continue
-        handler_list = ["console"] + (["file"] if LOG_FILE_ENABLED else [])
-        if ADS_LOG_FILE_ENABLED and name in ADS_LOGGER_NAMES:
-            handler_list = ["console"] + (["ads_file"] + (["file"] if LOG_FILE_ENABLED else []))
+        handler_list = ["console"] + (["file"] if "file" in handlers else [])
+        if "ads_file" in handlers and name in ADS_LOGGER_NAMES:
+            handler_list = ["console"] + (["ads_file"] + (["file"] if "file" in handlers else []))
         loggers[name] = {
             "handlers": handler_list,
             "level": "DEBUG",
             "propagate": False,
         }
 
+    # Tidy third-party chatter (optional — only if not already overridden)
+    loggers.setdefault("uvicorn.error", {"level": "INFO"})
+    loggers.setdefault("uvicorn.access", {"level": "WARNING"})
+    loggers.setdefault("sqlalchemy.engine", {"level": "WARNING"})
+    loggers.setdefault("httpx", {"level": "WARNING"})
+
+    # ---------------- dictConfig ----------------
     LOGGING = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -137,8 +139,8 @@ def setup_logging() -> None:
         "handlers": handlers,
         "loggers": loggers,
         "root": {
-            "handlers": ["console"] + (["file"] if LOG_FILE_ENABLED else []),
-            "level": getattr(logging, str(LOG_LEVEL).upper(), logging.INFO),
+            "handlers": ["console"] + (["file"] if "file" in handlers else []),
+            "level": str(lv.LOG_LEVEL).upper(),
         },
     }
 

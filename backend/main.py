@@ -4,11 +4,20 @@ from __future__ import annotations
 import sys
 import io
 import logging
+import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 
 # --- put the path fix FIRST, before any backend.* imports ---
 project_root = Path(__file__).resolve().parent.parent
+
+# --- load .env early so all backend.* modules see env vars ---
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=project_root / ".env")
+except Exception:
+    pass
+
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -17,20 +26,42 @@ sys.stdout = io.TextIOWrapper(getattr(sys.stdout, "buffer", sys.stdout), encodin
 
 from fastapi import FastAPI, Query
 
-from backend import config
+# --- Logging setup (must run early) ---
 from backend.logging_setup import setup_logging
+setup_logging()
+
+logger = logging.getLogger(__name__)
+logger.info(
+    "ENV check: spotify=%s, xai=%s, supabase_url=%s",
+    "set" if os.getenv("SPOTIFY_CLIENT_ID") else "missing",
+    "set" if os.getenv("XAI_API_KEY") else "missing",
+    "set" if os.getenv("SUPABASE_URL") else "missing",
+)
+
+
+# --- App metadata ---
+try:
+    from backend.config.app_cfg import APP_VERSION, LAST_UPDATED
+except Exception:
+    APP_VERSION, LAST_UPDATED = "dev", "n/a"
+
+logger = logging.getLogger(__name__)
+logger.info("Starting TopSpot v%s — Updated %s", APP_VERSION, LAST_UPDATED)
 
 # ------------------------ Lifespan (startup/shutdown) ------------------------
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- runs at startup ---
     log = logging.getLogger(__name__)
-    for r in app.routes:
-        try:
-            methods = ",".join(sorted(getattr(r, "methods", [])))
-        except Exception:
-            methods = ""
-        # log.info("Route: %s  Methods: %s", getattr(r, "path", "?"), methods)
+    log.info("---- ROUTE MAP (on startup) ----")
+    for r in app.routes:  # ← linter-friendly
+        path = getattr(r, "path", getattr(r, "path_format", "?"))
+        methods = ",".join(sorted((getattr(r, "methods", None) or [])))
+        endpoint = getattr(r, "endpoint", None)
+        mod = getattr(endpoint, "__module__", "?") if endpoint else "?"
+        func = getattr(endpoint, "__name__", "?") if endpoint else "?"
+        log.info("Route: %-35s  Methods: %-10s  Handler: %s.%s", path, methods, mod, func)
     yield
     # --- runs at shutdown ---
     # (nothing to do here)
@@ -68,11 +99,6 @@ from backend.routers import intros_locales
 # NEW: reorganized upsert/import endpoints
 from backend.routers.upsert_json import router as upsert_router
 from backend.routers.ads_scripts import router as ads_router
-logger = logging.getLogger(__name__)
-
-# Set up logging BEFORE other logic
-setup_logging()
-logger.info("Starting TopSpot v%s — Updated %s", config.APP_VERSION, config.LAST_UPDATED)
 
 # ------------------------ Docs / Tag Metadata ------------------------
 TAGS_METADATA = [
@@ -89,7 +115,7 @@ TAGS_METADATA = [
 
 app = FastAPI(
     title="TopSpot API",
-    version=config.APP_VERSION,
+    version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_tags=TAGS_METADATA,
@@ -100,7 +126,7 @@ app = FastAPI(
         "persistAuthorization": True,
         "docExpansion": "list",
     },
-    lifespan=lifespan,   # ✅ use lifespan, not @on_event
+    lifespan=lifespan,
 )
 
 print("🔄 main.py loaded (FastAPI starting up)")
@@ -116,7 +142,7 @@ def health():
 
 @app.get("/version", summary="Get TopSpot version info", tags=["Meta"])
 def get_version():
-    return {"app_version": config.APP_VERSION, "last_updated": config.LAST_UPDATED}
+    return {"app_version": APP_VERSION, "last_updated": LAST_UPDATED}
 
 @app.get("/auth/callback", tags=["Meta"])
 def auth_callback(code: str = Query(...)):
@@ -127,10 +153,7 @@ def auth_callback(code: str = Query(...)):
 # 1) Core JSON / Files / Playback / TTS
 app.include_router(json_router, tags=["JSON & Files"])
 app.include_router(save_router, tags=["JSON & Files"])
-
-# Playback — choose ONE variant to avoid double "/json"
 app.include_router(playback_router, tags=["Playback"])
-
 app.include_router(intro_router,     tags=["TTS"])
 app.include_router(detail_router,    tags=["TTS"])
 app.include_router(artist_router,    tags=["TTS"])
@@ -161,4 +184,5 @@ app.include_router(supabase_loader.router,  tags=["Supabase/DB"])
 # 6) Upsert / Import (new package)
 app.include_router(upsert_router, tags=["Upsert/Import"])
 
+# 7) Ads
 app.include_router(ads_router)

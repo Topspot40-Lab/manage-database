@@ -21,9 +21,15 @@ from backend.services.playback_helpers import (
 import asyncio
 import logging
 
+logger = logging.getLogger(__name__)  # -> "backend.routers.supabase_loader"
+logger.info("hello from supabase_loader, level=%s", logger.getEffectiveLevel())
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
-logger = logging.getLogger("supabase_loader")
 
+logger.info(
+    "logger name=%s effective=%s",
+    logger.name,
+    logging.getLevelName(logger.getEffectiveLevel()),
+)
 # ─────────────────────────────────────────────────────────────────────────────
 # existing endpoints (skip-current-track, load-decade-genre-data, etc.)
 # NOTE: keep your current ones; below we show only the NEW endpoint for brevity
@@ -95,6 +101,9 @@ async def play_random_track_from_db(
             rank_val = next(iter(unique_ranks)) if len(unique_ranks) == 1 else None
 
         rank_str = f"#{rank_val}" if rank_val is not None else "multiple" if tr_rows and len(tr_rows) > 1 else "—"
+
+
+
 
         logger.info(
             "===================================================\n"
