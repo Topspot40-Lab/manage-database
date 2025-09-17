@@ -17,7 +17,7 @@ try:
     from backend.models.dbmodels import Track, Artist, TrackLocale  # preferred
 except Exception:
     try:
-        from backend.models import Track, Artist, TrackLocale       # fallback
+        from backend.models.dbmodels import Track, Artist, TrackLocale       # fallback
     except Exception:
         Track = Artist = TrackLocale = None  # type: ignore
 

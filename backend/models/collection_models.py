@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional, List
+from typing import Optional
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import UniqueConstraint, CheckConstraint, Column, ForeignKey
+from sqlalchemy.orm import relationship as sa_relationship  # ✅ lowercase alias
 
 
 class Collection(SQLModel, table=True):
@@ -14,9 +15,13 @@ class Collection(SQLModel, table=True):
     slug: str = Field(index=True)
     intro: Optional[str] = None
 
-    rankings: List["CollectionTrackRanking"] = Relationship(
-        back_populates="collection",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    # Force the target using sa_relationship=...
+    rankings: list["CollectionTrackRanking"] = Relationship(
+        sa_relationship=sa_relationship(
+            "CollectionTrackRanking",
+            back_populates="collection",
+            cascade="all, delete-orphan",
+        )
     )
 
 
@@ -30,7 +35,6 @@ class CollectionTrackRanking(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    # Apply ondelete to the ForeignKey via sa_column
     collection_id: int = Field(
         sa_column=Column(
             ForeignKey("collection.id", ondelete="CASCADE"),
@@ -49,10 +53,18 @@ class CollectionTrackRanking(SQLModel, table=True):
     ranking: int = Field(index=True)
     intro: Optional[str] = None
 
-    collection: "Collection" = Relationship(back_populates="rankings")
-    locales: List["CollectionTrackRankingLocale"] = Relationship(
-        back_populates="ranking",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    collection: "Collection" = Relationship(
+        sa_relationship=sa_relationship(
+            "Collection",
+            back_populates="rankings",
+        )
+    )
+    locales: list["CollectionTrackRankingLocale"] = Relationship(
+        sa_relationship=sa_relationship(
+            "CollectionTrackRankingLocale",
+            back_populates="ranking",
+            cascade="all, delete-orphan",
+        )
     )
 
 
@@ -76,4 +88,9 @@ class CollectionTrackRankingLocale(SQLModel, table=True):
     intro_text: str
     tts_key: Optional[str] = None
 
-    ranking: "CollectionTrackRanking" = Relationship(back_populates="locales")
+    ranking: "CollectionTrackRanking" = Relationship(
+        sa_relationship=sa_relationship(
+            "CollectionTrackRanking",
+            back_populates="locales",
+        )
+    )

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query, Depends
 from typing import Literal
 from sqlmodel import Session, select
 from backend.database import get_db
-from backend.models import TrackRanking, Track, Artist
+from backend.models.dbmodels import TrackRanking, Track, Artist
 from backend.services.spotify.playback import play_spotify_track
 from backend.state import current_decade_genre, skip_event
 from backend.config import SPOTIFY_BED_TRACK_ID
@@ -320,6 +320,9 @@ async def play_track_by_rank(
         "decade": decade, "genre": genre, "rank": rank,
         "played": {"intro": play_intro, "detail": play_detail, "track": play_track, "artist": play_artist_description}
     }
+
+from fastapi import HTTPException
+
 @router.get("/load-decade-genre-data")
 def load_decade_genre_data(
     decade: str = Query(..., description="Decade name, e.g., '1980s'"),
@@ -327,62 +330,90 @@ def load_decade_genre_data(
     tts_language: Literal["en", "es", "ptbr"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    # ✅ Remember the context
-    current_decade_genre["decade"] = decade
-    current_decade_genre["genre"] = genre
-    lang = canon_lang(tts_language)
-    logger.info(f"📌 Stored context for play-by-rank-only: {decade} / {genre} (lang={lang})")
+    try:
+        # ✅ Remember the context
+        current_decade_genre["decade"] = decade
+        current_decade_genre["genre"] = genre
+        lang = canon_lang(tts_language)
+        logger.info("📌 Stored context for play-by-rank-only: %s / %s (lang=%s)", decade, genre, lang)
 
-    # Resolve DecadeGenre
-    dg = get_decade_genre(db, decade, genre)
-    if not dg:
-        return {"error": f"No DecadeGenre found for {decade} / {genre}"}
+        # Resolve DecadeGenre
+        logger.debug("DBG before get_decade_genre(%s, %s)", decade, genre)
+        dg = get_decade_genre(db, decade, genre)
+        logger.debug("DBG after get_decade_genre: dg.id=%s", getattr(dg, "id", None))
+        if not dg:
+            # Prefer a 404 over silent error dict for APIs
+            raise HTTPException(status_code=404, detail=f"No DecadeGenre found for {decade} / {genre}")
 
-    # Get rankings for this combo
-    rankings = get_rankings_for_combo(db, dg.id)
+        # Get rankings for this combo
+        logger.debug("DBG before get_rankings_for_combo(%s)", dg.id)
+        rankings = get_rankings_for_combo(db, dg.id)
+        logger.debug("DBG after get_rankings_for_combo: n=%s", 0 if rankings is None else len(rankings))
 
-    intro_bucket  = bucket_for(lang, "intro")
-    detail_bucket = bucket_for(lang, "detail")
-    artist_bucket = bucket_for(lang, "artist")
+        if not rankings:
+            # Return a friendly, successful empty payload
+            return {
+                "decade": decade,
+                "genre": genre,
+                "language": lang,
+                "track_count": 0,
+                "rankings": [],
+                "message": "No rankings found."
+            }
 
-    response = []
-    for r in rankings:
-        track = db.get(Track, r.track_id)
-        if not track:
-            logger.warning(f"⚠️ Track ID {r.track_id} not found")
-            continue
+        intro_bucket  = bucket_for(lang, "intro")
+        detail_bucket = bucket_for(lang, "detail")
+        artist_bucket = bucket_for(lang, "artist")
 
-        artist = db.get(Artist, track.artist_id)
-        if not artist:
-            logger.warning(f"⚠️ Artist ID {track.artist_id} not found")
-            continue
+        response = []
+        for r in rankings:
+            track = db.get(Track, r.track_id)
+            if not track:
+                logger.warning("⚠️ Track ID %s not found", r.track_id)
+                continue
 
-        intro_filename  = build_intro_filename(decade, genre, r.ranking)
-        detail_filename = build_detail_filename(track.spotify_track_id)
-        artist_filename = build_artist_filename(artist.spotify_artist_id) if artist.spotify_artist_id else None
+            artist = db.get(Artist, track.artist_id)
+            if not artist:
+                logger.warning("⚠️ Artist ID %s not found", track.artist_id)
+                continue
 
-        response.append({
-            "rank": r.ranking,
-            "trackName": track.track_name,
-            "artistName": artist.artist_name,
-            "intro": r.intro,                       # ← from TrackRanking
-            "detail": track.detail,                 # ← from Track
-            "artistDescription": getattr(artist, "artist_description", None),
-            "introKey":  {"bucket": intro_bucket,  "key": key_for("intro",  intro_filename)},
-            "detailKey": {"bucket": detail_bucket, "key": key_for("detail", detail_filename)} if detail_filename else None,
-            "artistKey": {"bucket": artist_bucket, "key": key_for("artist", artist_filename)} if artist_filename else None,
-            "artistArtwork": artist.artist_artwork,
-            "albumArtwork": track.album_artwork
-        })
+            intro_filename  = build_intro_filename(decade, genre, r.ranking)
+            detail_filename = build_detail_filename(track.spotify_track_id)
+            artist_filename = build_artist_filename(artist.spotify_artist_id) if artist.spotify_artist_id else None
 
-    logger.info(f"✅ Loaded {len(response)} ranked tracks for {decade} / {genre} (lang={lang})")
-    return {
-        "decade": decade,
-        "genre": genre,
-        "language": lang,
-        "track_count": len(response),
-        "rankings": sorted(response, key=lambda x: x["rank"])
-    }
+            response.append({
+                "rank": r.ranking,
+                "trackName": track.track_name,
+                "artistName": artist.artist_name,
+                "intro": r.intro,                       # ← from TrackRanking
+                "detail": track.detail,                 # ← from Track
+                "artistDescription": getattr(artist, "artist_description", None),
+                "introKey":  {"bucket": intro_bucket,  "key": key_for("intro",  intro_filename)},
+                "detailKey": {"bucket": detail_bucket, "key": key_for("detail", detail_filename)} if detail_filename else None,
+                "artistKey": {"bucket": artist_bucket, "key": key_for("artist", artist_filename)} if artist_filename else None,
+                "artistArtwork": artist.artist_artwork,
+                "albumArtwork": track.album_artwork
+            })
+
+        logger.info("✅ Loaded %d ranked tracks for %s / %s (lang=%s)", len(response), decade, genre, lang)
+        return {
+            "decade": decade,
+            "genre": genre,
+            "language": lang,
+            "track_count": len(response),
+            "rankings": sorted(response, key=lambda x: x["rank"])
+        }
+
+    except HTTPException:
+        # Let FastAPI return the proper status code + detail
+        raise
+    except Exception as e:
+        # Log full traceback to server logs and surface message to caller (TEMP for debugging)
+        logger.exception("load_decade_genre_data failed")
+        return {
+            "error": "load_decade_genre_data failed",
+            "detail": f"{type(e).__name__}: {e!s}"
+        }
 
 @router.get("/play-tracks-with-starting-rank")
 async def play_tracks_with_starting_rank(

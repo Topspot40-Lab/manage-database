@@ -241,3 +241,35 @@ class ArtistLocale(SQLModel, table=True):
     artist_description_text: str
     tts_bucket: Optional[str] = None
     tts_key: Optional[str] = None
+# Re-exports from collection_models (keep these lines you already added)
+from .collection_models import (
+    Collection,
+    CollectionTrackRanking,
+    CollectionTrackRankingLocale,
+)
+
+# Export list for consumers: backend.models.dbmodels
+__all__ = [
+    # core models
+    "DecadeGenreTrivia",
+    "Artist",
+    "Decade",
+    "Genre",
+    "Language",
+    "Specialty",
+    "ArtistGenre",
+    "DecadeGenre",
+    "TrackGenre",
+    "SpecialtyRanking",
+    "Top40GenreRanking",
+    "TrackRanking",
+    "Tracklist",
+    "Track",
+    "TrackRankingLocale",
+    "TrackLocale",
+    "ArtistLocale",
+    # re-exports
+    "Collection",
+    "CollectionTrackRanking",
+    "CollectionTrackRankingLocale",
+]

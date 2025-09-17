@@ -1,18 +1,26 @@
 import os
 from .helpers import env_bool
+
 # Root/base level
 LOG_LEVEL = (os.getenv("LOG_LEVEL") or "INFO").upper()
 
 LOG_SUMMARY_ENABLED = env_bool("LOG_SUMMARY_ENABLED", False)
 
+# ── NEW: Ads-specific controls ───────────────────────────────────────────────
+LOG_LEVEL_ADS = (os.getenv("LOG_LEVEL_ADS") or LOG_LEVEL).upper()
+ADS_LOG_FILE_ENABLED = env_bool("ADS_LOG_FILE_ENABLED", False)
+ADS_LOG_FILE_PATH = os.getenv("ADS_LOG_FILE_PATH", "backend/logs/ads.log")
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Steps (kept as-is)
 STEP_LOG_LEVELS = {
-    "STEP_1":"INFO","STEP_1.A":"INFO","STEP_1.B":"INFO","STEP_1.C":"INFO",
-    "STEP_3":"INFO","STEP_3.A":"INFO","STEP_3.B":"INFO",
-    "STEP_4":"INFO","STEP_4.A":"INFO","STEP_4.B":"INFO","STEP_4.C":"INFO","STEP_4.D":"INFO","STEP_4.E":"INFO",
-    "STEP_5":"INFO","STEP_6":"INFO","STEP_7":"INFO","STEP_8":"INFO",
-    "STEP_9":"INFO","STEP_9.A":"INFO","STEP_9.B":"INFO","STEP_9.C":"INFO",
-    "STEP_10":"INFO","STEP_11":"INFO",
+    "STEP_1": "INFO", "STEP_1.A": "INFO", "STEP_1.B": "INFO", "STEP_1.C": "INFO",
+    "STEP_3": "INFO", "STEP_3.A": "INFO", "STEP_3.B": "INFO",
+    "STEP_4": "INFO", "STEP_4.A": "INFO", "STEP_4.B": "INFO", "STEP_4.C": "INFO", "STEP_4.D": "INFO",
+    "STEP_4.E": "INFO",
+    "STEP_5": "INFO", "STEP_6": "INFO", "STEP_7": "INFO", "STEP_8": "INFO",
+    "STEP_9": "INFO", "STEP_9.A": "INFO", "STEP_9.B": "INFO", "STEP_9.C": "INFO",
+    "STEP_10": "INFO", "STEP_11": "INFO",
 }
 
 DB_QUERIES_LOG_LEVEL = os.getenv("DB_QUERIES_LOG_LEVEL", "DEBUG").upper()
@@ -64,8 +72,15 @@ LOG_LEVELS_BY_MODULE = {
     "urllib3": "WARNING",
     "requests": "WARNING",
     "httpx": "WARNING",
+
+    # ── NEW: Ads modules use env-driven level ─────────────────────────────────
+    "backend.routers.ads_scripts": LOG_LEVEL_ADS,
+    "backend.services.ads.script_generator": LOG_LEVEL_ADS,
+    # fallback plain name if used: logging.getLogger("ads_scripts")
+    "ads_scripts": LOG_LEVEL_ADS,
+    "backend.services.ads.ad_audio": LOG_LEVEL_ADS,
 }
 
-LOG_FILE_ENABLED = (os.getenv("LOG_FILE_ENABLED") or "1") not in ("0","false","no","off")
-LOG_COLOR_ENABLED = (os.getenv("LOG_COLOR_ENABLED") or "1") not in ("0","false","no","off")
+LOG_FILE_ENABLED = (os.getenv("LOG_FILE_ENABLED") or "1") not in ("0", "false", "no", "off")
+LOG_COLOR_ENABLED = (os.getenv("LOG_COLOR_ENABLED") or "1") not in ("0", "false", "no", "off")
 LOG_FILE_PATH = "backend/logs/topspot.log"

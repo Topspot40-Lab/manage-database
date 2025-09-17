@@ -1,4 +1,3 @@
-# backend/logging_setup.py
 """
 Central logging configuration (module-only).
 - Console (optional color) + optional file logging.
@@ -13,12 +12,20 @@ import sys
 import logging
 import logging.config
 
-from backend.config import (
-    APP_VERSION, LAST_UPDATED,
+# ── Prefer logging cfg from backend.config.logging_cfg ───────────────────────
+from backend.config.logging_cfg import (
     LOG_LEVEL, LOG_LEVELS_BY_MODULE,
     LOG_FILE_ENABLED, LOG_COLOR_ENABLED, LOG_FILE_PATH,
     DEBUG_LOGGERS,
+    # NEW Ads knobs
+    LOG_LEVEL_ADS, ADS_LOG_FILE_ENABLED, ADS_LOG_FILE_PATH,
 )
+
+# App metadata (fallback to dev if not available)
+try:
+    from backend.config.app_cfg import APP_VERSION, LAST_UPDATED
+except Exception:
+    APP_VERSION, LAST_UPDATED = "dev", "n/a"
 
 # Lightweight ANSI color support (no hard dependency)
 def _console_formatter():
@@ -57,7 +64,7 @@ def setup_logging() -> None:
         "formatter": "console",
     }
 
-    # Optional file handler
+    # Optional global file handler
     if LOG_FILE_ENABLED:
         os.makedirs(os.path.dirname(LOG_FILE_PATH) or ".", exist_ok=True)
         handlers["file"] = {
@@ -68,24 +75,54 @@ def setup_logging() -> None:
             "formatter": "standard",
         }
 
+    # ── NEW: optional dedicated Ads file handler ─────────────────────────────
+    if ADS_LOG_FILE_ENABLED:
+        os.makedirs(os.path.dirname(ADS_LOG_FILE_PATH) or ".", exist_ok=True)
+        handlers["ads_file"] = {
+            "class": "logging.FileHandler",
+            "filename": ADS_LOG_FILE_PATH,
+            "mode": "a",
+            "encoding": "utf-8",
+            "formatter": "standard",
+        }
+
+    # Ads logger names we want to capture specially
+    ADS_LOGGER_NAMES = {
+        "backend.routers.ads_scripts",
+        "backend.services.ads.script_generator",
+        "ads_scripts",  # fallback plain name
+    }
+
     # Build logger map from per-module overrides
     loggers = {}
     for module_name, level_name in (LOG_LEVELS_BY_MODULE or {}).items():
         lvl = getattr(logging, str(level_name).upper(), logging.INFO)
+
+        # Default handlers
+        handler_list = ["console"] + (["file"] if LOG_FILE_ENABLED else [])
+
+        # If this module is Ads and we enabled the dedicated file, add it
+        if ADS_LOG_FILE_ENABLED and module_name in ADS_LOGGER_NAMES:
+            handler_list = ["console"] + (["ads_file"] + (["file"] if LOG_FILE_ENABLED else []))
+
         loggers[module_name] = {
-            "handlers": ["console"] + (["file"] if LOG_FILE_ENABLED else []),
+            "handlers": handler_list,
             "level": lvl,
             "propagate": False,
         }
 
     # Force DEBUG via env list (comma-separated names)
     for name in DEBUG_LOGGERS:
-        if name:
-            loggers[name] = {
-                "handlers": ["console"] + (["file"] if LOG_FILE_ENABLED else []),
-                "level": "DEBUG",
-                "propagate": False,
-            }
+        if not name:
+            continue
+        handler_list = ["console"] + (["file"] if LOG_FILE_ENABLED else [])
+        if ADS_LOG_FILE_ENABLED and name in ADS_LOGGER_NAMES:
+            handler_list = ["console"] + (["ads_file"] + (["file"] if LOG_FILE_ENABLED else []))
+        loggers[name] = {
+            "handlers": handler_list,
+            "level": "DEBUG",
+            "propagate": False,
+        }
 
     LOGGING = {
         "version": 1,

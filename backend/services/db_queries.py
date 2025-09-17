@@ -7,7 +7,7 @@ from sqlalchemy import func
 import logging
 from time import perf_counter
 
-from backend.models import Track, TrackRanking, DecadeGenre, Decade, Genre, Artist
+from backend.models.dbmodels import Track, TrackRanking, DecadeGenre, Decade, Genre, Artist
 
 # Use a stable module logger so config.LOG_LEVELS_BY_MODULE can target it:
 logger = logging.getLogger("backend.services.db_queries")

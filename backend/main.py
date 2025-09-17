@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
             methods = ",".join(sorted(getattr(r, "methods", [])))
         except Exception:
             methods = ""
-        log.info("Route: %s  Methods: %s", getattr(r, "path", "?"), methods)
+        # log.info("Route: %s  Methods: %s", getattr(r, "path", "?"), methods)
     yield
     # --- runs at shutdown ---
     # (nothing to do here)
