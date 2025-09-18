@@ -31,13 +31,15 @@ from backend.logging_setup import setup_logging
 setup_logging()
 
 logger = logging.getLogger(__name__)
-logger.info(
-    "ENV check: spotify=%s, xai=%s, supabase_url=%s",
-    "set" if os.getenv("SPOTIFY_CLIENT_ID") else "missing",
-    "set" if os.getenv("XAI_API_KEY") else "missing",
-    "set" if os.getenv("SUPABASE_URL") else "missing",
-)
 
+SHOW_ENV = os.getenv("LOG_SHOW_ENV", "").lower() in ("1", "true", "yes", "on")
+if logger.isEnabledFor(logging.DEBUG) or SHOW_ENV:
+    logger.debug(
+        "ENV check: spotify=%s, xai=%s, supabase_url=%s",
+        "set" if os.getenv("SPOTIFY_CLIENT_ID") else "missing",
+        "set" if os.getenv("XAI_API_KEY") else "missing",
+        "set" if os.getenv("SUPABASE_URL") else "missing",
+    )
 
 # --- App metadata ---
 try:
@@ -45,23 +47,21 @@ try:
 except Exception:
     APP_VERSION, LAST_UPDATED = "dev", "n/a"
 
-logger = logging.getLogger(__name__)
 logger.info("Starting TopSpot v%s — Updated %s", APP_VERSION, LAST_UPDATED)
 
 # ------------------------ Lifespan (startup/shutdown) ------------------------
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log = logging.getLogger(__name__)
-    log.info("---- ROUTE MAP (on startup) ----")
-    for r in app.routes:  # ← linter-friendly
-        path = getattr(r, "path", getattr(r, "path_format", "?"))
-        methods = ",".join(sorted((getattr(r, "methods", None) or [])))
-        endpoint = getattr(r, "endpoint", None)
-        mod = getattr(endpoint, "__module__", "?") if endpoint else "?"
-        func = getattr(endpoint, "__name__", "?") if endpoint else "?"
-        log.info("Route: %-35s  Methods: %-10s  Handler: %s.%s", path, methods, mod, func)
+    if os.getenv("SHOW_ROUTE_MAP", "").lower() in ("1", "true", "yes", "on"):
+        log.info("---- ROUTE MAP (on startup) ----")
+        for r in app.routes:  # ← linter-friendly
+            path = getattr(r, "path", getattr(r, "path_format", "?"))
+            methods = ",".join(sorted((getattr(r, "methods", None) or [])))
+            endpoint = getattr(r, "endpoint", None)
+            mod = getattr(endpoint, "__module__", "?") if endpoint else "?"
+            func = getattr(endpoint, "__name__", "?") if endpoint else "?"
+            log.info("Route: %-35s  Methods: %-10s  Handler: %s.%s", path, methods, mod, func)
     yield
     # --- runs at shutdown ---
     # (nothing to do here)
@@ -99,6 +99,7 @@ from backend.routers import intros_locales
 # NEW: reorganized upsert/import endpoints
 from backend.routers.upsert_json import router as upsert_router
 from backend.routers.ads_scripts import router as ads_router
+from backend.routers.meta_logging import router as meta_logging_router
 
 # ------------------------ Docs / Tag Metadata ------------------------
 TAGS_METADATA = [
@@ -129,7 +130,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-print("🔄 main.py loaded (FastAPI starting up)")
+logging.getLogger("backend.startup").info("🔄 main.py loaded (FastAPI starting up)")
 
 # ------------------------ Meta ------------------------
 @app.get("/", tags=["Meta"])
@@ -149,7 +150,7 @@ def auth_callback(code: str = Query(...)):
     logger.info("🔁 Received auth callback with code: %s", code)
     return {"message": "✅ Auth callback handled"}
 
-# ------------------------ Include Routers (organized + tagged) ------------------------
+# ------------------------ Include Routers ------------------------
 # 1) Core JSON / Files / Playback / TTS
 app.include_router(json_router, tags=["JSON & Files"])
 app.include_router(save_router, tags=["JSON & Files"])
@@ -184,5 +185,6 @@ app.include_router(supabase_loader.router,  tags=["Supabase/DB"])
 # 6) Upsert / Import (new package)
 app.include_router(upsert_router, tags=["Upsert/Import"])
 
-# 7) Ads
+# 7) Ads + Meta diagnostics
 app.include_router(ads_router)
+app.include_router(meta_logging_router, tags=["Meta"])

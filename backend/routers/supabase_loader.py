@@ -52,10 +52,12 @@ async def play_random_track_from_db(
       - then play the Spotify track for ~60s.
 
     num_tracks:
-      - 1..N : plays that many tracks, then returns
+      - 1. .N : plays that many tracks, then returns
       - -1   : loops forever (request won't return unless cancelled)
     """
     lang = canon_lang(tts_language)
+
+    print("play_random_track_from_db")
 
     async def _maybe_play_bed():
         if not SPOTIFY_BED_TRACK_ID:
@@ -511,3 +513,4 @@ async def play_tracks_with_starting_rank(
         results.append({"rank": rk, "track": track.track_name})
 
     return {"status": "completed", "mode": mode, "language": lang, "tracks_played": results}
+

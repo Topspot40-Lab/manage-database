@@ -1,63 +1,44 @@
-from fastapi import APIRouter, Query, Depends
+# backend/routers/supabase_summary.py
+from __future__ import annotations
+
+import logging
+from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import func
-import logging
 
-from backend.models.dbmodels import Artist, Track, Genre, Decade, DecadeGenre, TrackRanking
 from backend.database import get_db
-from backend.utils.tts_diagnostics import (
-    get_missing_tts_info,
-    get_decade_genre_ranking_summary
-)
+from backend.models.dbmodels import Artist, Track, Genre, Decade, DecadeGenre, TrackRanking
+from backend.utils.tts_diagnostics import get_missing_tts_info, get_decade_genre_ranking_summary
 
-logger = logging.getLogger("supabase_summary")
-
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/supabase", tags=["Supabase Summary"])
 
-
-
-# ── helpers (drop this near the top of your file) ─────────────────────────────
+# ── helpers ────────────────────────────────────────────────────────────────
 def _canon_lang(code: str) -> str:
-    """
-    Normalize user input into your canonical app language code.
-    Returns one of: 'en', 'es', 'pt-BR'
-    """
     m = (code or "en").strip().lower().replace("_", "-")
-    if m in {"en", "en-us", "en-gb"}:
-        return "en"
-    if m in {"es", "es-mx", "es-419", "es-es"}:
-        return "es"
-    if m in {"pt", "pt-br", "ptbr", "pt-pt"}:
-        return "pt-BR"
+    if m in {"en", "en-us", "en-gb"}: return "en"
+    if m in {"es", "es-mx", "es-419", "es-es"}: return "es"
+    if m in {"pt", "pt-br", "ptbr", "pt-pt"}: return "pt-BR"
     return "en"
 
-def _lang_prefix(lang: str) -> str:
-    # match LANGUAGE_BUCKETS above
-    return {
-        "en":   "audio-en",
-        "es":   "audio-es",
-        "pt-BR":"audio-ptbr",   # ← match your config
-    }[lang]
+def _count(db: Session, stmt) -> int:
+    # works with SQLModel/SQLAlchemy 2.x
+    return db.exec(stmt).scalar_one()
 
+# ── endpoints ──────────────────────────────────────────────────────────────
 @router.get("/summary")
 def get_summary(
+    db: Session = Depends(get_db),
     db_name: str = Query("topspot40-dev"),
-    db: Session = Depends(get_db)
 ):
-    logger.info(f"🔍 Generating DB summary for: {db_name}")
-
+    logger.info("🔍 Generating DB summary for: %s", db_name)
     try:
-        # COUNT(*) always returns exactly one row
-        def _count(count_stmt) -> int:
-            return int(db.exec(count_stmt).one())
+        artists_count  = _count(db, select(func.count(Artist.id)))
+        tracks_count   = _count(db, select(func.count(Track.id)))
+        genres_count   = _count(db, select(func.count(Genre.id)))
+        decades_count  = _count(db, select(func.count(Decade.id)))
+        rankings_count = _count(db, select(func.count(TrackRanking.id)))
 
-        artists_count  = _count(select(func.count(Artist.id)))
-        tracks_count   = _count(select(func.count(Track.id)))
-        genres_count   = _count(select(func.count(Genre.id)))
-        decades_count  = _count(select(func.count(Decade.id)))
-        rankings_count = _count(select(func.count(TrackRanking.id)))
-
-        # Ranked track breakdown by decade and genre
         breakdown_stmt = (
             select(
                 Decade.decade_name,
@@ -86,10 +67,10 @@ def get_summary(
                 {"decade": d, "genre": g, "count": c} for (d, g, c) in rows
             ],
         }
-
     except Exception as e:
         logger.exception("❌ Failed to summarize DB")
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=f"Summary failed: {e}")
+
 @router.get("/tts/diagnostics")
 async def run_diagnostics(
     db: Session = Depends(get_db),
@@ -125,7 +106,9 @@ async def run_diagnostics(
     except Exception as e:
         logger.exception("❌ get_missing_tts_info crashed")
         return {"error": f"{type(e).__name__}: {e}"}
+
     summary = {"missing_text": {}, "missing_mp3": {}}
+
     missing_text = result.get("missing_text", {})
     if "track_detail" in missing_text:
         summary["missing_text"]["track_detail"] = len(missing_text["track_detail"])
@@ -166,7 +149,6 @@ async def run_diagnostics(
 
     return response
 
-# 🧾 Full diagnostics (raw data for deep dive or dev use)
 @router.get("/diagnostics")
 async def full_diagnostics(db: Session = Depends(get_db)):
     return {
