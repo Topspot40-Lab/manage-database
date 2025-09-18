@@ -22,10 +22,10 @@ import asyncio
 import logging
 
 logger = logging.getLogger(__name__)  # -> "backend.routers.supabase_loader"
-logger.info("hello from supabase_loader, level=%s", logger.getEffectiveLevel())
+logger.debug("hello from supabase_loader, level=%s", logger.getEffectiveLevel())
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
 
-logger.info(
+logger.debug(
     "logger name=%s effective=%s",
     logger.name,
     logging.getLevelName(logger.getEffectiveLevel()),

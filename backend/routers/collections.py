@@ -1,7 +1,9 @@
 # backend/routers/collections.py
 from __future__ import annotations
 
-import inspect, logging
+import os
+import inspect
+import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,10 +21,22 @@ from backend.schemas.collection_schemas import (
 )
 from backend.services.track_resolver import resolve_track_id_by_meta
 
-logger = logging.getLogger("collections")
-logger.warning("USING Collection from %s", inspect.getfile(Collection))
+# Use namespaced logger so it respects LOG_LEVELS_BY_MODULE["backend.routers.collections"]
+logger = logging.getLogger(__name__)
+
+# Show source path for the Collection model (debug by default; opt-in to INFO via env)
+try:
+    _src = inspect.getfile(Collection)
+    if os.getenv("SHOW_COLLECTIONS_SRC", "").lower() in ("1", "true", "yes", "on"):
+        logger.info("USING Collection from %s", _src)
+    else:
+        logger.debug("USING Collection from %s", _src)
+except Exception:
+    # Avoid any import-time failures just from logging
+    logger.debug("Could not determine Collection model source path", exc_info=True)
 
 router = APIRouter(prefix="/collections", tags=["Collections"])
+
 
 @router.post("/import-json", response_model=ImportResult)
 def import_collection(payload: CollectionImportPayload, db: Session = Depends(get_db)):
@@ -177,6 +191,7 @@ def import_collection(payload: CollectionImportPayload, db: Session = Depends(ge
             detail={"error": f"{type(e).__name__}: {e}", "collection_model_source": src}
         )
 
+
 @router.get("/{slug}/export-json", response_model=CollectionExport)
 def export_collection(slug: str, db: Session = Depends(get_db)):
     coll = db.exec(select(Collection).where(Collection.slug == slug)).first()
@@ -202,9 +217,8 @@ def export_collection(slug: str, db: Session = Depends(get_db)):
             title=(getattr(t, "track_name", None) or getattr(t, "title", None) or ""),
             artistName=artist_name or "",
             year=getattr(t, "year_released", None),
-            intro=getattr(ctr, "intro", None),  # ← add this
+            intro=getattr(ctr, "intro", None),
         ))
 
-    # No collection_type anymore; include intro for completeness
     c_out = CollectionIn(name=coll.name, slug=coll.slug, intro=getattr(coll, "intro", None))
     return CollectionExport(collection=c_out, tracks=tracks)

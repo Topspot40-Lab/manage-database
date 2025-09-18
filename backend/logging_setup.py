@@ -4,8 +4,9 @@ from __future__ import annotations
 import os
 import logging
 import logging.config
+from typing import Dict
 
-# Load .env early so LOG_LEVEL is available
+# ── .env early so LOG_LEVEL is available ───────────────────────────────────
 try:
     from dotenv import load_dotenv, find_dotenv  # pip install python-dotenv
     load_dotenv(find_dotenv(), override=False)
@@ -13,7 +14,7 @@ except Exception:
     pass
 
 # Single source of truth for levels
-import backend.config.logging_vars as lv  # <-- your file lives here
+import backend.config.logging_vars as lv  # your file
 
 # Optional app metadata
 try:
@@ -21,17 +22,34 @@ try:
 except Exception:
     APP_VERSION, LAST_UPDATED = "dev", "n/a"
 
+_VALID_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+_configured_flag = "_topsport_logging_configured"
+
+def _normalize_level(name: str | int | None, fallback: str = "INFO") -> str:
+    if isinstance(name, int):
+        # accept numeric levels too
+        return logging.getLevelName(name)
+    if not name:
+        return fallback
+    up = str(name).upper()
+    return up if up in _VALID_LEVELS else fallback
 
 def _console_formatter():
     base_fmt = "%(asctime)s %(levelname)s [%(name)s] %(module)s.%(funcName)s:%(lineno)d — %(message)s"
     date_fmt = "%Y-%m-%dT%H:%M:%S"
     if getattr(lv, "LOG_COLOR_ENABLED", False):
         try:
-            from colorama import init as _cinit, Style  # type: ignore
+            from colorama import init as _cinit, Fore, Style  # type: ignore
             _cinit()
 
             class ColorFormatter(logging.Formatter):
-                COLORS = {"DEBUG": "", "INFO": "", "WARNING": "", "ERROR": "", "CRITICAL": ""}
+                COLORS = {
+                    "DEBUG": Fore.BLUE,
+                    "INFO": "",
+                    "WARNING": Fore.YELLOW,
+                    "ERROR": Fore.RED,
+                    "CRITICAL": Fore.RED + Style.BRIGHT,
+                }
                 def format(self, record):
                     msg = super().format(record)
                     color = self.COLORS.get(record.levelname, "")
@@ -43,35 +61,69 @@ def _console_formatter():
             pass
     return logging.Formatter(base_fmt, datefmt=date_fmt)
 
-
-def setup_logging() -> None:
-    # Handlers (leave handler level NOTSET so logger/root control filtering)
-    handlers: dict[str, dict] = {
+def _build_handlers() -> Dict[str, dict]:
+    handlers: Dict[str, dict] = {
         "console": {
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
             "formatter": "console",
-            "level": "NOTSET",
+            "level": "NOTSET",  # let logger/root control filtering
         }
     }
-    if getattr(lv, "LOG_FILE_ENABLED", False):
-        os.makedirs(os.path.dirname(lv.LOG_FILE_PATH) or ".", exist_ok=True)
-        handlers["file"] = {
-            "class": "logging.FileHandler",
-            "filename": lv.LOG_FILE_PATH,
-            "mode": "a",
-            "encoding": "utf-8",
-            "formatter": "standard",
-            "level": "NOTSET",
-        }
 
-    # Per-logger config — ONLY from LOG_LEVELS_BY_MODULE
-    loggers: dict[str, dict] = {}
-    for module_name, level_name in (lv.LOG_LEVELS_BY_MODULE or {}).items():
+    if getattr(lv, "LOG_FILE_ENABLED", False):
+        # Choose Rotating or plain FileHandler based on settings
+        file_fmt = "standard"
+        os.makedirs(os.path.dirname(lv.LOG_FILE_PATH) or ".", exist_ok=True)
+        if getattr(lv, "LOG_FILE_ROTATE", False):
+            # needs: from logging.handlers import RotatingFileHandler (via string path)
+            handlers["file"] = {
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": lv.LOG_FILE_PATH,
+                "maxBytes": getattr(lv, "LOG_FILE_MAX_BYTES", 5_000_000),
+                "backupCount": getattr(lv, "LOG_FILE_BACKUP_COUNT", 3),
+                "encoding": "utf-8",
+                "mode": "a",
+                "formatter": file_fmt,
+                "level": "NOTSET",
+            }
+        else:
+            handlers["file"] = {
+                "class": "logging.FileHandler",
+                "filename": lv.LOG_FILE_PATH,
+                "mode": "a",
+                "encoding": "utf-8",
+                "formatter": file_fmt,
+                "level": "NOTSET",
+            }
+    return handlers
+
+def setup_logging() -> None:
+    """
+    Idempotent logging config. Safe to call from an app factory even under uvicorn --reload.
+    Set env LOG_FORCE_RECONFIG=true to override the idempotency guard within a process.
+    """
+    # Idempotency guard
+    if getattr(setup_logging, _configured_flag, False) and os.getenv("LOG_FORCE_RECONFIG", "").lower() not in ("1", "true", "yes", "on"):
+        return
+
+    # Normalize root level
+    root_level = _normalize_level(getattr(lv, "LOG_LEVEL", None), "INFO")
+
+    # Normalize per-module levels
+    per_module = {}
+    for name, lvl in (getattr(lv, "LOG_LEVELS_BY_MODULE", {}) or {}).items():
+        per_module[name] = _normalize_level(lvl, root_level)
+
+    handlers = _build_handlers()
+
+    # Per-logger config from LOG_LEVELS_BY_MODULE
+    loggers: Dict[str, dict] = {}
+    for module_name, level_name in per_module.items():
         handler_list = ["console"] + (["file"] if "file" in handlers else [])
         loggers[module_name] = {
             "handlers": handler_list,
-            "level": str(level_name).upper(),
+            "level": level_name,
             "propagate": False,  # prevents duplicate lines via root
         }
 
@@ -85,7 +137,7 @@ def setup_logging() -> None:
 
     LOGGING = {
         "version": 1,
-        "disable_existing_loggers": False,
+        "disable_existing_loggers": False,  # keep False to avoid silencing libs you didn't list
         "formatters": {
             "console": {"()": _console_formatter},
             "standard": {
@@ -97,44 +149,41 @@ def setup_logging() -> None:
         "loggers": loggers,
         "root": {
             "handlers": ["console"] + (["file"] if "file" in handlers else []),
-            "level": str(lv.LOG_LEVEL).upper(),
+            "level": root_level,
         },
     }
 
+    # Apply configuration
     logging.config.dictConfig(LOGGING)
 
-    # After logging is configured — show configured vs effective DEBUG modules
-    configured_debug = sorted(
-        [name for name, lvl in (lv.LOG_LEVELS_BY_MODULE or {}).items()
-         if str(lvl).upper() == "DEBUG"]
-    )
-
+    # Diagnostics (only appear when effective level shows DEBUG here)
+    log = logging.getLogger(__name__)
+    configured_debug = sorted([n for n, lvl in per_module.items() if lvl == "DEBUG"])
     effective_debug = sorted(
         [
             name for name, lg in logging.Logger.manager.loggerDict.items()
             if isinstance(lg, logging.Logger) and lg.getEffectiveLevel() == logging.DEBUG
         ]
     )
+    root_lvl_num = logging.getLogger().getEffectiveLevel()
 
-    log = logging.getLogger(__name__)
-    root_lvl = logging.getLogger().getEffectiveLevel()
+    log.debug("🛠️ Configured DEBUG modules: %s", ", ".join(configured_debug) if configured_debug else "(none)")
+    log.debug("🔎 Effective DEBUG modules (instantiated): %s", ", ".join(effective_debug) if effective_debug else "(none)")
+    if root_lvl_num == logging.DEBUG:
+        log.debug("🌍 Root level is DEBUG: most modules will be verbose unless pinned higher.")
 
-    log.info("🛠️ Configured DEBUG modules: %s",
-             ", ".join(configured_debug) if configured_debug else "(none)")
-    log.info("🔎 Effective DEBUG modules (instantiated): %s",
-             ", ".join(effective_debug) if effective_debug else "(none)")
-    if root_lvl == logging.DEBUG:
-        log.info("🌍 Root level is DEBUG: most modules will be verbose unless pinned higher.")
-
-    # If STEP_* loggers no longer exist, you can remove this; harmless if left.
+    # Quiet any old STEP_* loggers if they still exist
     for name in list(logging.Logger.manager.loggerDict.keys()):
         if isinstance(name, str) and name.startswith("STEP_"):
             logging.getLogger(name).setLevel(logging.CRITICAL + 1)
 
-    logging.getLogger(__name__).info(
+    log.debug(
         "✅ Logging configured | root=%s | app=%s (updated %s) | env.LOG_LEVEL=%r",
-        logging.getLevelName(logging.getLogger().level),
+        logging.getLevelName(root_lvl_num),
         APP_VERSION,
         LAST_UPDATED,
         os.getenv("LOG_LEVEL"),
     )
+
+    # mark configured
+    setattr(setup_logging, _configured_flag, True)
