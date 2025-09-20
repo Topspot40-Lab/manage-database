@@ -153,7 +153,7 @@ SUPABASE_BUCKET_ARTIST_MP3: str = _env_str("SUPABASE_BUCKET_ARTIST_MP3", BUCKETS
 
 # ----------------- Spotify ─ playback bed/mix -----------------
 BED_ENABLED: bool          = _env_bool("BED_ENABLED", True)
-MAIN_VOLUME_PERCENT: int   = _env_int("MAIN_VOLUME_PERCENT", 60)
+MAIN_VOLUME_PERCENT: int   = _env_int("MAIN_VOLUME_PERCENT", 40)
 BED_FADE_MS: int           = _env_int("BED_FADE_MS", 1200)
 BED_DEVICE_ID: str | None  = _env_str("BED_DEVICE_ID") or None
 

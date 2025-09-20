@@ -21,7 +21,10 @@ def _norm_key(s: str | None) -> str:
     return (s or "").strip().lower()
 
 
-@router.post("/upsert-json-and-reset/{decade}/{genre}")
+@router.post(
+    "/upsert-json-and-reset/{decade}/{genre}",
+    operation_id="json_upsert_upsert_and_reset_by_decade_genre"  # ← unique
+)
 async def upsert_json_and_reset(
     decade: str = Path(..., description="e.g., 1980s"),
     genre: str  = Path(..., description="e.g., rock"),

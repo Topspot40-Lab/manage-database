@@ -6,6 +6,20 @@ import io
 from pathlib import Path
 from fastapi import FastAPI, Query, Request
 
+from fastapi.routing import APIRoute
+import re
+
+def custom_generate_unique_id(route: APIRoute) -> str:
+    # include method(s), path, tag, and function name for uniqueness & readability
+    methods = "-".join(sorted(m.lower() for m in (route.methods or [])))
+    # make the path OpenAPI-safe (no braces or slashes)
+    path = re.sub(r"[{}\/]", "_", route.path_format).strip("_")
+    tag  = (route.tags[0] if route.tags else "default").lower()
+    func = getattr(route.endpoint, "__name__", "handler")
+    return f"{tag}__{methods}__{path}__{func}"
+
+
+
 # ── Minimal top-level only: path + stdout (safe for reloader) ─────────────
 project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
@@ -79,6 +93,7 @@ def create_app() -> FastAPI:
             "persistAuthorization": True,
             "docExpansion": "list",
         },
+        generate_unique_id_function=custom_generate_unique_id,  # ← add this
     )
 
     # Startup breadcrumb (mute with LOG_SHOW_STARTUP=false)
