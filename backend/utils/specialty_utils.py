@@ -55,7 +55,7 @@ def ensure_artist_genre_link(db: Session, artist_id: int, genre_row: Optional["G
         return
 
     # Lazy imports to avoid circular dependencies at import time
-    from backend.models import ArtistGenre  # pylint: disable=import-outside-toplevel
+    from backend.models.dbmodels import ArtistGenre  # pylint: disable=import-outside-toplevel
 
     exists = db.exec(
         select(ArtistGenre).where(

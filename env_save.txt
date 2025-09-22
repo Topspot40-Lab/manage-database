@@ -1,0 +1,79 @@
+SPOTIPY_CLIENT_ID=6155724caad6455382627343614aafbb
+SPOTIPY_CLIENT_SECRET=cdb3f95492c84c3886382119e76b16d1
+SPOTIPY_USER_ID=xrfqlualhd5404p9kt2pbfwy4
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
+LLM_PROVIDER=xai
+XAI_API_KEY=xai-TMUr9Fhe4Pg3pGQNlmrYBqPK05WOddckJqyZs5lQtLZYIdrhpFWKFV9oD1qi8yNdYh1vO0ltbWOGVaUa
+
+SUPABASE_URL=https://iizlnzmmhkzedqkolgir.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlpemxuem1taGt6ZWRxa29sZ2lyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzczMzUxNSwiZXhwIjoyMDY5MzA5NTE1fQ.lzwFyiPRMlADXn1vr6gD7bEu8bhPh0Sr-9RYG7ElNeI
+
+# set SUPABASE_URL=https://iizlnzmmhkzedqkolgir.supabase.co
+# set SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlpemxuem1taGt6ZWRxa29sZ2lyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzczMzUxNSwiZXhwIjoyMDY5MzA5NTE1fQ.lzwFyiPRMlADXn1vr6gD7bEu8bhPh0Sr-9RYG7ElNeI
+# set DRY_RUN=false
+
+# run these in the SAME PowerShell you’ll use to run the script
+#$env:SUPABASE_URL = "https://iizlnzmmhkzedqkolgir.supabase.co"
+#$env:SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlpemxuem1taGt6ZWRxa29sZ2lyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzczMzUxNSwiZXhwIjoyMDY5MzA5NTE1fQ.lzwFyiPRMlADXn1vr6gD7bEu8bhPh0Sr-9RYG7ElNeI"   # service role, NOT anon key
+#$env:DRY_RUN = "false"
+#
+#python -m backend.tools.migrate_audio_buckets --verify-only
+
+
+DB_QUERIES_LOG_LEVEL=DEBUG
+
+
+POSTGRES_URL=postgresql://postgres.iizlnzmmhkzedqkolgir:TopSpot2025@aws-0-eu-north-1.pooler.supabase.com:5432/postgres
+
+# topspot40-test db
+#postgresql://postgres:[YOUR-PASSWORD]@db.bnvctdpqerivpvlfesbo.supabase.co:5432/postgres
+
+SPOTIFY_BED_TRACK_ID=2ggZjjqszgPpFUMyCwPrrj
+BED_FACTOR=0.40
+BED_ENABLED=true
+BED_VOLUME_PERCENT=20
+MAIN_VOLUME_PERCENT=68
+BED_FADE_MS=1200
+
+# BED_DEVICE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   (optional)
+
+#https://open.spotify.com/track/2ggZjjqszgPpFUMyCwPrrj?si=51e1375f78be4dff
+
+LOG_LEVEL=INFO
+LOG_FILE_ENABLED=False
+LOG_COLOR_ENABLED=True
+
+LOG_SUMMARY_ENABLED=False
+LOG_STEP_1_ENABLED=true
+LOG_STEP_2_ENABLED=False
+
+# 🔐 ElevenLabs API Key
+ELEVENLABS_API_KEY=sk_0aa7023bb8fa57bb66f55bf647afdf260d3116caf6f2c03c
+
+# 🔊 Model type
+ELEVENLABS_MODEL=eleven_turbo_v2_5
+ELEVENLABS_MODEL_ES=eleven_turbo_v2_5
+ELEVENLABS_MODEL_PT_BR=eleven_turbo_v2_5
+ELEVENLABS_ENABLE=true
+
+# 🎙️ Voice IDs
+# Dorothy (ranking intro)
+#VOICE_ID_INTRO=ThT5KcBeYPX3keUQqHPh
+# Serena(ranking intro)
+VOICE_ID_INTRO=pMsXgVXv3BLzUgSXRplE
+# Brian (artist voice)
+VOICE_ID_ARTIST=nPczCjzI2devNBz1zQrb
+
+# Bill (track detail)
+VOICE_ID_TRACK=pqHfZKP75CvOlQylNhV4
+
+# 🎚️ Voice tuning
+# default = 0.5
+VOICE_STABILITY=0.3
+# default = 0.75
+VOICE_SIMILARITY=0.75
+
+# 🧩 Optional feature flags
+SKIP_TTS_IF_EXISTS=true
+VOICE_PREVIEW_ENABLED=false
+DEFAULT_TTS_LANGUAGE=en

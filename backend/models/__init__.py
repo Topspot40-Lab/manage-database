@@ -1,32 +1,31 @@
 # backend/models/__init__.py
+
+# Keep enums here (no ORM/relationship loading), safe to import early.
+from .enums import ModeFlag
+
+# Re-export ORM models so callers can do: from backend.models import Track, Artist, ...
 from .dbmodels import (
-    Genre,
-    Decade,
-    Artist,
-    Track,
-    TrackRanking,
-    DecadeGenre,
-    ArtistGenre,
-    Specialty,
-    SpecialtyRanking,
-    Tracklist,
-    Top40GenreRanking,
-    DecadeGenreTrivia,
-    TrackGenre
+    # taxonomy / linking
+    Genre, Decade, DecadeGenre, ArtistGenre,
+    # core entities
+    Artist, Track, TrackRanking,
+    # locales
+    TrackRankingLocale, TrackLocale, ArtistLocale, Language,
+)
+
+from .collection_models import (
+    Collection, CollectionTrackRanking, CollectionTrackRankingLocale,
 )
 
 __all__ = [
-    "Genre",
-    "Decade",
-    "Artist",
-    "Track",
-    "TrackRanking",
-    "DecadeGenre",
-    "ArtistGenre",
-    "Specialty",
-    "SpecialtyRanking",
-    "Tracklist",
-    "Top40GenreRanking",
-    "DecadeGenreTrivia",
-    "TrackGenre"
+    # enums
+    "ModeFlag",
+    # taxonomy / linking
+    "Genre", "Decade", "DecadeGenre", "ArtistGenre",
+    # core entities
+    "Artist", "Track", "TrackRanking",
+    # locales
+    "TrackRankingLocale", "TrackLocale", "ArtistLocale", "Language",
+    # collections
+    "Collection", "CollectionTrackRanking", "CollectionTrackRankingLocale",
 ]

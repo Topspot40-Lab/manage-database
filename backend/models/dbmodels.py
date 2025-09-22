@@ -203,3 +203,73 @@ class Track(SQLModel, table=True):
     })
 
     rankings: list["TrackRanking"] = Relationship(back_populates="track")
+
+
+
+class TrackRankingLocale(SQLModel, table=True):
+    __tablename__ = "track_ranking_locale"
+    __table_args__ = (
+        UniqueConstraint("track_ranking_id", "language_code", name="uix_trl_rank_lang"),
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+    track_ranking_id: int = Field(foreign_key="track_ranking.id")
+    language_code: str
+    intro_text: str
+    tts_bucket: Optional[str] = None
+    tts_key: Optional[str] = None
+
+class TrackLocale(SQLModel, table=True):
+    __tablename__ = "track_locale"
+    __table_args__ = (
+        UniqueConstraint("track_id", "language_code", name="uix_tl_track_lang"),
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+    track_id: int = Field(foreign_key="track.id")
+    language_code: str
+    detail_text: str
+    tts_bucket: Optional[str] = None
+    tts_key: Optional[str] = None
+
+class ArtistLocale(SQLModel, table=True):
+    __tablename__ = "artist_locale"
+    __table_args__ = (
+        UniqueConstraint("artist_id", "language_code", name="uix_al_artist_lang"),
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+    artist_id: int = Field(foreign_key="artist.id")
+    language_code: str
+    artist_description_text: str
+    tts_bucket: Optional[str] = None
+    tts_key: Optional[str] = None
+# Re-exports from collection_models (keep these lines you already added)
+from .collection_models import (
+    Collection,
+    CollectionTrackRanking,
+    CollectionTrackRankingLocale,
+)
+
+# Export list for consumers: backend.models.dbmodels
+__all__ = [
+    # core models
+    "DecadeGenreTrivia",
+    "Artist",
+    "Decade",
+    "Genre",
+    "Language",
+    "Specialty",
+    "ArtistGenre",
+    "DecadeGenre",
+    "TrackGenre",
+    "SpecialtyRanking",
+    "Top40GenreRanking",
+    "TrackRanking",
+    "Tracklist",
+    "Track",
+    "TrackRankingLocale",
+    "TrackLocale",
+    "ArtistLocale",
+    # re-exports
+    "Collection",
+    "CollectionTrackRanking",
+    "CollectionTrackRankingLocale",
+]

@@ -1,0 +1,94 @@
+###############################################
+# TopSpot — Environment Configuration (.env)
+# Keep this file out of version control.
+###############################################
+
+##########
+# Spotify
+##########
+# Primary (preferred)
+SPOTIPY_CLIENT_ID=6155724caad6455382627343614aafbb
+SPOTIPY_CLIENT_SECRET=cdb3f95492c84c3886382119e76b16d1
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
+SPOTIFY_MARKET=US
+
+# Optional: Spotipy compatibility (maps to the same values)
+SPOTIPY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+SPOTIPY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+SPOTIPY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
+SPOTIPY_USER_ID=xrfqlualhd5404p9kt2pbfwy4
+
+#######
+# xAI
+#######
+XAI_API_KEY=xai-TMUr9Fhe4Pg3pGQNlmrYBqPK05WOddckJqyZs5lQtLZYIdrhpFWKFV9oD1qi8yNdYh1vO0ltbWOGVaUa
+XAI_MODEL=grok-3-latest
+# Optional HTTP tuning
+XAI_CONNECT_TIMEOUT=10
+XAI_READ_TIMEOUT=120
+XAI_MAX_RETRIES=3
+XAI_BACKOFF_FACTOR=1.5
+
+############
+# Supabase
+############
+SUPABASE_URL=https://iizlnzmmhkzedqkolgir.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlpemxuem1taGt6ZWRxa29sZ2lyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzczMzUxNSwiZXhwIjoyMDY5MzA5NTE1fQ.lzwFyiPRMlADXn1vr6gD7bEu8bhPh0Sr-9RYG7ElNeI
+
+############
+# Database
+############
+POSTGRES_URL=postgresql://postgres.iizlnzmmhkzedqkolgir:TopSpot2025@aws-0-eu-north-1.pooler.supabase.com:5432/postgres
+
+
+############
+# Logging
+############
+LOG_LEVEL=INFO
+LOG_LEVEL_COLLECTIONS_GENERATE=DEBUG
+DB_QUERIES_LOG_LEVEL=WARNING
+# Force DEBUG for specific loggers (comma-separated)
+DEBUG_LOGGERS=backend.services.curate,backend.services.track_generator
+
+LOG_FILE_ENABLED=false
+LOG_COLOR_ENABLED=true
+LOG_SUMMARY_ENABLED=false
+
+#########################
+# Playback “bed” settings
+#########################
+SPOTIFY_BED_TRACK_ID=2ggZjjqszgPpFUMyCwPrrj
+BED_ENABLED=true
+MAIN_VOLUME_PERCENT=68
+BED_VOLUME_PERCENT=20
+BED_FACTOR=0.40
+BED_FADE_MS=1200
+# BED_DEVICE_ID=...   # optional
+
+###########
+# ElevenLabs
+###########
+ELEVENLABS_ENABLE=true
+ELEVENLABS_API_KEY=sk_0aa7023bb8fa57bb66f55bf647afdf260d3116caf6f2c03c
+
+# Models
+ELEVENLABS_MODEL=eleven_turbo_v2_5
+ELEVENLABS_MODEL_ES=eleven_turbo_v2_5
+ELEVENLABS_MODEL_PT_BR=eleven_turbo_v2_5
+DEFAULT_TTS_LANGUAGE=en
+
+# Voices
+# Serena(ranking intro)
+VOICE_ID_INTRO=pMsXgVXv3BLzUgSXRplE
+# Brian (artist voice)
+VOICE_ID_ARTIST=nPczCjzI2devNBz1zQrb
+# Bill (track detail)
+VOICE_ID_TRACK=pqHfZKP75CvOlQylNhV4
+
+# Voice tuning
+VOICE_STABILITY=0.3
+VOICE_SIMILARITY=0.75
+
+# TTS toggles
+SKIP_TTS_IF_EXISTS=true
+VOICE_PREVIEW_ENABLED=false

@@ -4,7 +4,7 @@ import json
 import logging
 from sqlmodel import Session, select
 from sqlalchemy import or_
-from backend.models import Artist
+from backend.models.dbmodels import Artist
 from backend.services.xai_common import query_xai
 
 logger = logging.getLogger("STEP_9.ArtistDetail")

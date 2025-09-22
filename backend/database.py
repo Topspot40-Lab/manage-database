@@ -1,30 +1,65 @@
 # backend/database.py
+from __future__ import annotations
 
-from pathlib import Path
-from dotenv import load_dotenv
 import os
+import logging
+from pathlib import Path
+
 from sqlmodel import SQLModel, create_engine, Session
-from typing import Generator
+from sqlalchemy.pool import NullPool  # avoids stale pooled conns in dev
 
-# Go up two levels from backend/database.py to reach the root
+log = logging.getLogger(__name__)
+
+# 1) Load .env from project root (…/topspot_json_creator/.env)
 env_path = Path(__file__).resolve().parent.parent / ".env"
-if not env_path.exists():
-    raise RuntimeError(f"No .env file found at {env_path}")
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(dotenv_path=env_path)
+    except Exception:
+        pass
+else:
+    log.warning("No .env found at %s", env_path)
 
-# 2) Now read the URL
-DATABASE_URL = os.getenv("POSTGRES_URL")
+# 2) Read DB URL (support a few common var names)
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("SUPABASE_DB_URL")
+    or ""
+)
 if not DATABASE_URL:
-    raise RuntimeError("POSTGRES_URL is not set in .env")
+    raise RuntimeError("DATABASE_URL/POSTGRES_URL not set in .env")
 
-# 3) Create the engine
-engine = create_engine(DATABASE_URL, echo=False)
+# 3) Connection args (good defaults for Supabase/remote PG)
+#    - sslmode=require for TLS
+#    - keepalives so idle conns don't get dropped by proxies
+connect_args = {
+    "sslmode": "require",   # remove if using local non-TLS Postgres
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 5,
+    # Optional: server-side statement timeout (ms)
+    # "options": "-c statement_timeout=60000",
+}
+
+# 4) Create engine
+#    NullPool: safest in dev + uvicorn --reload (no stale pool survivors)
+#    pool_pre_ping: validates connection before each checkout
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    poolclass=NullPool,
+    pool_pre_ping=True,
+    connect_args=connect_args,
+)
 
 def init_db() -> None:
-    """Create all tables (if they don't exist). Call once at startup."""
+    """Create tables if they don't exist (call once at startup if you use SQLModel metadata)."""
     SQLModel.metadata.create_all(engine)
 
-def get_db() -> Generator[Session, None, None]:
-    """FastAPI dependency that yields a DB session and closes it afterwards."""
+def get_db():
+    """FastAPI dependency: yield a Session per request and close it afterward."""
     with Session(engine) as session:
         yield session
