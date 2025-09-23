@@ -18,3 +18,6 @@ tinytag~=1.8.1
 SQLAlchemy>=2.0.0,<3.0.0
 tqdm>=4.0.0
 
+topspot-shared @ git+https://github.com/Topspot40-Lab/manage-database@v0.1.1#subdirectory=packages/topspot_shared
+
+
