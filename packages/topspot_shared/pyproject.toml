@@ -1,0 +1,13 @@
+# packages/topspot_shared/pyproject.toml
+[project]
+name = "topspot-shared"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Shared utilities for Topspot40"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
