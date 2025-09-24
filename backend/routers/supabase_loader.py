@@ -34,11 +34,51 @@ from backend.services.radio_render import (
     render_header, box, clean_text, BOX_WIDTH
 )
 
+from backend.config.volume import (
+    PLAY_FULL_TRACK,
+    TRACK_PLAY_SECONDS as CFG_TRACK_PLAY_SECONDS,
+    FULL_TRACK_FALLBACK_SECONDS,
+    MAX_FULL_TRACK_SECONDS,
+)
+
+
 logger = logging.getLogger(__name__)  # -> "backend.routers.supabase_loader"
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
 
-# Small tunables
-TRACK_PLAY_SECONDS = 20  # fixed play time for ALL endpoints
+def _compute_play_seconds(track) -> int:
+    """
+    Decide how long to let Spotify play before we move on,
+    using the controls from backend/config/volume.py.
+    """
+    try:
+        if PLAY_FULL_TRACK:
+            # Prefer track.duration_ms if present; fall back if missing.
+            ms = getattr(track, "duration_ms", None)
+            secs = (ms / 1000.0) if ms else float(FULL_TRACK_FALLBACK_SECONDS)
+            # Safety cap so "full" never blocks forever
+            secs = min(secs, float(MAX_FULL_TRACK_SECONDS))
+        else:
+            secs = float(CFG_TRACK_PLAY_SECONDS)
+        # Be defensive: never less than 1 second
+        return max(1, int(round(secs)))
+    except Exception:
+        # Last-resort fallback: don't explode on bad data; use configured fixed seconds
+        return max(1, int(round(float(CFG_TRACK_PLAY_SECONDS))))
+
+async def _sleep_with_skip(total_seconds: int, chunk: float = 0.2) -> bool:
+    """
+    Sleep up to total_seconds, but return early if skip_event is set.
+    Returns True if a skip was triggered, False if full sleep completed.
+    """
+    remaining = float(total_seconds)
+    while remaining > 0:
+        if skip_event.is_set():
+            skip_event.clear()
+            return True
+        to_sleep = chunk if remaining > chunk else remaining
+        await asyncio.sleep(to_sleep)
+        remaining -= to_sleep
+    return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -161,10 +201,33 @@ async def play_random_track_from_db(
         # 8) Play the track (no DB session held during sleep)
         try:
             if play_track and track.spotify_track_id:
-                logger.info("🎵 Now playing track: %s (%s) for %ss",
-                            track.track_name, track.spotify_track_id, TRACK_PLAY_SECONDS)
+                play_secs = _compute_play_seconds(track)
+                logger.info("🎵 Now playing track: %s (%s) for %ss (full=%s)",
+                            track.track_name, track.spotify_track_id, play_secs, PLAY_FULL_TRACK)
                 play_spotify_track(track.spotify_track_id)
-                await asyncio.sleep(TRACK_PLAY_SECONDS)
+                skipped_mid = await _sleep_with_skip(play_secs)
+                if skipped_mid:
+                    logger.info("⏭️ Skip triggered during track playback.")
+                    return {
+                        "track": {
+                            "id": track.id,
+                            "name": track.track_name,
+                            "spotify_track_id": track.spotify_track_id,
+                        },
+                        "artist": {
+                            "id": artist.id,
+                            "name": artist.artist_name,
+                            "spotify_artist_id": artist.spotify_artist_id,
+                        },
+                        "intros_played": [{"decade": d, "genre": g, "rank": rk} for (_, _, d, g, rk) in intro_jobs],
+                        "detail_played": bool(play_detail and detail_bucket and detail_key),
+                        "artist_played": bool(play_artist_description and artist_bucket and artist_key),
+                        "modeFlag": getattr(getattr(track, "mode_flag", None), "value",
+                                            getattr(track, "mode_flag", None)),
+                        "skipped": True,
+                    }
+
+
         except Exception as e:
             logger.exception("Failed to play track: %s", e)
 
@@ -202,8 +265,9 @@ async def play_random_track_from_db(
             await asyncio.sleep(2)
             continue
 
-        if res:
-            played.append(res)
+        if res and res.get("skipped"):
+            break
+
         count += 1
         await asyncio.sleep(0.3)
 
@@ -329,8 +393,19 @@ async def play_track_by_rank(
 
     # 4) Main track
     if play_track and track.spotify_track_id:
+        play_secs = _compute_play_seconds(track)
+        logger.info("🎵 Now playing track: %s (%s) for %ss (full=%s)",
+                    track.track_name, track.spotify_track_id, play_secs, PLAY_FULL_TRACK)
         play_spotify_track(track.spotify_track_id)
-        await asyncio.sleep(TRACK_PLAY_SECONDS)
+        skipped_mid = await _sleep_with_skip(play_secs)
+        if skipped_mid:
+            logger.info("⏭️ Skip triggered during track playback.")
+            return {
+                "status": "skipped",
+                "decade": decade, "genre": genre, "rank": rank,
+                "played": {"intro": play_intro, "detail": play_detail, "track": play_track,
+                           "artist": play_artist_description}
+            }
 
     return {
         "status": "success",
@@ -529,8 +604,15 @@ async def play_tracks_with_starting_rank(
 
         # 4) Main track
         if play_track and track.spotify_track_id:
+            play_secs = _compute_play_seconds(track)
+            logger.info("🎵 Now playing track: %s (%s) for %ss (full=%s)",
+                        track.track_name, track.spotify_track_id, play_secs, PLAY_FULL_TRACK)
             play_spotify_track(track.spotify_track_id)
-            await asyncio.sleep(TRACK_PLAY_SECONDS)
+            skipped_mid = await _sleep_with_skip(play_secs)
+            if skipped_mid:
+                logger.info("⏭️ Skip triggered during sequence playback.")
+                results.append({"rank": rk, "track": track.track_name, "skipped": True})
+                return {"status": "skipped", "mode": mode, "language": lang, "tracks_played": results}
 
         results.append({"rank": rk, "track": track.track_name})
 
