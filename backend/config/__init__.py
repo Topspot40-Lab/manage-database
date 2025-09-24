@@ -17,6 +17,17 @@ from __future__ import annotations
 import os, re, json
 from typing import Any, Dict, List
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Single source of truth for volumes & play length
+# (edit values in backend/config/volume.py, not here)
+# ─────────────────────────────────────────────────────────────────────────────
+from .volume import (
+    INTRO_GAIN_DB, DETAIL_GAIN_DB, ARTIST_GAIN_DB,
+    MAIN_VOLUME_PERCENT, BED_VOLUME_PERCENT, BED_FACTOR, BED_FADE_MS,
+    PLAY_FULL_TRACK, TRACK_PLAY_SECONDS, FULL_TRACK_FALLBACK_SECONDS, MAX_FULL_TRACK_SECONDS,
+    resolve_track_sleep_seconds,
+)
+
 # ----------------- helpers -----------------
 def _env_bool(name: str, default: bool = False) -> bool:
     v = os.getenv(name)
@@ -82,7 +93,6 @@ LAST_UPDATED: str = _env_str("LAST_UPDATED", "2025-08-10: 11:00 am")
 
 # ----------------- paths -----------------
 from pathlib import Path
-
 # Project root: .../topspot_json_creator
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -103,7 +113,6 @@ SPOTIFY_MARKET: str = _env_str("SPOTIFY_MARKET", "US")
 
 def spotify_creds_ok() -> bool:
     return bool(SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET)
-
 
 # ----------------- provider/LLM (xAI) -----------------
 LLM_PROVIDER: str = _env_str("LLM_PROVIDER", "xai")
@@ -152,9 +161,8 @@ BUCKET_SPOTIFY_TRACK: str = _env_str("BUCKET_SPOTIFY_TRACK","spotify-track-mp3-f
 SUPABASE_BUCKET_ARTIST_MP3: str = _env_str("SUPABASE_BUCKET_ARTIST_MP3", BUCKETS.get("en", {}).get("artist", "audio-en"))
 
 # ----------------- Spotify ─ playback bed/mix -----------------
+# NOTE: All *volume* numbers (MAIN_VOLUME_PERCENT, BED_* etc.) come from volume.py.
 BED_ENABLED: bool          = _env_bool("BED_ENABLED", True)
-MAIN_VOLUME_PERCENT: int   = _env_int("MAIN_VOLUME_PERCENT", 40)
-BED_FADE_MS: int           = _env_int("BED_FADE_MS", 1200)
 BED_DEVICE_ID: str | None  = _env_str("BED_DEVICE_ID") or None
 
 _bed_id_raw = (
@@ -164,20 +172,6 @@ _bed_id_raw = (
 )
 BED_SPOTIFY_TRACK_ID: str | None = _extract_spotify_track_id(_bed_id_raw)
 SPOTIFY_BED_TRACK_ID: str | None = BED_SPOTIFY_TRACK_ID  # alias
-
-_bed_factor_env = _env_str("BED_FACTOR", "").strip()
-BED_FACTOR: float | None = None
-if _bed_factor_env:
-    try:
-        BED_FACTOR = float(_bed_factor_env)
-    except Exception:
-        BED_FACTOR = None
-
-def _clamp(v: int, lo=0, hi=100) -> int: return max(lo, min(hi, v))
-if BED_FACTOR is not None:
-    BED_VOLUME_PERCENT: int = _clamp(int(round(MAIN_VOLUME_PERCENT * BED_FACTOR)))
-else:
-    BED_VOLUME_PERCENT: int = _clamp(_env_int("BED_VOLUME_PERCENT", 20))
 
 # ----------------- ElevenLabs TTS -----------------
 ELEVENLABS_ENABLE: bool  = _env_bool("ELEVENLABS_ENABLE", False)
@@ -205,7 +199,6 @@ MODEL_BY_LANG: Dict[str, str] = {
     "es":    ELEVEN_MODEL_ID_ES,
     "pt-BR": ELEVEN_MODEL_ID_PT_BR,
 }
-
 
 SUPPORTED_LANGS: List[str]   = ["en", "es", "pt-BR"]
 DEFAULT_LANGUAGE: str        = _env_str("DEFAULT_TTS_LANGUAGE", "en")
@@ -304,9 +297,9 @@ __all__ = [
     "SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY",
     "LANGUAGE_BUCKETS","BUCKETS","AUDIO_PREFIXES",
     "BUCKET_TRACK_INTRO","BUCKET_TRACK_DETAIL","BUCKET_ARTIST","BUCKET_SPOTIFY_TRACK","SUPABASE_BUCKET_ARTIST_MP3",
-    # bed/mix
-    "BED_ENABLED","MAIN_VOLUME_PERCENT","BED_FADE_MS","BED_DEVICE_ID",
-    "BED_SPOTIFY_TRACK_ID","SPOTIFY_BED_TRACK_ID","BED_FACTOR","BED_VOLUME_PERCENT",
+    # bed/mix (volumes come from volume.py)
+    "BED_ENABLED","BED_DEVICE_ID",
+    "BED_SPOTIFY_TRACK_ID","SPOTIFY_BED_TRACK_ID",
     # elevenlabs/tts
     "ELEVENLABS_ENABLE","ELEVENLABS_API_KEY",
     "VOICE_ID_INTRO","VOICE_ID_ARTIST","VOICE_ID_TRACK",
@@ -321,5 +314,9 @@ __all__ = [
     "SPOTIFY_BLACKLIST",
     "ENABLE_RANK_INTRO", "ENABLE_TRACK_DETAIL", "ENABLE_ARTIST_DETAIL",
     "SPOTIFY_CLIENT_ID","SPOTIFY_CLIENT_SECRET","SPOTIFY_REDIRECT_URI","SPOTIFY_MARKET","spotify_creds_ok",
-
+    # volumes & play length (from volume.py)
+    "INTRO_GAIN_DB","DETAIL_GAIN_DB","ARTIST_GAIN_DB",
+    "MAIN_VOLUME_PERCENT","BED_VOLUME_PERCENT","BED_FACTOR","BED_FADE_MS",
+    "PLAY_FULL_TRACK","TRACK_PLAY_SECONDS","FULL_TRACK_FALLBACK_SECONDS","MAX_FULL_TRACK_SECONDS",
+    "resolve_track_sleep_seconds",
 ]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
+
 LANG_CODE_MAP = {
     # English
     "en": "en", "english": "en",
@@ -62,3 +63,33 @@ def slug_underscore(text: str | None) -> str:
     text = text.lower()
     text = _slug_re.sub("_", text).strip("_")
     return re.sub(r"_+", "_", text)
+
+# --- Canonical language handling for TopSpot ---
+try:
+    from topspot_shared.lang import canon_lang as normalize_language_code_canon  # -> 'en'|'es'|'pt-BR'
+# Prefer the shared package (keeps Isaiah and your backend in sync).
+
+except Exception:
+    def normalize_language_code_canon(s: str | None) -> str:
+        if not s:
+            return "en"
+        raw = s.strip()
+        key = raw.lower()
+        if key in {"pt", "ptbr", "pt_br", "pt-br", "portuguese", "português", "portugues"}:
+            return "pt-BR"
+        norm2 = normalize_language_code(raw)  # your 2-letter normalizer
+        if norm2 == "pt":
+            return "pt-BR"
+        if norm2 in {"en", "es"}:
+            return norm2
+        return "en"
+
+
+def lang_to_bucket_slug(lang: str) -> str:
+    """
+    Convert canonical language ('en'|'es'|'pt-BR') to your storage slug:
+      en→'en', es→'es', pt-BR→'ptbr'
+    """
+    canon = normalize_language_code_canon(lang)
+    return {"pt-BR": "ptbr"}.get(canon, canon)
+

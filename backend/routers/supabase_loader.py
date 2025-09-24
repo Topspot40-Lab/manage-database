@@ -7,12 +7,12 @@ from sqlmodel import Session, select
 
 import asyncio
 import logging
+from backend.utils.naming import normalize_language_code_canon
 
 from sqlmodel import Session as SQLSession
 from sqlalchemy.exc import OperationalError, InterfaceError
 from backend.models.dbmodels import TrackRanking, Track, Artist
-from backend.services.localization import get_localized_texts, canon_lang
-
+from backend.services.localization import get_localized_texts
 from backend.database import get_db, engine
 
 from backend.services.spotify.playback import play_spotify_track
@@ -52,9 +52,10 @@ async def play_random_track_from_db(
     play_artist_description: bool = Query(True, description="Play artist description MP3 if available"),
     play_track: bool = Query(True, description="Play the Spotify track"),
     num_tracks: int = Query(1, description="How many random tracks to play (-1 = keep playing forever)"),
-    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+
 ):
-    lang = canon_lang(tts_language)
+    lang = normalize_language_code_canon(tts_language)  # -> 'en' | 'es' | 'pt-BR'
     print("play_random_track_from_db")  # quick breadcrumb
 
     async def _maybe_play_bed():
@@ -108,7 +109,10 @@ async def play_random_track_from_db(
         # 👇 Add this log right here
         logger.info(
             f"[intro:{lang} {'OK' if intro_text_loc else 'FALLBACK'}] "
-            f"[detail:{lang} {'OK' if (detail_text_loc and lang == 'ptbr') else 'FALLBACK/EN'}]"
+            f"[detail:{lang} {'OK' if (detail_text_loc and lang == 'pt-BR') else 'FALLBACK/EN'}]"
+
+
+
         )
 
         if intro_text_loc:
@@ -178,6 +182,8 @@ async def play_random_track_from_db(
             "intros_played": [{"decade": d, "genre": g, "rank": rk} for (_, _, d, g, rk) in intro_jobs],
             "detail_played": bool(play_detail and detail_bucket and detail_key),
             "artist_played": bool(play_artist_description and artist_bucket and artist_key),
+            "modeFlag": getattr(getattr(track, "mode_flag", None), "value", getattr(track, "mode_flag", None)),
+
         }
 
     played: list[dict] = []
@@ -223,7 +229,7 @@ async def play_track_by_rank_only(
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
-    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
     db: Session = Depends(get_db)
 ):
     decade = current_decade_genre.get("decade")
@@ -250,10 +256,10 @@ async def play_track_by_rank(
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
-    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    lang = canon_lang(tts_language)
+    lang = normalize_language_code_canon(tts_language)  # -> 'en' | 'es' | 'pt-BR'
 
     # Resolve (decade, genre) -> decade_genre_id
     dg = get_decade_genre(db, decade, genre)
@@ -294,7 +300,7 @@ async def play_track_by_rank(
     # 👇 Add this log right here
     logger.info(
         f"[intro:{lang} {'OK' if intro_txt else 'FALLBACK'}] "
-        f"[detail:{lang} {'OK' if (detail_txt and lang == 'ptbr') else 'FALLBACK/EN'}]"
+        f"[detail:{lang} {'OK' if (detail_txt and lang == 'pt-BR') else 'FALLBACK/EN'}]"
     )
 
     if intro_txt:
@@ -340,13 +346,15 @@ async def play_track_by_rank(
 def load_deacade_genre_data(  # (spelling preserved if other code calls this)
     decade: str = Query(..., description="Decade name, e.g., '1980s'"),
     genre: str = Query(..., description="Genre name, e.g., 'country'"),
-    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+
+
     db: Session = Depends(get_db)
 ):
     try:
         current_decade_genre["decade"] = decade
         current_decade_genre["genre"]  = genre
-        lang = canon_lang(tts_language)
+        lang = normalize_language_code_canon(tts_language)  # -> 'en' | 'es' | 'pt-BR'
         logger.info("📌 Stored context for play-by-rank-only: %s / %s (lang=%s)", decade, genre, lang)
 
         dg = get_decade_genre(db, decade, genre)
@@ -390,6 +398,7 @@ def load_deacade_genre_data(  # (spelling preserved if other code calls this)
                 "rank": r.ranking,
                 "trackName": track.track_name,
                 "artistName": artist.artist_name,
+                "modeFlag": getattr(getattr(track, "mode_flag", None), "value", getattr(track, "mode_flag", None)),
                 "intro": intro_text,
                 "detail": detail_text,
                 "artistDescription": getattr(artist, "artist_description", None),
@@ -432,10 +441,11 @@ async def play_tracks_with_starting_rank(
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
-    tts_language: Literal["en", "es", "ptbr"] = Query("en"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    lang   = canon_lang(tts_language)
+    lang = normalize_language_code_canon(tts_language)  # -> 'en' | 'es' | 'pt-BR'
+
     decade = current_decade_genre.get("decade")
     genre  = current_decade_genre.get("genre")
     if not decade or not genre:
@@ -490,7 +500,7 @@ async def play_tracks_with_starting_rank(
         # 👇 Add this log right here
         logger.info(
             f"[intro:{lang} {'OK' if intro_txt else 'FALLBACK'}] "
-            f"[detail:{lang} {'OK' if (detail_txt and lang == 'ptbr') else 'FALLBACK/EN'}]"
+            f"[detail:{lang} {'OK' if (detail_txt and lang == 'pt-BR') else 'FALLBACK/EN'}]"
         )
 
         if intro_txt:
