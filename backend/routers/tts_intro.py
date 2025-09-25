@@ -37,10 +37,8 @@ from backend.services.tts.generate_tts_batch import generate_tts_batch
 
 logger = logging.getLogger(__name__)  # resolves to "backend.routers.tts_intro"
 
-intro_router = APIRouter(
-    prefix="/tts/intro",
-    tags=["TTS - Intro"],
-)
+intro_router = APIRouter(prefix="/tts/intro")
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

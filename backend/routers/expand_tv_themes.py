@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from backend.config import BASE_DIR
 
 logger = logging.getLogger("expand_tv_themes")
-router = APIRouter(prefix="/tv-themes/expand", tags=["Expand – TV Themes"])
+router = APIRouter(prefix="/tv-themes/expand")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Seed helpers

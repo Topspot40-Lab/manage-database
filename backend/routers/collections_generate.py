@@ -32,7 +32,7 @@ from backend.services.spotify.missing_log import handle_missing_track, reassign_
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/collections", tags=["Collections (Generate JSON)"])
+router = APIRouter(prefix="/collections")
 
 from contextlib import contextmanager
 import backend.config as _cfg

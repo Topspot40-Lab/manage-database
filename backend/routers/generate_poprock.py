@@ -23,7 +23,7 @@ from backend.utils.json_helpers import save_full_json_file
 from shared.filepaths import get_json_path
 from backend.utils.log_helpers import log_generate_json_summary
 
-router = APIRouter(prefix="", tags=["generate-json"])
+router = APIRouter(prefix="")
 logger = logging.getLogger(__name__)
 
 # ── Fixed knobs per your request ─────────────────────────────────────────────

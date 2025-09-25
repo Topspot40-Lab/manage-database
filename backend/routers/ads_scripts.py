@@ -28,7 +28,7 @@ logger = logging.getLogger("backend.routers.ads_scripts")
 # Prefer Track.track_name, with safe fallbacks
 TRACK_TITLE_FIELDS = ("track_name", "title", "name", "track_title", "display_title")
 
-router = APIRouter(prefix="/ads", tags=["Ads / Scripts"])
+router = APIRouter(prefix="/ads")
 
 # --------------------------- helpers ---------------------------
 

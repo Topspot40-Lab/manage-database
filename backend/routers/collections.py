@@ -35,7 +35,7 @@ except Exception:
     # Avoid any import-time failures just from logging
     logger.debug("Could not determine Collection model source path", exc_info=True)
 
-router = APIRouter(prefix="/collections", tags=["Collections"])
+router = APIRouter(prefix="/collections")
 
 
 @router.post("/import-json", response_model=ImportResult)

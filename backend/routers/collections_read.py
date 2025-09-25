@@ -8,7 +8,7 @@ from backend.database import get_db
 import logging
 
 log = logging.getLogger(__name__)
-router = APIRouter(prefix="/collections-read", tags=["Collections (Unified Read)"])
+router = APIRouter(prefix="/collections-read")
 
 def _is_postgres(db: Session) -> bool:
     try:

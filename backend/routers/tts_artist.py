@@ -24,10 +24,9 @@ from backend.config import (
 
 logger = logging.getLogger("tts_logger")
 
-artist_router = APIRouter(
-    prefix="/tts/artist",
-    tags=["TTS - Artist"]
-)
+
+artist_router = APIRouter(prefix="/tts/artist")
+
 
 # Central output directory for all artist MP3s
 ARTIST_MP3_DIR = Path("data/mp3_files/artist_mp3_files")
