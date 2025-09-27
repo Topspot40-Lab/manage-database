@@ -29,10 +29,10 @@ BED_FADE_MS: int = 1200
 # ─────────────────────────────────────────────────────────────────────────────
 
 # If True → try to play the full track. If False → play fixed number of seconds.
-PLAY_FULL_TRACK: bool = True
+PLAY_FULL_TRACK: bool = False
 
 # Used when PLAY_FULL_TRACK is False (or a request explicitly sets full=False)
-TRACK_PLAY_SECONDS: int = 20
+TRACK_PLAY_SECONDS: int = 15
 
 # If PLAY_FULL_TRACK is True but we don't have a duration on the Track model,
 # use this fallback number of seconds.

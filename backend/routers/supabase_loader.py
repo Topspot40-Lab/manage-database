@@ -1,6 +1,15 @@
 # backend/routers/supabase_loader.py
 from __future__ import annotations
 
+# NEW for mobile playback UI / signed URLs
+from fastapi import Request
+from fastapi.responses import HTMLResponse, JSONResponse
+import json
+
+# Use this if your narration MP3s are in Supabase buckets
+from backend.services.supabase_signer import sign_url
+
+
 from fastapi import APIRouter, Query, Depends, HTTPException
 from typing import Literal
 from sqlmodel import Session, select
@@ -36,6 +45,88 @@ from backend.services.radio_runtime import (
 
 logger = logging.getLogger(__name__)  # -> "backend.routers.supabase_loader"
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
+
+def _urls_for_rank(
+    db: Session,
+    lang: str,
+    decade: str,
+    genre: str,
+    rank: int,
+    *,
+    use_intro: bool,
+    use_detail: bool,
+    use_artist: bool,
+    expires: int,
+    request: Request,
+):
+    """Return dict with signed (or local) URLs for intro/detail/artist + spotify_track_id."""
+    dg = get_decade_genre(db, decade, genre)
+    if not dg:
+        return None, {"error": f"No DecadeGenre for {decade}/{genre}"}
+
+    rk = db.exec(select(TrackRanking).where(
+        TrackRanking.decade_genre_id == dg.id,
+        TrackRanking.ranking == rank
+    )).first()
+    if not rk:
+        return None, {"error": f"No ranking #{rank} in {decade}/{genre}"}
+
+    track  = db.get(Track, rk.track_id)
+    artist = db.get(Artist, track.artist_id) if track else None
+    if not track or not artist:
+        return None, {"error": "Track or Artist not found"}
+
+    intros = []
+    detail_url = None
+    artist_url = None
+
+    # If using Supabase buckets (signed URLs)
+    def _signed(bucket: str | None, key: str | None) -> str | None:
+        if not bucket or not key:
+            return None
+        return sign_url(bucket, key, expires)
+
+    # If you prefer local files via /audio/tts/{lang}/{kind}/{filename}, uncomment this and comment _signed() above:
+    # def _local(kind: str, filename: str) -> str:
+    #     return str(URL(str(request.base_url)) / f"audio/tts/{lang}/{kind}/{filename}")
+
+    if use_intro:
+        intro_fn = build_intro_filename(decade, genre, rank)
+        intro_key = key_for("intro", intro_fn)
+        intro_bucket = bucket_for(lang, "intro")
+        url = _signed(intro_bucket, intro_key)
+        # local version: url = _local("intro", intro_fn)
+        if url:
+            intros.append(url)
+
+    if use_detail:
+        detail_fn = build_detail_filename(track.spotify_track_id)
+        if detail_fn:
+            detail_key = key_for("detail", detail_fn)
+            detail_bucket = bucket_for(lang, "detail")
+            detail_url = _signed(detail_bucket, detail_key)
+            # local: detail_url = _local("detail", detail_fn)
+
+    if use_artist and getattr(artist, "spotify_artist_id", None):
+        artist_fn = build_artist_filename(artist.spotify_artist_id)
+        if artist_fn:
+            artist_key = key_for("artist", artist_fn)
+            artist_bucket = bucket_for(lang, "artist")
+            artist_url = _signed(artist_bucket, artist_key)
+            # local: artist_url = _local("artist", artist_fn)
+
+    payload = {
+        "rank": rank,
+        "spotify_track_id": track.spotify_track_id,
+        "intros": intros,
+        "detail": detail_url,
+        "artist": artist_url,
+        "track_name": track.track_name,
+        "artist_name": artist.artist_name,
+    }
+    return payload, None
+
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Random track: pick from DB, narrate, then play
@@ -315,15 +406,21 @@ def load_deacade_genre_data(
 # ─────────────────────────────────────────────────────────────────────────────
 # Play a sequence starting from a rank (localized)
 # ─────────────────────────────────────────────────────────────────────────────
-@router.get("/play-tracks-with-starting-rank")
+from fastapi.responses import HTMLResponse, JSONResponse
+
+@router.get("/play-tracks-with-starting-rank", response_class=HTMLResponse)
 async def play_tracks_with_starting_rank(
+    request: Request,
     starting_rank: int = Query(...),
     mode: Literal["count_up","count_down","random"] = Query("count_up"),
     play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
-    play_artist_description: bool = Query(True),
+    play_artist_description: bool = Query(False),
     tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+    ui: int = Query(1, description="1 = HTML player (mobile/browser). 0 = JSON bundle."),
+    server: bool = Query(True, description="True = server-side playback like before; ignores ui."),
+    expires: int = Query(300, ge=60, le=3600),
     db: Session = Depends(get_db)
 ):
     lang = normalize_language_code_canon(tts_language)
@@ -331,16 +428,18 @@ async def play_tracks_with_starting_rank(
     decade = current_decade_genre.get("decade")
     genre  = current_decade_genre.get("genre")
     if not decade or not genre:
-        return {"error": "No context. Use /supabase/load-decade-genre-data first."}
+        err = {"error": "No context. Use /supabase/load-decade-genre-data first."}
+        return JSONResponse(err, status_code=400)
 
     dg = get_decade_genre(db, decade, genre)
     if not dg:
-        return {"error": f"No DecadeGenre found for {decade} / {genre}"}
+        return JSONResponse({"error": f"No DecadeGenre found for {decade} / {genre}"}, status_code=404)
 
     rows = db.exec(select(TrackRanking).where(TrackRanking.decade_genre_id == dg.id)).all()
     if not rows:
-        return {"error": "No rankings found for this combo."}
+        return JSONResponse({"error": "No rankings found for this combo."}, status_code=404)
 
+    # Build play order
     max_rank = max(r.ranking for r in rows)
     order = list(range(1, max_rank+1))
     if mode == "count_up":
@@ -351,41 +450,167 @@ async def play_tracks_with_starting_rank(
         import random
         play_order = [r for r in order if r >= starting_rank]; random.shuffle(play_order)
 
-    results = []
+    # ─────────────────────────────────────────────
+    # SERVER MODE (old behavior): play on desktop
+    # ─────────────────────────────────────────────
+    if server:
+        results = []
+        for rk in play_order:
+            r = next((x for x in rows if x.ranking == rk), None)
+            if not r:
+                continue
+            track  = db.get(Track, r.track_id)
+            artist = db.get(Artist, track.artist_id) if track else None
+            if not track or not artist:
+                continue
+
+            # 1) Logs/texts
+            log_header_and_texts(lang=lang, track=track, artist=artist, tr_rows=[(r, decade, genre)])
+
+            # 2) Narration assets
+            intro_jobs = build_intro_jobs(lang=lang, tr_rows=[(r, decade, genre)]) if play_intro else []
+            detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
+
+            # 3) Bed + narrations (played on the SERVER machine)
+            if (play_intro and intro_jobs) or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
+                await maybe_play_bed()
+            await play_narrations(
+                play_intro=play_intro, play_detail=play_detail, play_artist=play_artist_description,
+                intro_jobs=intro_jobs,
+                detail_bucket=detail_bucket, detail_key=detail_key,
+                artist_bucket=artist_bucket, artist_key=artist_key
+            )
+
+            # 4) Main track
+            if play_track and track.spotify_track_id:
+                skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
+                if skipped_mid:
+                    logger.info("⏭️ Skip triggered during sequence playback.")
+                    results.append({"rank": rk, "track": track.track_name, "skipped": True})
+                    return JSONResponse({"status": "skipped", "mode": mode, "language": lang, "tracks_played": results})
+
+            results.append({"rank": rk, "track": track.track_name})
+
+        return JSONResponse({"status": "completed", "mode": mode, "language": lang, "tracks_played": results})
+
+    # ─────────────────────────────────────────────
+    # BROWSER MODE (mobile/desktop HTML or JSON)
+    # ─────────────────────────────────────────────
+    # Build client-side sequence of narration URLs + spotify ids
+    sequence = []
     for rk in play_order:
-        r = next((x for x in rows if x.ranking == rk), None)
-        if not r:
-            continue
-        track  = db.get(Track, r.track_id)
-        artist = db.get(Artist, track.artist_id) if track else None
-        if not track or not artist:
-            continue
-
-        # 1) Logs/texts
-        log_header_and_texts(lang=lang, track=track, artist=artist, tr_rows=[(r, decade, genre)])
-
-        # 2) Narration assets
-        intro_jobs = build_intro_jobs(lang=lang, tr_rows=[(r, decade, genre)]) if play_intro else []
-        detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
-
-        # 3) Bed + narrations
-        if (play_intro and intro_jobs) or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
-            await maybe_play_bed()
-        await play_narrations(
-            play_intro=play_intro, play_detail=play_detail, play_artist=play_artist_description,
-            intro_jobs=intro_jobs,
-            detail_bucket=detail_bucket, detail_key=detail_key,
-            artist_bucket=artist_bucket, artist_key=artist_key
+        bundle, err = _urls_for_rank(
+            db, lang, decade, genre, rk,
+            use_intro=play_intro, use_detail=play_detail, use_artist=play_artist_description,
+            expires=expires, request=request
         )
+        if err:
+            logger.warning("Skipping rank %s: %s", rk, err)
+            continue
+        sequence.append(bundle)
 
-        # 4) Main track
-        if play_track and track.spotify_track_id:
-            skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
-            if skipped_mid:
-                logger.info("⏭️ Skip triggered during sequence playback.")
-                results.append({"rank": rk, "track": track.track_name, "skipped": True})
-                return {"status": "skipped", "mode": mode, "language": lang, "tracks_played": results}
+    base = str(request.base_url).rstrip("/")
 
-        results.append({"rank": rk, "track": track.track_name})
+    if ui == 0:
+        return JSONResponse({
+            "decade": decade, "genre": genre, "mode": mode, "language": lang,
+            "play_track": play_track, "expires": expires,
+            "sequence": sequence
+        })
 
-    return {"status": "completed", "mode": mode, "language": lang, "tracks_played": results}
+    # Minimal HTML player (tap/click Start to play MP3 on device, then Spotify)
+    html = f"""<!doctype html>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>TopSpot: {decade} / {genre} ({mode})</title>
+<style>
+ body{{font:16px/1.5 system-ui,Segoe UI,Roboto,Arial;background:#0b0b0c;color:#e6e6e6;max-width:760px;margin:24px auto;padding:0 14px}}
+ button{{font:inherit;padding:10px 14px;border-radius:12px;border:0;background:#2b6;cursor:pointer}}
+ button[disabled]{{opacity:.5;cursor:not-allowed}}
+ .muted{{color:#9aa}}
+ .row{{margin:.5rem 0}}
+ .badge{{display:inline-block;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;margin-right:6px}}
+ .log{{white-space:pre-wrap;background:#111;border:1px solid #222;border-radius:12px;padding:10px;margin-top:12px;max-height:40vh;overflow:auto}}
+</style>
+<h2>TopSpot Player — {decade} / {genre}</h2>
+<p class="muted">Mode: <b>{mode}</b> • Language: <b>{lang}</b></p>
+<div class="row"><button id="go">▶ Start</button> <span id="status" class="badge">idle</span></div>
+<ol id="list"></ol>
+<div class="log" id="log"></div>
+<script>
+const seq = {json.dumps(sequence)};
+const decade = {json.dumps(decade)};
+const genre  = {json.dumps(genre)};
+const lang   = {json.dumps(lang)};
+const base   = {json.dumps(base)};
+const playTrack = {json.dumps(play_track)};
+
+const elList = document.getElementById('list');
+const elStatus = document.getElementById('status');
+const elLog = document.getElementById('log');
+function log(msg){{ elLog.textContent += msg + "\\n"; elLog.scrollTop = elLog.scrollHeight; }}
+function setStatus(s){{ elStatus.textContent = s; }}
+
+seq.forEach(step => {{
+  const li = document.createElement('li');
+  li.textContent = `#${{step.rank}} — ${{step.track_name}} — ${{step.artist_name||""}}`;
+  elList.appendChild(li);
+}});
+
+function playOne(url) {{
+  return new Promise((resolve, reject) => {{
+    const a = new Audio(url);
+    a.preload = "auto";
+    a.onended = () => resolve();
+    a.onerror = () => reject(new Error("Audio error: " + url));
+    a.play().catch(reject);
+  }});
+}}
+
+async function playNarrations(step) {{
+  const urls = [];
+  if (Array.isArray(step.intros)) urls.push(...step.intros);
+  if (step.detail) urls.push(step.detail);
+  if (step.artist) urls.push(step.artist);
+  for (const u of urls) {{
+    setStatus("narration");
+    log("▶ " + u);
+    try {{ await playOne(u); }} catch(e) {{ log("skip: " + e.message); }}
+  }}
+}}
+
+async function startSpotify(rank, spotifyId) {{
+  setStatus("spotify");
+  const qs = new URLSearchParams({{
+    decade, genre, rank,
+    play_intro: "false",
+    play_detail: "false",
+    play_artist_description: "false",
+    play_track: "true",
+    tts_language: lang
+  }});
+  const url = `${{base}}/supabase/play-track-by-rank?${{qs.toString()}}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("Spotify play failed: " + r.status);
+}}
+
+document.getElementById('go').onclick = async () => {{
+  const btn = document.getElementById('go');
+  btn.disabled = true;
+  try {{
+    for (const step of seq) {{
+      await playNarrations(step);
+      if (playTrack && step.spotify_track_id) {{
+        await startSpotify(step.rank, step.spotify_track_id);
+        setStatus("waiting");
+      }}
+    }}
+    setStatus("done");
+  }} catch (e) {{
+    console.error(e); log("ERROR: " + e.message); setStatus("error");
+  }} finally {{
+    btn.disabled = false;
+  }}
+}};
+</script>
+"""
+    return HTMLResponse(html)

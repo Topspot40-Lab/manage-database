@@ -8,6 +8,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone  # ← moved here
 
+from backend.services.curate import (
+    curate_tracks_via_xai,
+    list_available_themes,   # helper we added
+    describe_theme,          # helper we added
+)
+
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from requests import HTTPError as RequestsHTTPError
@@ -16,9 +23,6 @@ from backend.services.spotify.enrich_artist_artwork import enrich_artist_table_w
 
 # XAI error helpers (same pattern as decade-genre pipeline)
 from backend.services.xai_errors import XAIQuotaError, XAIRateLimitError
-
-# Reuse your XAI curator used by the prior collections stub
-from backend.services.curate import curate_tracks_via_xai
 
 # Spotify enrich step (same function used in decade-genre flow)
 from backend.services.track_generator import enrich_tracks_with_spotify
@@ -47,33 +51,6 @@ def temp_flags(**kw):
     finally:
         for k, v in old.items():
             setattr(_cfg, k, v)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Slug → Display name mapping (kept from your earlier stub)
-# ─────────────────────────────────────────────────────────────────────────────
-SLUG_TO_NAME = {
-    "power_ballads": "Power Ballads",
-    "disney_classics_pre_1988": "Disney: Classics (pre-1988)",
-    "disney_revival_after_1988": "Disney: Revival (after-1988)",
-    "motown_magic": "Motown Magic",
-    "disco_favorites": "Disco Favorites",
-    "one_hit_wonders": "One-Hit Wonders",
-    "dance_floor_anthems": "Dance Floor Anthems",
-    "latin_crossovers": "Latin Crossovers",
-    "novelty_songs": "Novelty Songs",
-    "holiday_favorites": "Holiday Favorites",
-    "protest_social_justice": "Protest & Social Justice",
-    "stage_screen_broadway_classics": "Stage & Screen: Broadway Classics",
-    "stage_screen_movie_themes": "Stage & Screen: Movie Themes",
-    "classical_music_baroque_period_1600_1750": "Classical Music: Baroque Period (1600-1750)",
-    "classical_music_classical_period_1750_1820": "Classical Music: Classical Period (1750-1820)",
-    "classical_music_romantic_period_1820_1910": "Classical Music: Romantic Period (1820-1910)",
-}
-
-
-def _theme_from_slug(slug: str) -> str:
-    return SLUG_TO_NAME.get(slug, slug.replace("_", " ").title())
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Normalizers (mirrors your decade-genre pipeline behavior)
@@ -147,10 +124,11 @@ def generate_collection_json(
     try:
         logger.debug("🟡 STEP 0: Starting collections.generate-json")
 
-        slug = slug_underscore(request.slug)
-        theme = _theme_from_slug(slug)
-        lang_code = normalize_language_code(request.language)  # e.g., "en", "es"
-
+        # Normalize input → canonical slug + display name using curate’s registry
+        resolved = describe_theme(slug_underscore(request.slug))
+        slug = resolved["slug"]  # stable slug (e.g., "power_ballads")
+        theme = resolved["display_name"]  # display name (e.g., "Power Ballads")
+        lang_code = normalize_language_code(request.language)
 
         # ───────────────── STEP 1 ─────────────────
         logger.debug("✍️ STEP 1: Curating candidates from XAI")
@@ -221,6 +199,9 @@ def generate_collection_json(
         tracks = [_normalize_artist_collab(t) for t in tracks]
 
         tracks = enrich_tracks_with_spotify(tracks, is_test_mode=False)
+
+        if tracks:
+            logger.debug("STEP 3 sample keys: %s", sorted(tracks[0].keys()))
 
         # Filter out tracks with no Spotify match
         before = len(tracks)
@@ -378,11 +359,21 @@ def generate_collection_json(
             if not isinstance(feat, str):
                 feat = str(feat)
             feat = feat.strip()
+
             flag = (t.get("mode_flag") or "").strip().upper()
+
+            # If there is a featured artist → ensure DUET
             if feat and flag in ("", "SOLO"):
                 t["mode_flag"] = "DUET"
+
+            # If no featured artist and flag empty → mark SOLO
+            if not feat and flag == "":
+                t["mode_flag"] = "SOLO"
+
+            # If no featured artist but flag is DUET/FEATURED → reset to SOLO
             if not feat and flag in ("DUET", "FEATURED"):
                 t["mode_flag"] = "SOLO"
+
             base = t.get("track_name") or ""
             t["track_display_name"] = f"{base} (feat. {feat})" if feat else base
 
@@ -406,23 +397,34 @@ def generate_collection_json(
         tracks_legacy = []
         for t in tracks:
             mf = (t.get("mode_flag") or "").upper() or None
+            # just above the tracks_legacy.append({...})
+            album_art = (
+                    t.get("album_art_url")
+                    or t.get("album_artwork")
+                    or t.get("albumImageUrl")
+                    or t.get("album_image_url")
+                    or t.get("albumArtUrl")
+            )
+
+            explicit = t.get("is_explicit")
+            if explicit is None:
+                explicit = t.get("explicit")  # Spotify often returns "explicit"
+
             tracks_legacy.append({
                 "track_name": t.get("track_name"),
                 "artist_name": t.get("artist_name"),
                 "spotify_track_id": t.get("spotify_track_id"),
                 "duration_ms": t.get("duration_ms") or None,
                 "popularity": t.get("popularity") or None,
-                "album_artwork": t.get("album_art_url"),
+                "album_artwork": album_art,  # ← use the resolved variable
                 "year_released": t.get("year_released"),
-                "is_explicit": t.get("is_explicit"),
+                "is_explicit": explicit,  # ← use the resolved variable
                 "created_at": created_iso,  # UTC ISO seconds
-                "detail": t.get("detail"),
+                "detail": t.get("detail"),  # will be set once flags work (see §3)
                 "album_name": t.get("album_name"),
                 "mode_flag": mf,
-                # Featured artist info if you use it later; keep names, SID unknown here
                 "featured_artist_name": t.get("featured_artist") or None,
                 "featured_artist_sid": None,
-                # Optional display helpers
                 "artist_display_name": t.get("artist_name"),
             })
 
@@ -519,3 +521,14 @@ def generate_collection_json(
     except Exception as e:
         logger.exception("❌ Unhandled error in collections.generate-json")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/themes", summary="List available collection themes (slugs)")
+def list_collection_themes():
+    slugs = list_available_themes()
+    return {
+        "themes": [
+            {"slug": s, "name": describe_theme(s)["display_name"]}
+            for s in slugs
+        ]
+    }

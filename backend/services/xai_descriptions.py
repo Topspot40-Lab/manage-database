@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict, Any, Optional
 
-from backend.config import ENABLE_RANK_INTRO, ENABLE_TRACK_DETAIL, ENABLE_ARTIST_DETAIL
+import backend.config as cfg
 from backend.services.xai_rank_intro import get_rank_intros_from_xai
 from backend.services.xai_track_detail import get_track_details_from_xai
 from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
@@ -70,7 +70,7 @@ def get_collection_descriptions_from_xai(
     logger.debug(f"🧠 STEP 9C: XAI for {total} collection track(s) | slug={slug} | lang={language}")
 
     # ---------- RANK INTRO ----------
-    if ENABLE_RANK_INTRO:
+    if cfg.ENABLE_RANK_INTRO:
         intro_payload = get_rank_intros_from_xai(tracks, language, decade, genre)
         intro_by_sid_rank = {}
         for tr in intro_payload.get("tracks", []):
@@ -97,11 +97,11 @@ def get_collection_descriptions_from_xai(
                 t["intro"] = intro  # use `intro` to match your decade-genre schema
 
     # ---------- TRACK DETAIL ----------
-    if ENABLE_TRACK_DETAIL:
+    if cfg.ENABLE_TRACK_DETAIL:
         get_track_details_from_xai(tracks, language)   # writes t["detail"]
 
     # ---------- ARTIST DETAIL ----------
-    if ENABLE_ARTIST_DETAIL:
+    if cfg.ENABLE_ARTIST_DETAIL:
         get_artist_descriptions_from_xai(tracks, language)  # writes t["artistDetail"] or similar
 
     # cleanup transient
