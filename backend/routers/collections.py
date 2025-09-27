@@ -1,6 +1,11 @@
 # backend/routers/collections.py
 from __future__ import annotations
 
+import json
+from pathlib import Path
+import backend.config as cfg
+
+
 import os
 import inspect
 import logging
@@ -222,3 +227,68 @@ def export_collection(slug: str, db: Session = Depends(get_db)):
 
     c_out = CollectionIn(name=coll.name, slug=coll.slug, intro=getattr(coll, "intro", None))
     return CollectionExport(collection=c_out, tracks=tracks)
+
+
+@router.post("/import-json-file/{slug}", response_model=ImportResult)
+def import_collection_from_file(slug: str, db: Session = Depends(get_db)):
+    """
+    Load data/json_files/collections/{slug}.json from project root and import it
+    using the same semantics as POST /collections/import-json.
+
+    It prefers the camelCase `tracks` array produced by the generator.
+    If missing, it falls back to assembling tracks from `track_ranking` + `track`.
+    """
+    # Resolve path from project root
+    path = Path(cfg.BASE_DIR) / "data" / "json_files" / "collections" / f"{slug}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Collection JSON not found: {path}")
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            doc = json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read JSON file: {e}")
+
+    # Extract collection header
+    coll_meta = doc.get("collection") or {}
+    coll_name = coll_meta.get("name") or slug.replace("_", " ").title()
+    coll_intro = coll_meta.get("intro") if isinstance(coll_meta.get("intro"), str) else None
+
+    # Prefer modern camelCase items
+    items = doc.get("tracks")
+
+    # Fallback: reconstruct items from legacy sections
+    if not items:
+        legacy_tracks = doc.get("track") or []            # snake_case list of tracks
+        legacy_ranks  = doc.get("track_ranking") or []    # {rank, spotify_track_id, intro}
+
+        by_spid = {}
+        for t in legacy_tracks:
+            spid = t.get("spotify_track_id")
+            if spid:
+                by_spid[spid] = t
+
+        items = []
+        for r in legacy_ranks:
+            spid = r.get("spotify_track_id")
+            meta = by_spid.get(spid, {})
+            items.append({
+                "ranking": r.get("rank"),
+                "spotifyTrackId": spid,
+                "title": meta.get("track_name"),
+                "artistName": meta.get("artist_name"),
+                "year": meta.get("year_released"),
+                "intro": r.get("intro"),
+            })
+
+    # Filter out malformed entries (need a ranking)
+    items = [it for it in (items or []) if it.get("ranking") is not None]
+    if not items:
+        raise HTTPException(status_code=400, detail="No tracks found to import in JSON file.")
+
+    # Build the payload model (Pydantic will coerce dicts)
+    c_in = CollectionIn(name=coll_name, slug=slug, intro=coll_intro)
+    payload = CollectionImportPayload(collection=c_in, tracks=items)
+
+    # Reuse the existing importer logic
+    return import_collection(payload, db)

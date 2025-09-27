@@ -9,6 +9,7 @@ from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 import logging
 logger = logging.getLogger(__name__)  # e.g., "backend.services.xai_descriptions"
 
+
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     """
     BACKWARD-COMPAT SHIM for decade-genre pipeline.
@@ -97,8 +98,63 @@ def get_collection_descriptions_from_xai(
                 t["intro"] = intro  # use `intro` to match your decade-genre schema
 
     # ---------- TRACK DETAIL ----------
+    # Hint the detail prompt about the collection theme (e.g., "Power Ballads")
+    for t in tracks:
+        t["_genre_context"] = genre or (slug.replace("_", " ").title() if slug else None)
+
     if cfg.ENABLE_TRACK_DETAIL:
         get_track_details_from_xai(tracks, language)   # writes t["detail"]
+    # --- Normalize detail into a single canonical key ---
+    DETAIL_ALIASES = [
+        "detail",
+        "detail_en",
+        "description",
+        "trackDetail",
+        "track_detail",
+        "detailText",
+        "trackDetailText",
+        "long_detail",
+        "longDescription",
+        "long_description",
+        "trackDescription",
+        "track_description",
+        # a few extras to be safe:
+        "detail_en_us",
+        "detail_text",
+        "track_long_text",
+        "narrative",
+    ]
+
+    # Optional: allow a minimal synthetic fallback line when XAI returns nothing
+    DETAIL_FALLBACK_SENTENCE = getattr(cfg, "DETAIL_FALLBACK_SENTENCE", True)
+
+    for t in tracks:
+        if not isinstance(t, dict):
+            continue
+        if isinstance(t.get("detail"), str) and t["detail"].strip():
+            continue  # already set
+
+        picked = None
+        for dk in DETAIL_ALIASES:
+            dv = t.get(dk)
+            if isinstance(dv, str) and dv.strip():
+                picked = dv.strip()
+                break
+
+        if picked:
+            t["detail"] = picked
+        elif DETAIL_FALLBACK_SENTENCE:
+            # Conservative, single-line fallback using available metadata + theme
+            title  = (t.get("track_name") or t.get("title") or "This track")
+            artist = (t.get("artist_name") or t.get("artistName") or "the artist")
+            year   = (t.get("year_released") or t.get("year") or "an unknown year")
+            album  = (t.get("album_name") or t.get("albumName") or "an unknown album")
+            ctx    = (genre or (slug.replace("_", " ").title() if slug else "") or "this collection")
+            t["detail"] = (
+                f"{title} by {artist}, from '{album}' ({year}), "
+                f"fits the spirit of {ctx} with enduring appeal."
+            )
+
 
     # ---------- ARTIST DETAIL ----------
     if cfg.ENABLE_ARTIST_DETAIL:
@@ -107,6 +163,11 @@ def get_collection_descriptions_from_xai(
     # cleanup transient
     for t in tracks:
         t.pop("_xai_intro", None)
+        t.pop("_genre_context", None)  # remove prompt-only hint
+
+    # Debug: how many details did we actually fill?
+    filled = sum(1 for t in tracks if isinstance(t.get("detail"), str) and t["detail"].strip())
+    logger.debug(f"🧠 STEP 9C: detail filled for {filled}/{len(tracks)} tracks")
 
     return {
         "language": language,

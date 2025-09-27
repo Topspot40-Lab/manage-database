@@ -52,6 +52,87 @@ def temp_flags(**kw):
         for k, v in old.items():
             setattr(_cfg, k, v)
 
+# --- helpers: normalize explicit flag + album art + safe detail ----------------
+from typing import Any, Dict, List
+
+ALBUM_IMAGE_KEYS = (
+    "album_art_url", "albumArtUrl", "album_artwork", "album_image_url", "albumImageUrl"
+)
+
+def _pick_album_art_url(t: Dict[str, Any]) -> str | None:
+    # Prefer any pre-normalized keys first
+    for k in ALBUM_IMAGE_KEYS:
+        url = t.get(k)
+        if isinstance(url, str) and url.strip():
+            return url.strip()
+
+    # Fall back to common Spotify shapes
+    # 1) flat list of images (your enrich step may stash this)
+    images = t.get("album_images") or t.get("images")
+    if isinstance(images, list) and images:
+        # prefer largest first (Spotify returns largest first usually)
+        for img in images:
+            if isinstance(img, dict) and isinstance(img.get("url"), str) and img["url"].strip():
+                return img["url"].strip()
+
+    # 2) nested album.images (typical Spotify object)
+    album = t.get("album")
+    if isinstance(album, dict):
+        images = album.get("images")
+        if isinstance(images, list) and images:
+            for img in images:
+                if isinstance(img, dict) and isinstance(img.get("url"), str) and img["url"].strip():
+                    return img["url"].strip()
+    return None
+
+def _coerce_is_explicit(t: Dict[str, Any]) -> bool:
+    # Accept a variety of upstream shapes
+    val = (
+        t.get("is_explicit", None) if "is_explicit" in t else
+        t.get("explicit", None) if "explicit" in t else
+        t.get("isExplicit", None)
+    )
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return bool(val)
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s in {"true", "t", "yes", "y", "1"}:
+            return True
+        if s in {"false", "f", "no", "n", "0"}:
+            return False
+    # default if unknown
+    return False
+
+def _finalize_track_triplet_fields(tracks: List[Dict[str, Any]]) -> None:
+    """
+    Ensures each track has:
+      - detail (string or None, but try hard to fill)
+      - is_explicit (bool)
+      - album_artwork (string or None)
+    """
+    for t in tracks:
+        # is_explicit
+        t["is_explicit"] = _coerce_is_explicit(t)
+
+        # album_artwork
+        album_url = _pick_album_art_url(t)
+        t["album_artwork"] = album_url if album_url else None
+
+        # detail (leave string/None; don't invent text here)
+        # If some other key already has the long description, mirror it.
+        if not t.get("detail"):
+            # inside _finalize_track_triplet_fields(...)
+            t["detail"] = (
+                    t.get("detail_en")
+                    or t.get("description")
+                    or t.get("trackDetail")
+                    or t.get("track_detail")
+                    or None
+            )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Normalizers (mirrors your decade-genre pipeline behavior)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +269,9 @@ def generate_collection_json(
         if max_step == 1:
             return {"message": "Stopped after STEP 1", "preview": {"collection": theme, "tracks": tracks}}
 
+        if not raw_candidates:
+            raise HTTPException(status_code=502, detail=f"No tracks curated for theme '{theme}'")
+
         # ───────────────── STEP 2 ─────────────────
         logger.debug("✍️ STEP 2: Skipped (legacy descriptions moved to STEP 9)")
         if max_step == 2:
@@ -199,6 +283,8 @@ def generate_collection_json(
         tracks = [_normalize_artist_collab(t) for t in tracks]
 
         tracks = enrich_tracks_with_spotify(tracks, is_test_mode=False)
+
+
 
         if tracks:
             logger.debug("STEP 3 sample keys: %s", sorted(tracks[0].keys()))
@@ -324,6 +410,10 @@ def generate_collection_json(
         tracks = described["tracks"]
         ranking = described.get("track_ranking", ranking)
 
+        # ✅ Normalize detail / is_explicit / album_artwork now that XAI + Spotify data are present
+        _finalize_track_triplet_fields(tracks)
+
+
         # Merge artist descriptions (if any) into the artist table
         # Priority: explicit artist table from XAI → per-track artist_description fields
         desc_by_name = {}
@@ -347,17 +437,41 @@ def generate_collection_json(
             if nm in desc_by_name and not a.get("artist_description"):
                 a["artist_description"] = desc_by_name[nm]
 
+        # ───────────── helpers (put just above STEP 10) ─────────────
+        from typing import Optional, Any
 
+        def _resolve_album_art(t: dict) -> Optional[str]:
+            return (
+                    t.get("album_art_url")
+                    or t.get("album_artwork")
+                    or t.get("albumImageUrl")
+                    or t.get("album_image_url")
+                    or t.get("albumArtUrl")
+                    or None
+            )
 
-        # ───────────────── STEP 10 ─────────────────
-        logger.debug("💾 STEP 10: Save JSON to data/json_files/collections/{slug}.json")
-        # Harmonize mode flag vs featured artist (parity with decade-genre save step)
+        def _to_bool_or_none(v: Any) -> Optional[bool]:
+            if v is None:
+                return None
+            if isinstance(v, bool):
+                return v
+            s = str(v).strip().lower()
+            if s in {"true", "1", "yes"}:
+                return True
+            if s in {"false", "0", "no"}:
+                return False
+            return None
 
-        # Harmonize mode flag vs featured artist (parity with decade-genre save step)
+        def _to_int_or_none(v: Any) -> Optional[int]:
+            try:
+                return int(v)
+            except Exception:
+                return None
+
         def _harmonize_mode_and_feature(t: dict) -> None:
-            feat = (t.get("featured_artist") or "")
+            feat = t.get("featured_artist")
             if not isinstance(feat, str):
-                feat = str(feat)
+                feat = "" if feat is None else str(feat)
             feat = feat.strip()
 
             flag = (t.get("mode_flag") or "").strip().upper()
@@ -365,23 +479,26 @@ def generate_collection_json(
             # If there is a featured artist → ensure DUET
             if feat and flag in ("", "SOLO"):
                 t["mode_flag"] = "DUET"
-
             # If no featured artist and flag empty → mark SOLO
             if not feat and flag == "":
                 t["mode_flag"] = "SOLO"
-
             # If no featured artist but flag is DUET/FEATURED → reset to SOLO
             if not feat and flag in ("DUET", "FEATURED"):
                 t["mode_flag"] = "SOLO"
 
             base = t.get("track_name") or ""
             t["track_display_name"] = f"{base} (feat. {feat})" if feat else base
+            # Also keep a normalized featured name string or None for DB
+            t["featured_artist"] = feat or None
 
+        # ───────────────── STEP 10 ─────────────────
+        logger.debug("💾 STEP 10: Save JSON to data/json_files/collections/{slug}.json")
+
+        # Harmonize per-track once
         for t in tracks:
             _harmonize_mode_and_feature(t)
 
-        # Build a unique artist list from tracks (best-effort if IDs/artwork aren’t present here)
-        # Use the enriched artist table (preserves spotify ids + artwork + descriptions)
+        # Build legacy artist table (preserves IDs + artwork + descriptions)
         artists_legacy = [
             {
                 "artist_name": a.get("artist_name"),
@@ -392,39 +509,32 @@ def generate_collection_json(
             for a in artist_tbl
         ]
 
-        # Legacy track array (snake_case) expected by the upsert
         created_iso = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
         tracks_legacy = []
         for t in tracks:
             mf = (t.get("mode_flag") or "").upper() or None
-            # just above the tracks_legacy.append({...})
-            album_art = (
-                    t.get("album_art_url")
-                    or t.get("album_artwork")
-                    or t.get("albumImageUrl")
-                    or t.get("album_image_url")
-                    or t.get("albumArtUrl")
-            )
 
             explicit = t.get("is_explicit")
             if explicit is None:
-                explicit = t.get("explicit")  # Spotify often returns "explicit"
+                explicit = t.get("explicit")  # Spotify may use 'explicit'
+            explicit = _to_bool_or_none(explicit)
 
             tracks_legacy.append({
                 "track_name": t.get("track_name"),
                 "artist_name": t.get("artist_name"),
                 "spotify_track_id": t.get("spotify_track_id"),
-                "duration_ms": t.get("duration_ms") or None,
-                "popularity": t.get("popularity") or None,
-                "album_artwork": album_art,  # ← use the resolved variable
-                "year_released": t.get("year_released"),
-                "is_explicit": explicit,  # ← use the resolved variable
-                "created_at": created_iso,  # UTC ISO seconds
-                "detail": t.get("detail"),  # will be set once flags work (see §3)
+                "duration_ms": _to_int_or_none(t.get("duration_ms")),
+                "popularity": _to_int_or_none(t.get("popularity")),
+                "album_artwork": t.get("album_artwork") or _resolve_album_art(t),  # prefer normalized
+                "year_released": _to_int_or_none(t.get("year_released")),
+                "is_explicit": t.get("is_explicit", False),  # always boolean
+                "created_at": created_iso,
+                "detail": (t.get("detail") or None),
                 "album_name": t.get("album_name"),
                 "mode_flag": mf,
                 "featured_artist_name": t.get("featured_artist") or None,
-                "featured_artist_sid": None,
+                "featured_artist_sid": t.get("featured_artist_sid") or None,  # stays None unless you add it upstream
                 "artist_display_name": t.get("artist_name"),
             })
 
@@ -471,9 +581,11 @@ def generate_collection_json(
                     "year": t.get("year_released"),
                     "spotifyTrackId": t.get("spotify_track_id"),
                     "albumName": t.get("album_name"),
-                    "albumArtUrl": t.get("album_art_url"),
+                    "albumArtUrl": t.get("album_artwork") or _resolve_album_art(t),
+
                     "intro": t.get("intro"),
-                    "detail": t.get("detail"),
+                    "detail": t.get("detail"),  # already normalized by the finalizer
+
                     "modeFlag": (t.get("mode_flag") or "").upper(),
                     "featuredArtist": t.get("featured_artist") or None,
                     "trackDisplayName": t.get("track_display_name"),

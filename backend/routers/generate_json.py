@@ -20,7 +20,8 @@ from backend.builders.track_builder import build_track_entry
 from backend.builders.json_builder import build_final_json
 from backend.services.track_generator import enrich_tracks_with_spotify
 from backend.routers.steps.step_01_get_tracks import run as step01_get_tracks
-from backend.services.xai_descriptions import get_track_descriptions_from_xai
+from backend.services.xai_descriptions_bridge import fill_intro_detail_for_any_context
+
 from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 from backend.utils.json_helpers import save_full_json_file
 from shared.filepaths import get_json_path
@@ -47,6 +48,11 @@ def _rank2(rank):
     except Exception:
         return "--"
 
+def _safe_int(x):
+    try:
+        return int(x)
+    except Exception:
+        return None
 
 
 # connectors → how to treat the collab
@@ -289,32 +295,40 @@ async def generate_track_json(
         # ✅ STEP 9: Add XAI descriptions after final rank assignment
         logger.debug("✍️ STEP 9: Adding XAI descriptions after rank reassignment")
 
-        # 👇 Prepare enriched_for_xai with ranking + artist table for proper merging
-        enriched_for_xai = {
-            "tracks": tracks,
-            "track_ranking": final_json.get("track_ranking", []),
-            "artist_table": final_json.get("artist_table", [])
-        }
+        # Use canonical short code for the model prompt ("en", "es", "pt-BR", …)
+        lang_code = normalize_language_code(request.language)
 
-        # 🎯 Generate descriptions and apply them to appropriate tables
-        described = get_track_descriptions_from_xai(
-            track_data=enriched_for_xai,
-            language=request.language,
-            decade=request.decade,
-            genre=request.genre
+        # Fill intro/detail in-place (bridge adapts decade-genre → category/genre for the batcher)
+        final_json["track"] = fill_intro_detail_for_any_context(
+            final_json["track"],
+            language=lang_code,
+            decade=request.decade,  # e.g., "1960s"
+            genre=request.genre  # e.g., "Classic Rock"
         )
 
-        # 🧪 Validate response
-        if not described or "tracks" not in described or len(described["tracks"]) != len(tracks):
+        # (Optional) sanity check
+        if not isinstance(final_json["track"], list) or not final_json["track"]:
             raise HTTPException(status_code=500, detail="Failed to generate final track descriptions")
 
-        # ✅ Update final_json with enriched outputs
-        final_json["track"] = described["tracks"]
-        final_json.update({
-            "track_ranking": described.get("track_ranking", [])
-        })
+        # Mirror track.intro to track_ranking rows where IDs/ranks match
+        rank_rows = final_json.get("track_ranking") or []
+        if rank_rows:
+            intro_by_key = {}
+            for t in final_json["track"]:
+                sid = t.get("spotify_track_id")
+                rk = _safe_int(t.get("rank"))
+                intro = (t.get("intro") or "").strip()
+                if sid and rk is not None and intro:
+                    intro_by_key[(sid, rk)] = intro
 
-        final_json["artist_table"] = described.get("artist_table", [])
+            for r in rank_rows:
+                sid = r.get("spotify_track_id")
+                rk = _safe_int(r.get("rank"))
+                if sid and rk is not None:
+                    intro = intro_by_key.get((sid, rk))
+                    if intro:
+                        r["intro"] = intro
+                    r["intro"] = intro
 
         # 🎙️ STEP 9.B: Add artist_description using XAI
 
@@ -334,7 +348,7 @@ async def generate_track_json(
                     artist["artist_description"] = desc_map[name]
                     logger.debug(f"✅ Step 9.B Merged artist_description for '{artist.get('artist_name')}'")
                 else:
-                    logger.warning(f"⚠️ Step 9.BNo artist_description found for '{artist.get('artist_name')}'")
+                    logger.warning(f"⚠️ Step 9.B No artist_description found for '{artist.get('artist_name')}'")
 
         logger.info("🛑 Step 9 ----- Complete")
 

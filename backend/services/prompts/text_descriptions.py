@@ -108,6 +108,7 @@ def build_detail_prompt(
     words_max: int = 65,
     folk_acoustic_mode: bool = True,
     forbid_new_facts: bool = True,
+    genre_context: Optional[str] = None,   # ← NEW
 ) -> Dict[str, str]:
     """
     Build a detail (1–3 sentences) prompt. Keeps a factual, evergreen tone.
@@ -135,6 +136,8 @@ def build_detail_prompt(
         "- Prefer widely-known facts; avoid niche/unverifiable claims.\n"
     )
 
+    genre_hint = f"- Keep the perspective aligned with the '{genre_context}' theme.\n" if genre_context else ""
+
     user = (
         f"{facts_block}\n\n"
         "Write a compact description.\n"
@@ -143,6 +146,7 @@ def build_detail_prompt(
         "- Neutral, informed tone; no marketing fluff; no markdown.\n"
         "- Keep EXACT spellings for names; preserve diacritics.\n"
         f"{no_add}"
+        f"{genre_hint}"
         f"{tts}\n"
         f"{folk}\n"
         "Return plain text only."

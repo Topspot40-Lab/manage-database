@@ -7,6 +7,107 @@ import requests  # swap for your xAI SDK if you have one
 
 logger = logging.getLogger("xai_track_detail")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-track detail filler used by collections/decade pipelines
+# ─────────────────────────────────────────────────────────────────────────────
+import backend.config as cfg
+from backend.services.prompts.text_descriptions import build_detail_prompt, to_xai_messages
+
+def _xai_chat_complete(messages: List[Dict[str, str]], temperature: float | None = None, max_tokens: int | None = None) -> str:
+    """
+    Minimal xAI chat wrapper using requests. Returns assistant text content.
+    """
+    api_key = os.getenv("XAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("XAI_API_KEY missing")
+
+    temperature = cfg.TEMPERATURE_DEFAULT if temperature is None else temperature
+    max_tokens  = min(2048, getattr(cfg, "MAX_TOKENS_DEFAULT", 1024)) if max_tokens is None else max_tokens
+
+    resp = requests.post(
+        cfg.XAI_API_URL,
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "model": cfg.XAI_MODEL,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        },
+        timeout=cfg.XAI_TIMEOUT_SECONDS,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return (data.get("choices", [{}])[0].get("message", {}).get("content", "") or "").strip()
+
+
+def get_track_details_from_xai(tracks: List[Dict[str, Any]], language: str = "en") -> None:
+    """
+    Mutates each track dict to set t['detail'] using build_detail_prompt().
+    Matches the signature expected by xai_descriptions.get_collection_descriptions_from_xai.
+    """
+    if not tracks:
+        logger.debug("🧠 detail: no tracks to process")
+        return
+
+    # Tunables from config (rich 2–3 sentences by default)
+    sentences_min = getattr(cfg, "DETAIL_SENTENCES_MIN", 2)
+    sentences_max = getattr(cfg, "DETAIL_SENTENCES_MAX", 3)
+    words_min     = getattr(cfg, "DETAIL_WORDS_MIN", 60)
+    words_max     = getattr(cfg, "DETAIL_WORDS_MAX", 90)
+    forbid_new    = getattr(cfg, "DETAIL_FORBID_NEW_FACTS", False)
+    folk_mode     = getattr(cfg, "DETAIL_FOLK_ACOUSTIC_MODE", False)
+
+    filled = 0
+    for t in tracks:
+        # Skip if pre-filled
+        if isinstance(t.get("detail"), str) and t["detail"].strip():
+            continue
+
+        track_name  = (t.get("track_name") or t.get("title") or "").strip()
+        artist_name = (t.get("artist_name") or t.get("artistName") or t.get("artist") or "").strip()
+        album_name  = (t.get("album_name") or t.get("albumName") or None)
+        year_rel    = t.get("year_released") or t.get("year")
+        genre_ctx   = t.get("_genre_context") or getattr(cfg, "DETAIL_GENRE_CONTEXT_DEFAULT", "") or None
+
+        if not (track_name and artist_name):
+            continue
+
+        yr = None
+        if isinstance(year_rel, int):
+            yr = year_rel
+        elif isinstance(year_rel, str) and year_rel.isdigit():
+            yr = int(year_rel)
+
+        prompt = build_detail_prompt(
+            track_name=track_name,
+            artist_name=artist_name,
+            album_name=album_name,
+            year_released=yr,
+            language=language,
+            sentences_min=sentences_min,
+            sentences_max=sentences_max,
+            words_min=words_min,
+            words_max=words_max,
+            folk_acoustic_mode=folk_mode,
+            forbid_new_facts=forbid_new,
+            genre_context=genre_ctx,  # ← theme hint (e.g., "Power Ballads")
+        )
+        messages = to_xai_messages(prompt)
+
+        try:
+            text = _xai_chat_complete(messages)
+            if text:
+                t["detail"] = text
+                filled += 1
+                logger.debug("🧠 detail: filled for %s — %d chars", track_name, len(text))
+        except requests.HTTPError as he:
+            logger.warning("🧠 detail: HTTP %s for '%s': %s",
+                           getattr(he.response, "status_code", "?"), track_name, he)
+        except Exception as e:
+            logger.warning("🧠 detail: xAI error on '%s': %s", track_name, e)
+
+    logger.info("🧠 detail: populated %d/%d tracks", filled, len(tracks))
+
 
 # --- Add below your existing get_track_details_from_xai ----------------------
 from typing import Optional
@@ -104,7 +205,7 @@ def regenerate_missing_track_details(
         return 0
 
     # Batch call to your existing LLM helper
-    results = get_track_details_from_xai(items, target_language_label=lang_label)
+    results = get_track_details_from_xai_batch(items, target_language_label=lang_label)
 
     if dry_run:
         logger.info("🧪 dry_run=True — would write %d locale detail rows for %s", len(results), lang_code)
@@ -163,7 +264,7 @@ def _safe_json_loads(s: str):
         except Exception:
             return None
 
-def get_track_details_from_xai(items: List[Dict[str, Any]], target_language_label: str) -> List[Dict[str, Any]]:
+def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_language_label: str) -> List[Dict[str, Any]]:
     """
     items: [{"track_id": int, "track_name": str, "artist_name": str, "year_released": int|None}, ...]
     returns: [{"track_id": int, "track_name": str, "artist_name": str, "detail_text": str}, ...]

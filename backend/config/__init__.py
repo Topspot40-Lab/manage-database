@@ -111,6 +111,20 @@ SPOTIFY_CLIENT_SECRET: str = _env_str("SPOTIFY_CLIENT_SECRET", "") or _env_str("
 SPOTIFY_REDIRECT_URI: str = _env_str("SPOTIFY_REDIRECT_URI", "") or _env_str("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:8888/callback")
 SPOTIFY_MARKET: str = _env_str("SPOTIFY_MARKET", "US")
 
+# ───────── Detail generation knobs (used by xai_track_detail) ─────────
+DETAIL_SENTENCES_MIN = _env_int("DETAIL_SENTENCES_MIN", 2)
+DETAIL_SENTENCES_MAX = _env_int("DETAIL_SENTENCES_MAX", 3)
+DETAIL_WORDS_MIN     = _env_int("DETAIL_WORDS_MIN", 60)
+DETAIL_WORDS_MAX     = _env_int("DETAIL_WORDS_MAX", 90)
+DETAIL_FORBID_NEW_FACTS = _env_bool("DETAIL_FORBID_NEW_FACTS", False)  # allow widely-known context
+DETAIL_FOLK_ACOUSTIC_MODE = _env_bool("DETAIL_FOLK_ACOUSTIC_MODE", False)
+DETAIL_FALLBACK_SENTENCE  = _env_bool("DETAIL_FALLBACK_SENTENCE", False)  # turn off generic line
+# Optional: a default theme hint if caller doesn't pass one
+DETAIL_GENRE_CONTEXT_DEFAULT = _env_str("DETAIL_GENRE_CONTEXT_DEFAULT", "")
+
+
+
+
 def spotify_creds_ok() -> bool:
     return bool(SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET)
 

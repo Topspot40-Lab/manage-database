@@ -28,6 +28,57 @@ logger = logging.getLogger(__name__)
 # Allow overriding market via env, default to US to reduce noise/duplicates
 SPOTIFY_MARKET = os.getenv("SPOTIFY_MARKET", "US")
 
+# --- helpers: map Spotify album/images into our track dict --------------------
+def _apply_spotify_album_fields(t: dict, sp_tr: dict) -> None:
+    """
+    Populate album artwork + a few canonical aliases so the collections
+    pipeline can always find album_artwork.
+    """
+    album = (sp_tr.get("album") or {})
+    images = album.get("images") or []  # list of {url,width,height}
+
+    # prefer the largest image (fallback to first if widths missing)
+    def _pick_album_art(imgs):
+        if not isinstance(imgs, list) or not imgs:
+            return None
+        try:
+            return max(
+                (i for i in imgs if isinstance(i, dict) and i.get("url")),
+                key=lambda i: (i.get("width") or 0),
+            ).get("url")
+        except ValueError:
+            first = imgs[0]
+            return first.get("url") if isinstance(first, dict) else None
+
+    album_art_url = _pick_album_art(images)
+
+    duration_ms = sp_tr.get("duration_ms")
+    popularity  = sp_tr.get("popularity")
+    explicit    = sp_tr.get("explicit")
+
+    artists     = sp_tr.get("artists") or []
+    primary     = artists[0] if artists else {}
+    spotify_artist_id   = primary.get("id")
+    artist_display_name = primary.get("name") or t.get("artist_name")
+
+    # canonical + aliases (your collections router looks for any of these)
+    t["album_name"]       = album.get("name") or t.get("album_name")
+    t["album_images"]     = images
+    t["images"]           = images or t.get("images")
+    t["album_art_url"]    = album_art_url
+    t["album_artwork"]    = album_art_url
+    t["album_image_url"]  = album_art_url
+
+    # other useful carry-overs
+    if duration_ms is not None:
+        t["duration_ms"] = duration_ms
+    if popularity is not None:
+        t["popularity"] = popularity
+    t["explicit"]            = explicit
+    t["artist_display_name"] = artist_display_name or t.get("artist_display_name")
+    t["spotify_artist_id"]   = spotify_artist_id or t.get("spotify_artist_id")
+
+
 
 def auto_select_best_spotify_match(track_name: str, suggestions: list[dict]) -> tuple[Optional[dict], str]:
     """
@@ -423,22 +474,54 @@ def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -
             if spotify_data:
                 t["spotify_data"] = spotify_data
 
-                # ✅ Unpack to top-level fields
+                # ✅ Unpack to top-level fields (existing)
                 t["spotify_track_id"] = spotify_data.get("spotify_track_id")
                 t["spotify_artist_id"] = spotify_data.get("artist_id")
                 t["duration_ms"] = spotify_data.get("duration_ms")
                 t["album_name"] = spotify_data.get("album_name")
-                t["track_image"] = spotify_data.get("album_artwork")
+                t["track_image"] = spotify_data.get("album_artwork")  # keep for any legacy readers
                 t["artist_artwork"] = spotify_data.get("artist_artwork")
                 t["popularity"] = spotify_data.get("popularity")
                 t["featured_artist_name"] = spotify_data.get("featured_artist_name")
                 t["featured_artist_id"] = spotify_data.get("featured_artist_id")
                 t["mode_flag"] = t.get("mode_flag", "unknown")
 
+                # 🔗 NEW: album art aliases to satisfy collections_generate pickers
+                # Your collections router checks: album_art_url, albumArtUrl, album_artwork,
+                # album_image_url, albumImageUrl, album_images / images, or album.images
+                album_art = (
+                    spotify_data.get("album_artwork")
+                    or spotify_data.get("album_image_url")
+                    or spotify_data.get("albumArtUrl")
+                )
+                album_images = spotify_data.get("album_images") or spotify_data.get("images") or []
+
+                if album_art:
+                    t["album_art_url"] = album_art
+                    t["album_artwork"] = album_art
+                    t["album_image_url"] = album_art  # extra alias your resolver scans
+
+                if album_images:
+                    t["album_images"] = album_images
+                    # keep a flat alias too (router also checks 'images')
+                    t["images"] = album_images if not t.get("images") else t["images"]
+
+                # 🔤 Explicit flag passthrough (your finalizer coerces it)
+                if "explicit" in spotify_data and "is_explicit" not in t:
+                    t["explicit"] = spotify_data.get("explicit")
+
+                # 👤 Display name convenience
+                t["artist_display_name"] = (
+                    spotify_data.get("artist_name")
+                    or t.get("artist_display_name")
+                    or t.get("artist_name")
+                )
+
                 logger_spotify.debug(
                     f"✅ [STEP_3.A] Rank {rank}: Unpacked and enriched → "
                     f"Track ID: {t.get('spotify_track_id')}, "
-                    f"Artist ID: {t.get('spotify_artist_id')}"
+                    f"Artist ID: {t.get('spotify_artist_id')}, "
+                    f"AlbumArt: {'✔️' if t.get('album_art_url') or t.get('album_artwork') else '❌'}"
                 )
 
             else:
@@ -464,7 +547,7 @@ def enrich_tracks_with_spotify(tracks: list[dict], is_test_mode: bool = False) -
             f"   • Artist ID: {sd.get('artist_id', '❌')}\n"
             f"   • Duration: {sd.get('duration_ms', '❌')} ms\n"
             f"   • Popularity: {sd.get('popularity', '❌')}\n"
-            f"   • Album Art: {'✔️' if sd.get('album_artwork') else '❌'}\n"
+            f"   • Album Art: {'✔️' if (t.get('album_artwork') or t.get('album_art_url') or sd.get('album_artwork')) else '❌'}\n"
             f"   • Artist Art: {'✔️' if sd.get('artist_artwork') else '❌'}"
         )
 
