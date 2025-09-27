@@ -26,16 +26,73 @@ from backend.schemas.collection_schemas import (
 )
 from backend.services.track_resolver import resolve_track_id_by_meta
 
+from backend.services.track_resolver import (
+    resolve_track_id_by_meta,
+    ensure_track_for_meta,
+)
+
+
 # Use namespaced logger so it respects LOG_LEVELS_BY_MODULE["backend.routers.collections"]
 logger = logging.getLogger(__name__)
+
+# add near the top
+import unicodedata
+from typing import Any, Dict
+
+CANON_KEYS = {
+    # title
+    "title": "track_name",
+    "track": "track_name",
+    "trackTitle": "track_name",
+    "track_title": "track_name",
+    "trackName": "track_name",
+    "track_name": "track_name",
+    # artist
+    "artist": "artist_name",
+    "artistName": "artist_name",
+    "artist_name": "artist_name",
+    "artistDisplayName": "artist_name",
+    "artist_display_name": "artist_name",
+    # year
+    "year": "year_released",
+    "yearReleased": "year_released",
+    "year_released": "year_released",
+}
+
+SMART_APOS = {"\u2019": "'", "\u2018": "'"}
+
+def _strip_accents(s: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    )
+
+def coerce_row(raw: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    for k, v in raw.items():
+        canon = CANON_KEYS.get(k, k)
+        out[canon] = v
+    # fix smart quotes/apostrophes and trim
+    tn = (out.get("track_name") or "").strip()
+    an = (out.get("artist_name") or "").strip()
+    for bad, good in SMART_APOS.items():
+        tn = tn.replace(bad, good)
+        an = an.replace(bad, good)
+    out["track_name"] = tn
+    out["artist_name"] = an
+    # also keep an accent-stripped variant to help resolver
+    out["_track_name_ascii"] = _strip_accents(tn.lower())
+    out["_artist_name_ascii"] = _strip_accents(an.lower())
+    return out
+
 
 # Show source path for the Collection model (debug by default; opt-in to INFO via env)
 try:
     _src = inspect.getfile(Collection)
     if os.getenv("SHOW_COLLECTIONS_SRC", "").lower() in ("1", "true", "yes", "on"):
-        logger.info("USING Collection from %s", _src)
+        logger.info(f"USING Collection from {_src}")
     else:
-        logger.debug("USING Collection from %s", _src)
+        logger.debug(f"USING Collection from {_src}")
 except Exception:
     # Avoid any import-time failures just from logging
     logger.debug("Could not determine Collection model source path", exc_info=True)
@@ -47,7 +104,7 @@ router = APIRouter(prefix="/collections")
 def import_collection(payload: CollectionImportPayload, db: Session = Depends(get_db)):
     try:
         c_in = payload.collection
-        skip_resolve = bool(getattr(payload, "skipResolve", False))
+        skip_resolve = bool(getattr(payload, "skipResolve", getattr(payload, "skip_resolve", False)))
 
         # 1) Upsert collection by slug
         coll = db.exec(select(Collection).where(Collection.slug == c_in.slug)).first()
@@ -86,74 +143,125 @@ def import_collection(payload: CollectionImportPayload, db: Session = Depends(ge
         to_upsert: list[CollectionTrackRanking] = []
         incoming_ranks = {it.ranking for it in payload.tracks}
 
-        # ---------- helper to resolve a single item ----------
         def resolve_for_item(it) -> tuple[int | None, dict | None]:
-            """Return (track_id, unresolved_dict). Exactly one of them is non-None."""
-            # a) direct trackId
+            """
+            Return (track_id, unresolved_dict). Exactly one of them is non-None.
+            Uses coerce_row() so the resolver always gets canonical keys.
+            """
+            # a) direct numeric DB track id
             tid = getattr(it, "trackId", None)
             if tid is not None:
                 if db.get(Track, tid):
                     return tid, None
                 return None, {"ranking": it.ranking, "reason": "trackId not found", "trackId": tid}
 
-            # b) DB lookup by spotifyTrackId
+            # b) DB lookup by spotifyTrackId (if present)
             spid = getattr(it, "spotifyTrackId", None)
             if spid:
                 found = db.exec(select(Track.id).where(Track.spotify_track_id == spid)).scalar_one_or_none()
                 if found:
                     return found, None
-                # fall through to metadata/skip
+                # fall through to metadata resolution
 
-            # c) metadata resolution (optional)
-            title = getattr(it, "title", None)
-            artist = getattr(it, "artistName", None)
-            year = getattr(it, "year", None)
+            # c) metadata resolution (normalize incoming fields first)
+            #    get a plain dict from the pydantic model
+            if hasattr(it, "model_dump"):
+                raw = it.model_dump()
+            elif hasattr(it, "dict"):
+                raw = it.dict()
+            else:
+                # last resort
+                raw = {k: getattr(it, k, None) for k in dir(it) if not k.startswith("_")}
+
+            norm = coerce_row(raw)
+            track_name = norm.get("track_name")
+            artist_name = norm.get("artist_name")
+            year = norm.get("year_released")
 
             if skip_resolve:
                 return None, {
                     "ranking": it.ranking,
-                    "title": title, "artistName": artist, "year": year,
+                    "title": track_name, "artistName": artist_name, "year": year,
                     "spotifyTrackId": spid, "reason": "skipped resolution"
                 }
 
+            # Debug breadcrumb
+            logger.debug(f"resolve(meta): rank={it.ranking} | {track_name!r} — {artist_name!r} ({year})")
+
             try:
-                resolved = resolve_track_id_by_meta(db, title, artist, year)
+                resolved = resolve_track_id_by_meta(db, track_name, artist_name, year)
             except Exception as e:
-                logger.warning("resolve_track_id_by_meta failed (rank=%s): %s", it.ranking, e)
+                logger.warning(f"resolve_track_id_by_meta failed (rank={it.ranking}): {e}", exc_info=True)
                 resolved = None
-            if resolved:
-                return resolved, None
+
+            # Accept int or dict, convert dict -> DB track_id
+            track_id = None
+            if isinstance(resolved, int):
+                track_id = resolved
+            elif isinstance(resolved, dict):
+                # prefer direct track_id if your resolver provides it
+                track_id = resolved.get("track_id")
+                if not track_id:
+                    spid_res = resolved.get("spotify_track_id") or resolved.get("spotifyTrackId")
+                    if spid_res:
+                        track_id = db.exec(
+                            select(Track.id).where(Track.spotify_track_id == spid_res)
+                        ).scalar_one_or_none()
+
+            if track_id:
+                return track_id, None
 
             return None, {
                 "ranking": it.ranking,
-                "title": title, "artistName": artist, "year": year,
+                "title": track_name, "artistName": artist_name, "year": year,
                 "spotifyTrackId": spid, "reason": "no match"
-            }
+             }
 
         # ---------- main loop ----------
         for item in payload.tracks:
             track_id, unresolved_rec = resolve_for_item(item)
-            if unresolved_rec is not None:
-                unresolved.append(unresolved_rec)
-                continue
 
-            # Schema already maps legacy 'note' -> 'intro' (validation_alias), so just use intro
+            # If resolver failed, try creating missing Artist/Track before giving up
+            if unresolved_rec is not None:
+                if unresolved_rec.get("reason") != "skipped resolution":
+                    created_tid = ensure_track_for_meta(
+                        db=db,
+                        track_name=unresolved_rec.get("title"),
+                        artist_name=unresolved_rec.get("artistName"),
+                        year=unresolved_rec.get("year"),
+                        spotify_track_id=unresolved_rec.get("spotifyTrackId"),
+                    )
+                    if created_tid:
+                        track_id = created_tid
+                        unresolved_rec = None
+
+                if unresolved_rec is not None:
+                    unresolved.append(unresolved_rec)
+                    continue
+
+            # proceed as before
             blurb = getattr(item, "intro", None)
 
             if item.ranking in existing:
                 row = existing[item.ranking]
                 changed = False
                 if row.track_id != track_id:
-                    row.track_id = track_id; changed = True
+                    row.track_id = track_id;
+                    changed = True
                 if blurb is not None and getattr(row, "intro", None) != blurb:
-                    row.intro = blurb; changed = True
+                    row.intro = blurb;
+                    changed = True
                 if changed:
-                    to_upsert.append(row); updated += 1
+                    to_upsert.append(row);
+                    updated += 1
             else:
-                row = CollectionTrackRanking(collection_id=coll.id, track_id=track_id, ranking=item.ranking)
+                row = CollectionTrackRanking(
+                    collection_id=coll.id, track_id=track_id, ranking=item.ranking
+                )
                 if blurb:
                     row.intro = blurb
-                to_upsert.append(row); inserted += 1
+                to_upsert.append(row);
+                inserted += 1
 
         # 5) strict/dry-run
         unresolved.sort(key=lambda d: d["ranking"])
@@ -190,7 +298,7 @@ def import_collection(payload: CollectionImportPayload, db: Session = Depends(ge
 
     except Exception as e:
         src = inspect.getfile(Collection)
-        logger.exception("import-json failed; Collection from %s", src)
+        logger.exception(f"import-json failed; Collection from {src}")
         raise HTTPException(
             status_code=500,
             detail={"error": f"{type(e).__name__}: {e}", "collection_model_source": src}
