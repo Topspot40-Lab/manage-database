@@ -174,6 +174,8 @@ def create_app() -> FastAPI:
     # Mobile narration (new, modularized)
     from backend.routers.narration import router as narration_router
 
+    from backend.routers.collections_player import router as collections_player_router
+
     # ── Include routers (tags defined ONLY here) ────────────────────
     # 1) Core JSON / Files / Playback / TTS
     app.include_router(json_router,         tags=["JSON & Files"])
@@ -214,6 +216,8 @@ def create_app() -> FastAPI:
 
     # 8) Mobile narration (MP3-on-phone flow)
     app.include_router(narration_router, tags=["Narration"])
+
+    app.include_router(collections_player_router)
 
     # ── Normalize tags so each route has exactly ONE canonical tag ──
     CANON_BY_PREFIX = [

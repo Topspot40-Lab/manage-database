@@ -6,9 +6,6 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import json
 
-# Use this if your narration MP3s are in Supabase buckets
-from backend.services.supabase_signer import sign_url
-
 
 from fastapi import APIRouter, Query, Depends, HTTPException
 from typing import Literal
@@ -35,6 +32,9 @@ from backend.services.playback_helpers import (
 # NEW modular helpers
 from backend.services.radio_pick import fetch_random_pick
 
+from backend.services.narration_bundle import urls_for_rank_dg as _urls_for_rank
+
+
 # Centralized policy helpers
 from backend.config.volume import PLAY_FULL_TRACK
 from backend.services.radio_runtime import (
@@ -45,87 +45,6 @@ from backend.services.radio_runtime import (
 
 logger = logging.getLogger(__name__)  # -> "backend.routers.supabase_loader"
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
-
-def _urls_for_rank(
-    db: Session,
-    lang: str,
-    decade: str,
-    genre: str,
-    rank: int,
-    *,
-    use_intro: bool,
-    use_detail: bool,
-    use_artist: bool,
-    expires: int,
-    request: Request,
-):
-    """Return dict with signed (or local) URLs for intro/detail/artist + spotify_track_id."""
-    dg = get_decade_genre(db, decade, genre)
-    if not dg:
-        return None, {"error": f"No DecadeGenre for {decade}/{genre}"}
-
-    rk = db.exec(select(TrackRanking).where(
-        TrackRanking.decade_genre_id == dg.id,
-        TrackRanking.ranking == rank
-    )).first()
-    if not rk:
-        return None, {"error": f"No ranking #{rank} in {decade}/{genre}"}
-
-    track  = db.get(Track, rk.track_id)
-    artist = db.get(Artist, track.artist_id) if track else None
-    if not track or not artist:
-        return None, {"error": "Track or Artist not found"}
-
-    intros = []
-    detail_url = None
-    artist_url = None
-
-    # If using Supabase buckets (signed URLs)
-    def _signed(bucket: str | None, key: str | None) -> str | None:
-        if not bucket or not key:
-            return None
-        return sign_url(bucket, key, expires)
-
-    # If you prefer local files via /audio/tts/{lang}/{kind}/{filename}, uncomment this and comment _signed() above:
-    # def _local(kind: str, filename: str) -> str:
-    #     return str(URL(str(request.base_url)) / f"audio/tts/{lang}/{kind}/{filename}")
-
-    if use_intro:
-        intro_fn = build_intro_filename(decade, genre, rank)
-        intro_key = key_for("intro", intro_fn)
-        intro_bucket = bucket_for(lang, "intro")
-        url = _signed(intro_bucket, intro_key)
-        # local version: url = _local("intro", intro_fn)
-        if url:
-            intros.append(url)
-
-    if use_detail:
-        detail_fn = build_detail_filename(track.spotify_track_id)
-        if detail_fn:
-            detail_key = key_for("detail", detail_fn)
-            detail_bucket = bucket_for(lang, "detail")
-            detail_url = _signed(detail_bucket, detail_key)
-            # local: detail_url = _local("detail", detail_fn)
-
-    if use_artist and getattr(artist, "spotify_artist_id", None):
-        artist_fn = build_artist_filename(artist.spotify_artist_id)
-        if artist_fn:
-            artist_key = key_for("artist", artist_fn)
-            artist_bucket = bucket_for(lang, "artist")
-            artist_url = _signed(artist_bucket, artist_key)
-            # local: artist_url = _local("artist", artist_fn)
-
-    payload = {
-        "rank": rank,
-        "spotify_track_id": track.spotify_track_id,
-        "intros": intros,
-        "detail": detail_url,
-        "artist": artist_url,
-        "track_name": track.track_name,
-        "artist_name": artist.artist_name,
-    }
-    return payload, None
-
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -340,7 +259,7 @@ async def play_track_by_rank(
 # Load (decade, genre) data and store context
 # ─────────────────────────────────────────────────────────────────────────────
 @router.get("/load-decade-genre-data")
-def load_deacade_genre_data(
+def load_decade_genre_data(
     decade: str = Query(..., description="Decade name, e.g., '1980s'"),
     genre: str = Query(..., description="Genre name, e.g., 'country'"),
     tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
@@ -406,7 +325,6 @@ def load_deacade_genre_data(
 # ─────────────────────────────────────────────────────────────────────────────
 # Play a sequence starting from a rank (localized)
 # ─────────────────────────────────────────────────────────────────────────────
-from fastapi.responses import HTMLResponse, JSONResponse
 
 @router.get("/play-tracks-with-starting-rank", response_class=HTMLResponse)
 async def play_tracks_with_starting_rank(
