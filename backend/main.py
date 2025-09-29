@@ -132,6 +132,8 @@ def create_app() -> FastAPI:
         logger.info("🔁 Received auth callback with code: %s", code)
         return {"message": "✅ Auth callback handled"}
 
+    from backend.routers.spotify_auth import router as spotify_auth_router
+
     # ── Router imports inside factory (avoid early side effects) ────
     # TTS
     from backend.routers.tts_intro import intro_router
@@ -221,6 +223,8 @@ def create_app() -> FastAPI:
     app.include_router(collections_player_router)
 
     app.include_router(collection_intro_router)
+
+    app.include_router(spotify_auth_router)
 
     # ── Normalize tags so each route has exactly ONE canonical tag ──
     CANON_BY_PREFIX = [
