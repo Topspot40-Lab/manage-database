@@ -21,9 +21,8 @@ from backend.services.radio_runtime import (
 )
 from backend.config.volume import PLAY_FULL_TRACK
 
-# centralized bundler for signed URLs / spotify ids
+# centralized bundler for signed URLs / spotify ids (now includes collection intros)
 from backend.services.narration_bundle import urls_for_rank_collection
-
 
 router = APIRouter(prefix="/supabase/collections", tags=["Collections"])
 
@@ -55,7 +54,7 @@ async def play_track_by_rank(
     if not track or not artist:
         return {"error": "Track or Artist not found"}
 
-    # Logs/texts (no “intro jobs” for collections yet)
+    # Logs/texts (no server-side collection intro playback yet)
     log_header_and_texts(lang=lang, track=track, artist=artist, tr_rows=[])
 
     # Narration assets
@@ -88,6 +87,7 @@ async def play_sequence(
     collection_slug: str = Query(...),
     starting_rank: int = Query(...),
     mode: Literal["count_up","count_down","random"] = Query("count_up"),
+    play_intro: bool = Query(True),                 # NEW: include collection intro
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
@@ -119,7 +119,7 @@ async def play_sequence(
         play_order = [r for r in order if r >= starting_rank]
         random.shuffle(play_order)
 
-    # SERVER mode: narrate + play on server
+    # SERVER mode: narrate + play on server (intros are only handled in browser mode for now)
     if server:
         results = []
         for rk in play_order:
@@ -156,7 +156,7 @@ async def play_sequence(
 
         return JSONResponse({"status": "completed", "collection": collection_slug, "mode": mode, "language": lang, "tracks_played": results})
 
-    # BROWSER mode: build client bundle of signed URLs + spotify ids
+    # BROWSER mode: build client bundle of signed URLs + spotify ids (now includes collection intro if enabled)
     sequence = []
     for rk in play_order:
         bundle, err = urls_for_rank_collection(
@@ -164,14 +164,14 @@ async def play_sequence(
             lang=lang,
             collection_id=coll.id,
             rank=rk,
-            use_intro=False,  # no per-collection intro mp3s (yet)
+            use_intro=play_intro,                # ✅ include intro when requested
             use_detail=play_detail,
             use_artist=play_artist_description,
             expires=expires,
             request=request,
+            collection_slug=coll.slug,          # pass slug so filenames resolve
         )
         if err or not bundle:
-            # optionally log err here
             continue
         sequence.append({"rank": rk, **bundle})
 

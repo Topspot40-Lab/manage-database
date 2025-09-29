@@ -1,18 +1,26 @@
 # backend/services/playback_helpers.py
 from typing import Literal, Optional
-import logging, asyncio, httpx, os, time
-import inspect
+import logging, asyncio, httpx, os, time, inspect
+
 from backend.config import BUCKETS, AUDIO_PREFIXES, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 from backend.utils.tts_diagnostics import normalize_for_filename
 from backend.services.supabase_playback import play_mp3
 
 logger = logging.getLogger(__name__)
 
-# 🔁 Make the type consistent with the rest of the codebase (canonical pt-BR)
+# 🔁 Canonical language codes (pt-BR)
 Lang  = Literal["en", "es", "pt-BR"]
-Kind  = Literal["intro", "detail", "artist"]
+# ➕ include collections_intro as a 4th kind (plural to match narration_bundle + config)
+Kind  = Literal["intro", "detail", "artist", "collections_intro"]
 
-_LANG_MAP = {"en": "en", "es": "es", "ptbr": "pt-BR", "pt-bR": "pt-BR", "pt-br": "pt-BR", "pt": "pt-BR"}
+_LANG_MAP = {
+    "en": "en",
+    "es": "es",
+    "ptbr": "pt-BR",
+    "pt-bR": "pt-BR",
+    "pt-br": "pt-BR",
+    "pt": "pt-BR",
+}
 
 # Tunables (env overrides)
 _SUPA_FETCH_TIMEOUT = float(os.getenv("SUPA_MP3_TIMEOUT", "60"))
@@ -29,41 +37,84 @@ except Exception:
 
 _play_lock = asyncio.Lock()
 
+
 def _looks_like_mp3(b: bytes) -> bool:
     return b.startswith(b"ID3") or (len(b) > 2 and b[0] == 0xFF and (b[1] & 0xE0) == 0xE0)
+
 
 def canon_lang(code: str | None) -> str:
     c = (code or "en").strip().lower()
     return _LANG_MAP.get(c, "en")
 
+
 def bucket_for(language: str, kind: Kind) -> str:
+    """
+    Return the Supabase bucket name for a given language/kind.
+    Falls back to the 'intro' bucket if 'collections_intro' is not explicitly configured.
+    """
     lang = canon_lang(language)
-    return BUCKETS.get(lang, BUCKETS["en"])[kind]
+    lang_map = BUCKETS.get(lang, BUCKETS["en"])
+    if kind in lang_map:
+        return lang_map[kind]
+    # graceful fallback for new kind without config change
+    if kind == "collections_intro":
+        return lang_map.get("intro")
+    # final fallback (shouldn't really happen)
+    return lang_map.get("intro")
+
 
 def key_for(kind: Kind, filename: str | None) -> Optional[str]:
+    """
+    Build the storage key (folder + filename) for a given kind.
+    If AUDIO_PREFIXES lacks 'collections_intro', default to 'collections-intro'.
+    """
     if not filename:
         return None
-    return f"{AUDIO_PREFIXES[kind]}/{filename}"
+    prefix = AUDIO_PREFIXES.get(kind)
+    if prefix is None and kind == "collections_intro":
+        # default folder name if config not yet updated
+        prefix = "collections-intro"
+    return f"{prefix}/{filename}"
+
 
 def build_intro_filename(decade: str, genre: str, rank: int) -> str:
-    return f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02}.mp3"
+    """
+    Decade/Genre intro filename, zero-padded 2 digits.
+    e.g., '1980s_pop_01.mp3'
+    """
+    return f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02d}.mp3"
+
+
+def build_collection_intro_filename(slug: str, rank: int) -> str:
+    """
+    Collection intro filename, two-digit padding (will naturally grow to 100, 101…).
+    e.g., slug='power-ballads' -> 'power-ballads_01.mp3'
+    """
+    return f"{normalize_for_filename(slug)}_{rank:02d}.mp3"
+
 
 def build_detail_filename(spotify_track_id: str | None) -> Optional[str]:
     return f"{spotify_track_id}.mp3" if spotify_track_id else None
 
+
 def build_artist_filename(spotify_artist_id: str | None) -> Optional[str]:
     return f"{spotify_artist_id}.mp3" if spotify_artist_id else None
 
+
 def _gain_for_kind(kind_label: str) -> float:
+    """
+    Map kind label to gain. Treat 'collections_intro' the same as 'intro'.
+    """
     k = (kind_label or "").strip().lower()
-    if k == "intro":  return INTRO_GAIN_DB
-    if k == "detail": return DETAIL_GAIN_DB
-    if k == "artist": return ARTIST_GAIN_DB
-    # Also allow "Intro"/"Detail"/"Artist" as used by callers
-    if k == "intro" or kind_label == "Intro":   return INTRO_GAIN_DB
-    if k == "detail" or kind_label == "Detail": return DETAIL_GAIN_DB
-    if k == "artist" or kind_label == "Artist": return ARTIST_GAIN_DB
+    if k in ("intro", "collections_intro"):  return INTRO_GAIN_DB
+    if k == "detail":                        return DETAIL_GAIN_DB
+    if k == "artist":                        return ARTIST_GAIN_DB
+    # also tolerate Title-case callers
+    if kind_label in ("Intro", "CollectionsIntro"): return INTRO_GAIN_DB
+    if kind_label == "Detail":                      return DETAIL_GAIN_DB
+    if kind_label == "Artist":                      return ARTIST_GAIN_DB
     return 0.0
+
 
 async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
     """
@@ -86,11 +137,12 @@ async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
             logger.warning("ffplay with volume filter failed: %s", e)
             return 1
 
+
 async def safe_play(kind: str, bucket: str, key: str) -> bool:
     """
     Robust MP3 playback from Supabase with HEAD probe, GET retries, and
     sequential playback (locked). Returns True on success.
-    kind: "Intro" | "Detail" | "Artist"
+    kind: "Intro" | "Detail" | "Artist" | "CollectionsIntro"
     """
     if not (bucket and key):
         logger.warning("🚫 %s MP3 not attempted (empty bucket/key)", kind)
@@ -127,7 +179,7 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
                 if not _looks_like_mp3(b):
                     raise RuntimeError("Not an MP3 (bad header)")
 
-                # ↘️ Apply gain if configured; else keep your existing fast path
+                # Apply gain if configured; else fast path
                 if abs(gain_db) > 0.05:
                     rc = await _play_bytes_with_gain(b, gain_db)
                 else:
@@ -136,22 +188,30 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
 
                 dt = time.perf_counter() - t0
                 if rc == 0:
-                    logger.debug("✅ %s MP3 played in %.2fs (%s/%s) [bytes=%d, rc=%d]",
-                                 kind, dt, bucket, key, size, rc)
+                    logger.debug(
+                        "✅ %s MP3 played in %.2fs (%s/%s) [bytes=%d, rc=%d]",
+                        kind, dt, bucket, key, size, rc
+                    )
                     return True
 
                 last_err = f"ffplay rc={rc}"
-                logger.warning("⚠️ %s play failed (attempt %d/%d) rc=%s %s/%s",
-                               kind, attempt, _SUPA_FETCH_RETRIES, rc, bucket, key)
+                logger.warning(
+                    "⚠️ %s play failed (attempt %d/%d) rc=%s %s/%s",
+                    kind, attempt, _SUPA_FETCH_RETRIES, rc, bucket, key
+                )
 
             except httpx.ReadTimeout as e:
                 last_err = e
-                logger.warning("⏳ %s GET timeout (attempt %d/%d) %s/%s",
-                               kind, attempt, _SUPA_FETCH_RETRIES, bucket, key)
+                logger.warning(
+                    "⏳ %s GET timeout (attempt %d/%d) %s/%s",
+                    kind, attempt, _SUPA_FETCH_RETRIES, bucket, key
+                )
             except Exception as e:
                 last_err = e
-                logger.warning("⚠️ %s MP3 exception (attempt %d/%d) %s/%s: %s",
-                               kind, attempt, _SUPA_FETCH_RETRIES, bucket, key, e)
+                logger.warning(
+                    "⚠️ %s MP3 exception (attempt %d/%d) %s/%s: %s",
+                    kind, attempt, _SUPA_FETCH_RETRIES, bucket, key, e
+                )
 
             if attempt < _SUPA_FETCH_RETRIES:
                 await asyncio.sleep(_SUPA_BACKOFF ** attempt)

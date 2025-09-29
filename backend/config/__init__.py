@@ -164,8 +164,14 @@ LANGUAGE_BUCKETS: Dict[str, str] = _env_dict("LANGUAGE_BUCKETS", {
     "es":    "audio-es",
     "pt-BR": "audio-ptbr",
 })
-BUCKETS: Dict[str, Dict[str, str]] = _env_dict("BUCKETS", {lang: {"intro": b, "detail": b, "artist": b} for lang, b in LANGUAGE_BUCKETS.items()})
-AUDIO_PREFIXES: Dict[str, str] = _env_dict("AUDIO_PREFIXES", {"intro": "intro", "detail": "detail", "artist": "artist"})
+BUCKETS: Dict[str, Dict[str, str]] = _env_dict("BUCKETS", {
+    lang: {"intro": b, "detail": b, "artist": b, "collections_intro": b}
+    for lang, b in LANGUAGE_BUCKETS.items()
+})
+AUDIO_PREFIXES: Dict[str, str] = _env_dict(
+    "AUDIO_PREFIXES",
+    {"intro": "intro", "detail": "detail", "artist": "artist", "collections_intro": "collections-intro"}
+)
 
 # Legacy single-purpose bucket names (kept for back-compat)
 BUCKET_TRACK_INTRO:   str = _env_str("BUCKET_TRACK_INTRO",  "track-intro-mp3-files")

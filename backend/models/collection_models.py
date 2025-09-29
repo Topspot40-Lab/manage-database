@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING   # ← add TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import UniqueConstraint, CheckConstraint, Column, ForeignKey
 from sqlalchemy.orm import relationship as sa_relationship  # ✅ lowercase alias
+
+if TYPE_CHECKING:
+    from backend.models.dbmodels import Track  # type-only import
 
 
 class Collection(SQLModel, table=True):
@@ -66,6 +69,15 @@ class CollectionTrackRanking(SQLModel, table=True):
             cascade="all, delete-orphan",
         )
     )
+
+    # NEW: relationship to Track so loader options can use .track
+    track: "Track" = Relationship(
+        sa_relationship=sa_relationship(
+            "Track",
+            back_populates="collection_rankings",
+        )
+    )
+
 
 
 class CollectionTrackRankingLocale(SQLModel, table=True):

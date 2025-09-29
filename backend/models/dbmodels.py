@@ -1,12 +1,18 @@
-
 from datetime import datetime, UTC
-from sqlmodel import SQLModel, Field, UniqueConstraint
-from backend.models.enums import ModeFlag
-from sqlalchemy import Column, Enum as SqlEnum  # 👈 Needed for proper SQL enum mapping
-from sqlmodel import Relationship
-from typing import Optional
-from sqlalchemy import CheckConstraint
+from typing import List, Optional, TYPE_CHECKING
 
+from sqlalchemy import CheckConstraint, Column
+from sqlalchemy import Enum as SqlEnum
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
+from sqlalchemy.orm import relationship as sa_relationship  # add this
+
+from backend.models.enums import ModeFlag
+
+if TYPE_CHECKING:
+    from backend.models.collection_models import CollectionTrackRanking
+# ─────────────────────────────────────────────────────────────────────────────
+# Core entities
+# ─────────────────────────────────────────────────────────────────────────────
 
 class DecadeGenreTrivia(SQLModel, table=True):
     __tablename__ = "decade_genre_trivia"
@@ -16,6 +22,7 @@ class DecadeGenreTrivia(SQLModel, table=True):
     trivia: str
     trivia_mp3_url: Optional[str] = None
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
+
 
 class Artist(SQLModel, table=True):
     __tablename__ = "artist"
@@ -27,18 +34,17 @@ class Artist(SQLModel, table=True):
     artist_artwork: Optional[str] = None
     artist_description: Optional[str] = None
     not_on_spotify: bool = Field(default=False)
-    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
+    language: Optional[str] = Field(default="en", max_length=2)
 
-    # ✅ Relationship to Track (as main artist)
-    tracks_as_main: list["Track"] = Relationship(back_populates="artist", sa_relationship_kwargs={
-        "foreign_keys": "[Track.artist_id]"
-    })
-
-    # ✅ Relationship to Track (as featured artist)
-    tracks_as_featured: list["Track"] = Relationship(back_populates="featured_artist", sa_relationship_kwargs={
-        "foreign_keys": "[Track.featured_artist_id]"
-    })
-
+    # Relationships
+    tracks_as_main: list["Track"] = Relationship(
+        back_populates="artist",
+        sa_relationship_kwargs={"foreign_keys": "[Track.artist_id]"},
+    )
+    tracks_as_featured: list["Track"] = Relationship(
+        back_populates="featured_artist",
+        sa_relationship_kwargs={"foreign_keys": "[Track.featured_artist_id]"},
+    )
 
 
 class Decade(SQLModel, table=True):
@@ -62,15 +68,6 @@ class Language(SQLModel, table=True):
     name: str = Field(nullable=False)
 
 
-class Specialty(SQLModel, table=True):
-    __tablename__ = "specialty"
-    __table_args__ = {"extend_existing": True}
-
-    id: int = Field(default=None, primary_key=True)
-    specialty_name: str = Field(nullable=False)
-    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
-
-
 class ArtistGenre(SQLModel, table=True):
     __tablename__ = "artist_genre"
     __table_args__ = {"extend_existing": True}
@@ -88,9 +85,10 @@ class DecadeGenre(SQLModel, table=True):
     decade_id: Optional[int] = Field(default=None, foreign_key="decade.id")
     genre_id: Optional[int] = Field(default=None, foreign_key="genre.id")
 
-    # ✅ Add these relationships
+    # Relationships
     decade: Optional["Decade"] = Relationship()
     genre: Optional["Genre"] = Relationship()
+
 
 class TrackGenre(SQLModel, table=True):
     __tablename__ = "track_genre"
@@ -99,25 +97,6 @@ class TrackGenre(SQLModel, table=True):
     track_id: int = Field(primary_key=True, foreign_key="track.id")
     genre_id: int = Field(foreign_key="genre.id")
 
-
-# === schema ===
-class SpecialtyRanking(SQLModel, table=True):
-    __tablename__ = "specialty_ranking"
-    __table_args__ = {"extend_existing": True}
-
-    id: int = Field(default=None, primary_key=True)
-    track_id: Optional[int] = Field(default=None, foreign_key="track.id")
-    specialty_id: Optional[int] = Field(default=None, foreign_key="specialty.id")
-
-    # 👇 match the actual table name in Postgres
-    tracklist_id: int = Field(default=1, foreign_key="track_list.id")
-
-    ranking: Optional[int] = Field(default=None)
-    intro: Optional[str] = Field(default=None)
-
-    created_at: Optional[datetime] = Field(default=None)
-    # If you want NOT NULL with default, drop Optional:
-    language: str = Field(default="en", max_length=2)
 
 class Top40GenreRanking(SQLModel, table=True):
     __tablename__ = "top40_genre_ranking"
@@ -132,6 +111,7 @@ class Top40GenreRanking(SQLModel, table=True):
     detail: Optional[str] = Field(default=None)
     created_at: Optional[datetime] = Field(default=None)
     intro_mp3_url: Optional[str] = Field(default=None)
+
 
 class TrackRanking(SQLModel, table=True):
     __tablename__ = "track_ranking"
@@ -153,8 +133,10 @@ class TrackRanking(SQLModel, table=True):
     intro: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    # Relationships
     track: Optional["Track"] = Relationship(back_populates="rankings")
     decade_genre: Optional["DecadeGenre"] = Relationship()
+
 
 class Tracklist(SQLModel, table=True):
     __tablename__ = "track_list"
@@ -165,9 +147,9 @@ class Tracklist(SQLModel, table=True):
     curator: Optional[str] = Field(default=None)
     is_official: Optional[bool] = Field(default=False)
     language: Optional[str] = Field(default="en", max_length=2)
-
     notes: Optional[str] = Field(default=None)
     created_at: Optional[datetime] = Field(default=None)
+
 
 class Track(SQLModel, table=True):
     __tablename__ = "track"
@@ -180,7 +162,7 @@ class Track(SQLModel, table=True):
     spotify_track_id: str = Field(nullable=False)
     mode_flag: ModeFlag = Field(
         sa_column=Column(SqlEnum(ModeFlag, name="modeflag", create_constraint=True)),
-        default=ModeFlag.SOLO
+        default=ModeFlag.SOLO,
     )
     duration_ms: Optional[int] = Field(default=None)
     popularity: Optional[int] = Field(default=None)
@@ -191,19 +173,27 @@ class Track(SQLModel, table=True):
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
-    language: Optional[str] = Field(default="en", max_length=2)  # ✅ NEW
+    language: Optional[str] = Field(default="en", max_length=2)
 
-    # ✅ Relationships
-    artist: "Artist" = Relationship(back_populates="tracks_as_main", sa_relationship_kwargs={
-        "foreign_keys": "[Track.artist_id]"
-    })
-
-    featured_artist: Optional["Artist"] = Relationship(back_populates="tracks_as_featured", sa_relationship_kwargs={
-        "foreign_keys": "[Track.featured_artist_id]"
-    })
-
+    # Relationships
+    artist: "Artist" = Relationship(
+        back_populates="tracks_as_main",
+        sa_relationship_kwargs={"foreign_keys": "[Track.artist_id]"},
+    )
+    featured_artist: Optional["Artist"] = Relationship(
+        back_populates="tracks_as_featured",
+        sa_relationship_kwargs={"foreign_keys": "[Track.featured_artist_id]"},
+    )
     rankings: list["TrackRanking"] = Relationship(back_populates="track")
 
+    # NEW: backref used by CollectionTrackRanking.track
+    collection_rankings: List["CollectionTrackRanking"] = Relationship(
+        sa_relationship=sa_relationship(
+            "CollectionTrackRanking",
+            back_populates="track",
+            cascade="all, delete-orphan",
+        )
+    )
 
 
 class TrackRankingLocale(SQLModel, table=True):
@@ -211,6 +201,7 @@ class TrackRankingLocale(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("track_ranking_id", "language_code", name="uix_trl_rank_lang"),
     )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     track_ranking_id: int = Field(foreign_key="track_ranking.id")
     language_code: str
@@ -218,11 +209,13 @@ class TrackRankingLocale(SQLModel, table=True):
     tts_bucket: Optional[str] = None
     tts_key: Optional[str] = None
 
+
 class TrackLocale(SQLModel, table=True):
     __tablename__ = "track_locale"
     __table_args__ = (
         UniqueConstraint("track_id", "language_code", name="uix_tl_track_lang"),
     )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     track_id: int = Field(foreign_key="track.id")
     language_code: str
@@ -230,25 +223,28 @@ class TrackLocale(SQLModel, table=True):
     tts_bucket: Optional[str] = None
     tts_key: Optional[str] = None
 
+
 class ArtistLocale(SQLModel, table=True):
     __tablename__ = "artist_locale"
     __table_args__ = (
         UniqueConstraint("artist_id", "language_code", name="uix_al_artist_lang"),
     )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     artist_id: int = Field(foreign_key="artist.id")
     language_code: str
     artist_description_text: str
     tts_bucket: Optional[str] = None
     tts_key: Optional[str] = None
-# Re-exports from collection_models (keep these lines you already added)
+
+
+# Re-exports from collection_models
 from .collection_models import (
     Collection,
     CollectionTrackRanking,
     CollectionTrackRankingLocale,
 )
 
-# Export list for consumers: backend.models.dbmodels
 __all__ = [
     # core models
     "DecadeGenreTrivia",
@@ -256,11 +252,9 @@ __all__ = [
     "Decade",
     "Genre",
     "Language",
-    "Specialty",
     "ArtistGenre",
     "DecadeGenre",
     "TrackGenre",
-    "SpecialtyRanking",
     "Top40GenreRanking",
     "TrackRanking",
     "Tracklist",
@@ -268,7 +262,7 @@ __all__ = [
     "TrackRankingLocale",
     "TrackLocale",
     "ArtistLocale",
-    # re-exports
+    # collections
     "Collection",
     "CollectionTrackRanking",
     "CollectionTrackRankingLocale",
