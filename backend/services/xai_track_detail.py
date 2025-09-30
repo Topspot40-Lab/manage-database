@@ -1,7 +1,7 @@
 # backend/services/xai_track_detail.py
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import os
 import requests  # swap for your xAI SDK if you have one
 
@@ -12,6 +12,23 @@ logger = logging.getLogger("xai_track_detail")
 # ─────────────────────────────────────────────────────────────────────────────
 import backend.config as cfg
 from backend.services.prompts.text_descriptions import build_detail_prompt, to_xai_messages
+
+
+def _detail_constraints(t: Dict[str, Any], language: str) -> str:
+    """
+    System-level guardrails for detail generation.
+    - Avoid repeating metadata covered in the intro.
+    - Emphasize placement/context (movie/TV/game), scene, mood, function.
+    """
+    guideline = (t.get("_detail_guidelines") or "").strip()
+    base = (
+        "Do NOT repeat the artist, album, rank, or year; the intro already covers those. "
+        "Focus on how the track functions in context—placement within a movie/TV/game scene, "
+        "the mood it establishes, story beat it supports, and why the music/lyrics fit that use. "
+        "Keep it concise and informative; no DJ patter."
+    )
+    return f"{base} {guideline}".strip()
+
 
 def _xai_chat_complete(messages: List[Dict[str, str]], temperature: float | None = None, max_tokens: int | None = None) -> str:
     """
@@ -94,6 +111,22 @@ def get_track_details_from_xai(tracks: List[Dict[str, Any]], language: str = "en
         )
         messages = to_xai_messages(prompt)
 
+        # Inject guardrails to avoid repeating artist/album/rank/year and emphasize placement/context
+        if getattr(cfg, "AVOID_REPEATS_IN_DETAIL", True):
+            system_guard = _detail_constraints(t, language)
+            messages = [{"role": "system", "content": system_guard}] + messages
+
+            # Reference-only meta so model can avoid inventing; do NOT restate these in prose
+            ref_meta = (
+                f"(reference-only) artist={artist_name or ''}; "
+                f"album={album_name or ''}; "
+                f"rank={(t.get('rank') if t.get('rank') is not None else '')}; "
+                f"year={yr if yr is not None else ''}; "
+                f"genre_context={genre_ctx or ''}."
+            ).strip()
+
+            messages.append({"role": "user", "content": ref_meta})
+
         try:
             text = _xai_chat_complete(messages)
             if text:
@@ -110,7 +143,6 @@ def get_track_details_from_xai(tracks: List[Dict[str, Any]], language: str = "en
 
 
 # --- Add below your existing get_track_details_from_xai ----------------------
-from typing import Optional
 from sqlmodel import Session, select
 
 # Try to import models flexibly (your project names have varied)
@@ -264,6 +296,7 @@ def _safe_json_loads(s: str):
         except Exception:
             return None
 
+
 def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_language_label: str) -> List[Dict[str, Any]]:
     """
     items: [{"track_id": int, "track_name": str, "artist_name": str, "year_released": int|None}, ...]
@@ -277,10 +310,16 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
         logger.warning("get_track_details_from_xai called with empty items")
         return []
 
-    # Keep prompt deterministic and schema-focused
+    # Keep prompt deterministic and schema-focused, with optional guardrails
     system = (
         "You generate concise, engaging track detail blurbs for a music app. "
-        f"Write in {target_language_label}. {_JSON_SCHEMA_HELP}"
+        f"Write in {target_language_label}. {_JSON_SCHEMA_HELP} "
+        + (
+            "Do NOT repeat the artist, album, rank, or year; the intro already covers those. "
+            "Focus on placement/context (movie/TV/game), the scene/mood/story beat, and why the track fits. "
+            "No DJ patter."
+            if getattr(cfg, "AVOID_REPEATS_IN_DETAIL", True) else ""
+        )
     )
 
     # Only pass fields we actually need; always include track_id to ensure stable mapping
@@ -294,11 +333,17 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
     logger.debug("📦 [Batch 1] Creating track details for tracks %s to %s",
                  slim[0]["track_id"], slim[-1]["track_id"])
 
+    ref_clause = (
+        "\n\nREFERENCE-ONLY (do NOT repeat in output): each item includes track_name, artist_name, year_released."
+        if getattr(cfg, "AVOID_REPEATS_IN_DETAIL", True) else ""
+    )
+
     user = (
         "For each input item, output an element with the same track_id, plus track_name, artist_name, "
         "and a detail_text in the requested language (1-2 sentences, no quotes around the title unless necessary). "
-        "Avoid DJ patter or station plugs.\n\n"
-        "INPUT:\n" + json.dumps(slim, ensure_ascii=False) + "\n\nOUTPUT:"
+        "Avoid DJ patter or station plugs."
+        + ref_clause
+        + "\n\nINPUT:\n" + json.dumps(slim, ensure_ascii=False) + "\n\nOUTPUT:"
     )
 
     try:
@@ -345,7 +390,6 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
         # We distribute the same content across inputs or leave empty if nothing came back.
         if content:
             logger.debug("ℹ️ xAI returned non-JSON; wrapping into fallback results")
-            # naive split if the model emitted multiple blurbs separated by blank lines
             chunks = [c.strip() for c in content.split("\n\n") if c.strip()]
             out = []
             for i, it in enumerate(slim):

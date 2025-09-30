@@ -9,6 +9,103 @@ from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 import logging
 logger = logging.getLogger(__name__)  # e.g., "backend.services.xai_descriptions"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Detail generation helpers
+# ─────────────────────────────────────────────────────────────────────────────
+import re
+
+_AVOID_KEYS = ("artist_name", "artist_display_name", "album_name", "rank", "year_released")
+
+def _detail_guideline_for(t: Dict[str, Any]) -> str:
+    """
+    Returns a single-line instruction for the LLM:
+    - No repeating artist/album/rank/year (the intro already covers that).
+    - Focus on placement/context (movie/TV), scene/mood/function.
+    """
+    artist = t.get("artist_display_name") or t.get("artist_name") or ""
+    album  = t.get("album_name") or ""
+    year   = t.get("year_released")
+    # Optional metadata that might exist in your payload:
+    source_title = t.get("source_title") or t.get("show_title") or t.get("movie_title")
+    source_type  = t.get("source_type")  # "movie" | "tv" | "game" | etc.
+    scene_hint   = t.get("scene_hint") or t.get("placement_hint")  # any custom hint you might attach
+
+    src = ""
+    if source_title and source_type:
+        src = f" If relevant, refer to its role within the {source_type} '{source_title}'."
+    elif source_title:
+        src = f" If relevant, refer to its role within '{source_title}'."
+
+    # We *tell* the model what to avoid and what to focus on.
+    return (
+        "Do NOT repeat the artist, album, rank, or year; the intro already covers those. "
+        "Write 3–5 sentences focusing on the track’s context and function—"
+        "e.g., how it’s used within a movie/TV scene, what mood or story beat it supports, "
+        "and why it fits that placement musically or lyrically."
+        + (f" {scene_hint}" if scene_hint else "")
+        + src
+    )
+
+def _sanitize_detail_text(t: Dict[str, Any], text: str) -> str:
+    """
+    Removes lines/sentences that redundantly restate artist, album, rank, or year.
+    Conservative approach: sentence-level filtering with a few targeted patterns.
+    """
+    if not isinstance(text, str):
+        return text
+
+    artist = (t.get("artist_display_name") or t.get("artist_name") or "").strip()
+    album  = (t.get("album_name") or "").strip()
+    year   = t.get("year_released")
+    rank   = t.get("rank")
+
+    # Build phrase set to check (lowercased)
+    literals = set()
+    if artist:
+        literals.add(artist.lower())
+    if album:
+        literals.add(album.lower())
+
+    # Regex patterns (case-insensitive)
+    patterns = []
+
+    # year as a bare number and in parentheses e.g. (1981)
+    if isinstance(year, int):
+        patterns.append(rf"\b{year}\b")
+        patterns.append(rf"\(\s*{year}\s*\)")  # (1981)
+
+    # rank mentions: "rank 1", "ranking #1", "No. 1", "#1"
+    if isinstance(rank, int):
+        patterns += [
+            rf"\brank(?:ing)?\s*[:#]?\s*{rank}\b",
+            rf"\bno\.?\s*{rank}\b",
+            rf"(?:^|\s)#\s*{rank}\b",
+        ]
+
+    # “by <artist>” and “from (the) album <album>” patterns
+    if artist:
+        # allow punctuation between words, be flexible with whitespace
+        patterns.append(rf"\bby\s+{re.escape(artist)}\b")
+    if album:
+        patterns.append(rf"\bfrom\s+(?:the\s+)?album\s+{re.escape(album)}\b")
+
+    # Split into sentences and drop any that trip a rule
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    kept: List[str] = []
+    for s in sentences:
+        s_l = s.lower()
+        # literal contains?
+        if any(lit in s_l for lit in literals):
+            continue
+        # regex contains?
+        if any(re.search(p, s, flags=re.IGNORECASE) for p in patterns):
+            continue
+        kept.append(s)
+
+    cleaned = " ".join(kept).strip()
+    return cleaned if cleaned else text.strip()
+
+
 
 def get_track_descriptions_from_xai(track_data, language, decade, genre):
     """
@@ -97,13 +194,22 @@ def get_collection_descriptions_from_xai(
             if t is not None:
                 t["intro"] = intro  # use `intro` to match your decade-genre schema
 
-    # ---------- TRACK DETAIL ----------
-    # Hint the detail prompt about the collection theme (e.g., "Power Ballads")
-    for t in tracks:
-        t["_genre_context"] = genre or (slug.replace("_", " ").title() if slug else None)
 
     if cfg.ENABLE_TRACK_DETAIL:
+        # ---------- TRACK DETAIL ----------
+        # Hint the detail prompt about the collection theme (e.g., "Power Ballads")
+        for t in tracks:
+            t["_genre_context"] = genre or (slug.replace("_", " ").title() if slug else None)
+            # NEW: give each track a clear, one-line instruction for detail style
+            t["_detail_guidelines"] = _detail_guideline_for(t)
+
         get_track_details_from_xai(tracks, language)   # writes t["detail"]
+
+    # SANITIZE: remove any repeated artist/album/rank/year from the detail
+    for t in tracks:
+        if isinstance(t.get("detail"), str) and t["detail"].strip():
+            t["detail"] = _sanitize_detail_text(t, t["detail"])
+
     # --- Normalize detail into a single canonical key ---
     DETAIL_ALIASES = [
         "detail",
@@ -132,7 +238,7 @@ def get_collection_descriptions_from_xai(
         if not isinstance(t, dict):
             continue
         if isinstance(t.get("detail"), str) and t["detail"].strip():
-            continue  # already set
+            continue  # already set (and sanitized above)
 
         picked = None
         for dk in DETAIL_ALIASES:
@@ -142,19 +248,20 @@ def get_collection_descriptions_from_xai(
                 break
 
         if picked:
-            t["detail"] = picked
+            t["detail"] = _sanitize_detail_text(t, picked)
         elif DETAIL_FALLBACK_SENTENCE:
-            # Conservative, single-line fallback using available metadata + theme
-            title  = (t.get("track_name") or t.get("title") or "This track")
-            artist = (t.get("artist_name") or t.get("artistName") or "the artist")
-            year   = (t.get("year_released") or t.get("year") or "an unknown year")
-            album  = (t.get("album_name") or t.get("albumName") or "an unknown album")
-            ctx    = (genre or (slug.replace("_", " ").title() if slug else "") or "this collection")
+            # Context-first, no repeats of artist/album/year/rank
+            ctx = (genre or (slug.replace("_", " ").title() if slug else "") or "this collection")
+            hint = t.get("scene_hint") or t.get("placement_hint") or ""
+            # If you have source metadata, nod to it without naming year/artist/album:
+            src_title = t.get("source_title") or t.get("show_title") or t.get("movie_title")
+            src_type = t.get("source_type")
+            src_part = f" within the {src_type} '{src_title}'" if (src_title and src_type) else (
+                f" in '{src_title}'" if src_title else "")
             t["detail"] = (
-                f"{title} by {artist}, from '{album}' ({year}), "
-                f"fits the spirit of {ctx} with enduring appeal."
+                f"A context piece that supports the {ctx.lower()} vibe{src_part}, "
+                f"underscoring the scene’s mood and narrative beat{', ' + hint if hint else ''}."
             )
-
 
     # ---------- ARTIST DETAIL ----------
     if cfg.ENABLE_ARTIST_DETAIL:
@@ -164,6 +271,7 @@ def get_collection_descriptions_from_xai(
     for t in tracks:
         t.pop("_xai_intro", None)
         t.pop("_genre_context", None)  # remove prompt-only hint
+        t.pop("_detail_guidelines", None)  # NEW
 
     # Debug: how many details did we actually fill?
     filled = sum(1 for t in tracks if isinstance(t.get("detail"), str) and t["detail"].strip())

@@ -5,7 +5,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 from datetime import datetime, timezone  # ← moved here
 
 from backend.services.curate import (

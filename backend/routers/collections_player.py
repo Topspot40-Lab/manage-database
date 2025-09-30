@@ -15,10 +15,15 @@ from backend.models.dbmodels import Track, Artist
 
 # server-side playback helpers you already have
 from backend.services.radio_runtime import (
-    log_header_and_texts,
     narration_keys_for,
-    maybe_play_bed, play_narrations, play_track_with_skip
+    maybe_play_bed, play_narrations, play_track_with_skip,
+    # collection-aware logger:
+    log_collection_header_and_texts,
 )
+
+# bucket resolver for language-aware audio buckets (audio-en, audio-es, etc.)
+from backend.services.playback_helpers import bucket_for
+
 from backend.config.volume import PLAY_FULL_TRACK
 
 # centralized bundler for signed URLs / spotify ids (now includes collection intros)
@@ -27,10 +32,22 @@ from backend.services.narration_bundle import urls_for_rank_collection
 router = APIRouter(prefix="/supabase/collections", tags=["Collections"])
 
 
+def collection_intro_jobs(*, lang: str, slug: str, rank: int):
+    """
+    Build server-side intro job list for collections:
+    uses bucket audio-<lang>, key collections-intro/{slug}_{rank:02d}.mp3
+    Tuple shape matches what play_narrations expects.
+    """
+    bucket = bucket_for(lang, "intro")  # e.g., audio-en, audio-es, audio-ptbr
+    key = f"collections-intro/{slug}_{rank:02d}.mp3"
+    return [(bucket, key, "collection", slug, rank)]
+
+
 @router.get("/play-track-by-rank")
 async def play_track_by_rank(
     collection_slug: str = Query(...),
     rank: int = Query(...),
+    play_intro: bool = Query(True),                 # NEW: allow server-side intro playback
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
@@ -54,20 +71,23 @@ async def play_track_by_rank(
     if not track or not artist:
         return {"error": "Track or Artist not found"}
 
-    # Logs/texts (no server-side collection intro playback yet)
-    log_header_and_texts(lang=lang, track=track, artist=artist, tr_rows=[])
+    # ✅ Collection-aware logs (shows collection name + slug) and prints CTR.intro box
+    log_collection_header_and_texts(lang=lang, collection=coll, ctr=ctr, track=track, artist=artist)
 
     # Narration assets
     detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
 
+    # ✅ Collection intro mp3 job(s)
+    intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rank) if play_intro else []
+
     # Play narrations server-side
-    if (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
+    if intro_jobs or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
         await maybe_play_bed()
     await play_narrations(
-        play_intro=False,
+        play_intro=play_intro,
         play_detail=play_detail,
         play_artist=play_artist_description,
-        intro_jobs=[],
+        intro_jobs=intro_jobs,
         detail_bucket=detail_bucket, detail_key=detail_key,
         artist_bucket=artist_bucket, artist_key=artist_key
     )
@@ -119,7 +139,7 @@ async def play_sequence(
         play_order = [r for r in order if r >= starting_rank]
         random.shuffle(play_order)
 
-    # SERVER mode: narrate + play on server (intros are only handled in browser mode for now)
+    # SERVER mode: narrate + play on server (✅ now includes collection intro)
     if server:
         results = []
         for rk in play_order:
@@ -131,16 +151,20 @@ async def play_sequence(
             if not track or not artist:
                 continue
 
-            # logs + narrations
-            log_header_and_texts(lang=lang, track=track, artist=artist, tr_rows=[])
+            # ✅ Collection-aware header + shows CTR.intro text
+            log_collection_header_and_texts(lang=lang, collection=coll, ctr=r, track=track, artist=artist)
+
+            # narration keys + optional collection intro job(s)
             detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
-            if (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
+            intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rk) if play_intro else []
+
+            if intro_jobs or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
                 await maybe_play_bed()
             await play_narrations(
-                play_intro=False,
+                play_intro=play_intro,
                 play_detail=play_detail,
                 play_artist=play_artist_description,
-                intro_jobs=[],
+                intro_jobs=intro_jobs,
                 detail_bucket=detail_bucket, detail_key=detail_key,
                 artist_bucket=artist_bucket, artist_key=artist_key
             )
@@ -245,7 +269,7 @@ async function playNarrations(step) {{
 async function startSpotify(rank, spotifyId) {{
   setStatus("spotify");
   const qs = new URLSearchParams({{ ...extra, rank,
-    play_detail: "false", play_artist_description: "false", play_track: "true", tts_language: lang }});
+    play_detail: "false", play_artist_description: "false", play_track: "true", tts_language: lang, play_intro: "false" }});
   const url = `${{base}}/supabase/collections/play-track-by-rank?${{qs.toString()}}`;
   const r = await fetch(url);
   if (!r.ok) throw new Error("Spotify play failed: " + r.status);
@@ -271,3 +295,4 @@ document.getElementById('go').onclick = async () => {{
 </script>
 """
     return HTMLResponse(html)
+

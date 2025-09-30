@@ -121,14 +121,18 @@ def generate_collection_intro_tts(
     overwrite: bool = Query(False),
     only_missing: bool = Query(True, description="Skip ranks that already have an MP3 unless overwrite=true"),
     play: bool = Query(False),
-        language: str = Query(
-            "en",
-            pattern=r"^(en|es|pt-BR|ptbr|pt-br)$",
-            description="Target language for TTS (en|es|pt-BR)",
-        )
-        ,
+    language: str = Query(
+        "en",
+        pattern=r"^(en|es|pt-BR|ptbr|pt-br)$",
+        description="Target language for TTS (en|es|pt-BR)",
+    ),
     start_rank: Optional[int] = Query(None, description="Optional lower bound for rank"),
     end_rank: Optional[int] = Query(None, description="Optional upper bound for rank"),
+    voice_id_override: Optional[str] = Query(
+        None,
+        description="Optional ElevenLabs voice_id to use for this run (falls back to profile/default).",
+        examples=["EXAVITQu4vr4xnSDxMaL"]  # sample-looking ID
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -165,7 +169,8 @@ def generate_collection_intro_tts(
 
     # Per-language voice / model / settings (reuse "intro" voice profile)
     voice_cfg = (TTS_PROFILES.get(lang, {}).get("intro") or {})
-    voice_id = voice_cfg.get("voice_id") or VOICE_ID_INTRO
+    # NEW: allow per-call override, else profile voice, else global default
+    chosen_voice_id = voice_id_override or voice_cfg.get("voice_id") or VOICE_ID_INTRO
     voice_settings = voice_cfg.get("settings") or {}
     model_id = voice_cfg.get("model_id") or MODEL_BY_LANG.get(lang, MODEL_BY_LANG.get(DEFAULT_TTS_LANGUAGE))
     if model_id is None:
@@ -173,6 +178,12 @@ def generate_collection_intro_tts(
             "generated": 0, "skipped": 0, "missing_found": 0, "files": [],
             "error": f"MODEL_BY_LANG has no entry for '{lang}' nor default '{DEFAULT_TTS_LANGUAGE}'"
         }
+
+    # Light, non-blocking sanity check for the override (warns but proceeds)
+    if voice_id_override:
+        v = voice_id_override.strip()
+        if not v or any(ch for ch in v if not (ch.isalnum() or ch in "-_")):
+            logger.warning("voice_id_override looks malformed: %r", voice_id_override)
 
     out_dir = Path("data/mp3_files/collection_intro_mp3_files")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -287,7 +298,7 @@ def generate_collection_intro_tts(
     return generate_tts_batch(
         items=items,
         text_key="intro",
-        voice_id=voice_id,
+        voice_id=chosen_voice_id,            # <-- uses override if provided
         voice_settings=voice_settings,
         output_dir=out_dir,
         filename_func=lambda it: generate_collection_intro_filename(it["collection_slug"], int(it["rank"])),

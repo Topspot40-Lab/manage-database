@@ -20,6 +20,63 @@ from backend.state import skip_event
 
 logger = logging.getLogger(__name__)
 
+
+# ---------- Collections: header + intros ----------
+def log_collection_header_and_texts(
+    *, lang: str, collection, ctr, track, artist
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Log a header tailored for Collections (shows collection name + slug),
+    and print the collection intro text (ctr.intro) when present.
+    Returns (intro_text, detail_text, artist_text).
+    """
+    header_lines = [
+        "┌" + "─" * (BOX_WIDTH - 2),
+        f"│ TopSpot — Collection",
+        f"│  Name : {getattr(collection, 'name', collection.slug)}",
+        f"│  Slug : {collection.slug}",
+        f"│  Rank : #{ctr.ranking:02d}",
+        f"│  Track: {track.track_name} — {getattr(artist, 'artist_name', '')}",
+        f"│  Spotify Track ID: {getattr(track, 'spotify_track_id', '') or '—'}",
+        "└" + "─" * (BOX_WIDTH - 2),
+    ]
+    logger.info("\n%s", "\n".join(header_lines))
+
+    intro_text = clean_text(getattr(ctr, "intro", None))
+    if intro_text:
+        logger.info(box("INTRO", intro_text, width=BOX_WIDTH))
+
+    # Reuse existing detail/artist logging pattern
+    detail_text = clean_text(getattr(track, "detail", None))
+    if detail_text:
+        logger.info(box("DETAIL", detail_text, width=BOX_WIDTH))
+
+    artist_text = clean_text(getattr(artist, "artist_description", None))
+    if artist_text:
+        logger.info(box("ARTIST", artist_text, width=BOX_WIDTH))
+
+    return intro_text, detail_text, artist_text
+
+
+def collection_intro_jobs(*, lang: str, collection_slug: str, rank: int):
+    """
+    Returns a list of intro 'jobs' for collections.
+    Files live at:
+      bucket: audio-<lang> (today: audio-en)
+      key   : collections-intro/{slug}_{rank:02d}.mp3
+    """
+    # Today only English is guaranteed; extend when you add other locales.
+    if lang != "en":
+        return []
+
+    bkt = bucket_for("en", "intro")  # gives 'audio-en'
+    key = f"collections-intro/{collection_slug}_{rank:02d}.mp3"
+
+    # play_narrations() only uses (bucket, key, ...), but we keep a 5-tuple
+    # shape to mirror build_intro_jobs().
+    return [(bkt, key, collection_slug, collection_slug, rank)]
+
+
 # ---------- Logging / texts ----------
 def log_header_and_texts(*, lang: str, track, artist, tr_rows) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """Log the header + localized text blocks. Returns (intro_text, detail_text, artist_text)."""
