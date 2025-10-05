@@ -14,9 +14,23 @@ from backend.schemas.collection_schemas import CollectionImportPayload, ImportRe
 from backend.services.track_resolver import resolve_track_id_by_meta, ensure_track_for_meta
 
 from .assembler import assemble_items
-from .normalizers import coerce_row, as_int_id, coerce_bool, REPAIR_KEYS
+from .normalizers import coerce_row, as_int_id, coerce_bool, REPAIR_KEYS as BASE_REPAIR_KEYS
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Config
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Treat some fields as "protected": never overwrite if a non-empty value already exists
 PROTECTED_FILL_ONLY = {"detail"}  # add more later if needed
+
+# Also include the new "source_*" fields in the repairable set
+REPAIR_KEYS = set(BASE_REPAIR_KEYS) | {
+    "source_type", "source_title", "years_on_air", "source_role", "version_notes"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _is_missing(v) -> bool:
     if v is None:
@@ -28,6 +42,11 @@ def _is_missing(v) -> bool:
     return False
 
 def _apply_json_track_meta(t: Track, meta: Dict[str, Any], prefer_json: bool) -> Dict[str, Any]:
+    """
+    Apply JSON metadata onto an existing Track.
+    - Respects PROTECTED_FILL_ONLY (fill-only, never overwrite).
+    - Otherwise: overwrite if prefer_json=True, else fill-only.
+    """
     changes = {}
     for k in REPAIR_KEYS:
         if k not in meta:
@@ -43,7 +62,7 @@ def _apply_json_track_meta(t: Track, meta: Dict[str, Any], prefer_json: bool) ->
             if _is_missing(current) and not _is_missing(incoming):
                 setattr(t, k, incoming)
                 changes[k] = incoming
-            continue  # skip the normal prefer_json logic
+            continue  # skip normal logic for protected keys
 
         # Normal behavior for other fields
         if prefer_json:
@@ -56,12 +75,83 @@ def _apply_json_track_meta(t: Track, meta: Dict[str, Any], prefer_json: bool) ->
                 changes[k] = incoming
     return changes
 
+def _pick_first(*vals):
+    for v in vals:
+        if v is not None and not _is_missing(v):
+            return v
+    return None
+
+def _augment_meta_with_source_fields(meta: Dict[str, Any] | None, item: Dict[str, Any] | None) -> Dict[str, Any]:
+    """
+    Build a dict that contains canonical source_* fields derived from either the item or meta.
+    Mappings:
+      show_name   -> source_title
+      year_on_air -> years_on_air  (also accept years_on_air as-is)
+      show_genre  -> source_role
+      source_type -> default to 'TV' when show_* fields are present or genre looks like TV
+    """
+    meta = dict(meta or {})
+    item = item or {}
+
+    # Source title
+    source_title = _pick_first(
+        item.get("source_title"), meta.get("source_title"),
+        item.get("show_name"), meta.get("show_name")
+    )
+    if source_title:
+        meta["source_title"] = source_title
+
+    # Years on air (normalize both spellings to 'years_on_air')
+    years_on_air = _pick_first(
+        item.get("years_on_air"), meta.get("years_on_air"),
+        item.get("year_on_air"), meta.get("year_on_air"),
+        item.get("yearOnAir"), meta.get("yearOnAir")
+    )
+    if years_on_air:
+        meta["years_on_air"] = years_on_air
+
+    # Source role (e.g., THEME, OPENING, etc.) — using show_genre as provided
+    source_role = _pick_first(
+        item.get("source_role"), meta.get("source_role"),
+        item.get("show_genre"), meta.get("show_genre")
+    )
+    if source_role:
+        meta["source_role"] = source_role
+
+    # Source type (default to TV if any of the above are present or the genre looks like TV)
+    source_type = _pick_first(item.get("source_type"), meta.get("source_type"))
+    if not source_type:
+        looks_like_tv = bool(
+            source_title or years_on_air or source_role
+            or str(item.get("genre", "")).lower() in {"tv themes", "tv", "tv-theme", "tv theme"}
+        )
+        if looks_like_tv:
+            source_type = "TV"
+    if source_type:
+        meta["source_type"] = source_type
+
+    return meta
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Importers
+# ─────────────────────────────────────────────────────────────────────────────
+
 def import_from_file(
     db: Session,
     slug: str,
     fill_missing_from_json: bool = False,
     prefer_json: bool = False,
 ) -> ImportResult:
+    """
+    Import a collection from a JSON file at:
+      data/json_files/collections/{slug}.json
+
+    In addition to the normal behavior, the importer now maps TV-theme fields:
+      - show_name   -> source_title
+      - year_on_air -> years_on_air (also accepts years_on_air)
+      - show_genre  -> source_role
+      - infers source_type='TV' when any of the above are present (or genre looks like TV Themes)
+    """
     path = Path(cfg.BASE_DIR) / "data" / "json_files" / "collections" / f"{slug}.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"Collection JSON not found: {path}")
@@ -81,7 +171,7 @@ def import_from_file(
     if not items:
         raise HTTPException(status_code=400, detail="No tracks found to import in JSON file.")
 
-    # Upsert collection
+    # Upsert collection header
     coll = db.exec(select(Collection).where(Collection.slug == slug)).first()
     if not coll:
         coll = Collection(name=coll_name, slug=slug, intro=coll_intro)
@@ -97,7 +187,12 @@ def import_from_file(
 
     # Bind items to track ids by SID where possible (create if missing)
     for it in items:
-        spid = it.get("spotifyTrackId") or it.get("spotify_track_id") or it.get("spotify_id") or it.get("id")
+        spid = (
+            it.get("spotifyTrackId")
+            or it.get("spotify_track_id")
+            or it.get("spotify_id")
+            or it.get("id")
+        )
         if not spid:
             continue
 
@@ -108,52 +203,68 @@ def import_from_file(
         if existing_tid:
             it["trackId"] = existing_tid
 
-            # NEW: Backfill artist_display_name on existing track if missing or prefer_json=True
+            # Backfill artist_display_name on existing track if missing (or prefer_json=True)
             tid_int = as_int_id(existing_tid)
             if tid_int:
                 t_db = db.get(Track, tid_int)
                 if t_db:
-                    meta = meta_by_spid.get(spid, {})
-                    # prefer explicit display name; otherwise fall back to artistName/artist_name
-                    disp = (
-                        it.get("artist_display_name")
-                        or it.get("artistDisplayName")
-                        or meta.get("artist_display_name")
-                        or it.get("artistName")
-                        or it.get("artist_name")
-                        or meta.get("artist_name")
+                    meta = meta_by_spid.get(spid, {}) or {}
+                    # Add source_* fields into meta snapshot (from item or meta)
+                    meta = _augment_meta_with_source_fields(meta, it)
+
+                    # Prefer explicit display name; otherwise fall back to artistName/artist_name
+                    disp = _pick_first(
+                        it.get("artist_display_name"),
+                        it.get("artistDisplayName"),
+                        meta.get("artist_display_name"),
+                        it.get("artistName"),
+                        it.get("artist_name"),
+                        meta.get("artist_name"),
                     )
                     if disp and (prefer_json or not getattr(t_db, "artist_display_name", None)):
                         t_db.artist_display_name = disp
                         db.add(t_db)
+
+                    # Also apply the source_* fields (and any other repairable JSON fields)
+                    if meta:
+                        _apply_json_track_meta(t_db, meta, prefer_json)
+                        db.add(t_db)
             continue
 
         # Create track if not found
-        meta = meta_by_spid.get(spid, {})
+        meta = meta_by_spid.get(spid, {}) or {}
+        # Make sure we include source_* fields before creation/update
+        meta = _augment_meta_with_source_fields(meta, it)
+
         created_tid = ensure_track_for_meta(
             db=db,
-            track_name=(it.get("title") or it.get("track_name") or meta.get("track_name") or meta.get("title")),
-            artist_name=(it.get("artistName") or it.get("artist_name") or meta.get("artist_name") or meta.get("artistDisplayName")),
-            year=(it.get("year") or it.get("year_released") or meta.get("year_released") or meta.get("year")),
+            track_name=_pick_first(it.get("title"), it.get("track_name"), meta.get("track_name"), meta.get("title")),
+            artist_name=_pick_first(
+                it.get("artistName"), it.get("artist_name"), meta.get("artist_name"), meta.get("artistDisplayName")
+            ),
+            year=_pick_first(it.get("year"), it.get("year_released"), meta.get("year_released"), meta.get("year")),
             spotify_track_id=spid,
         )
         if created_tid:
             it["trackId"] = created_tid
 
-            # NEW: Immediately set artist_display_name on newly created track
+            # Immediately set artist_display_name and source_* fields on the new track
             t_db = db.get(Track, created_tid)
             if t_db:
-                disp = (
-                    it.get("artist_display_name")
-                    or it.get("artistDisplayName")
-                    or meta.get("artist_display_name")
-                    or it.get("artistName")
-                    or it.get("artist_name")
-                    or meta.get("artist_name")
+                disp = _pick_first(
+                    it.get("artist_display_name"),
+                    it.get("artistDisplayName"),
+                    meta.get("artist_display_name"),
+                    it.get("artistName"),
+                    it.get("artist_name"),
+                    meta.get("artist_name"),
                 )
                 if disp and (prefer_json or not getattr(t_db, "artist_display_name", None)):
                     t_db.artist_display_name = disp
-                    db.add(t_db)
+
+                # Apply source_* and friends via the same pathway
+                _apply_json_track_meta(t_db, meta, prefer_json)
+                db.add(t_db)
 
     # Build payload and reuse core importer
     payload = CollectionImportPayload(
@@ -162,7 +273,7 @@ def import_from_file(
     )
     result = import_payload(db, payload)
 
-    # Optional repair pass (applies JSON meta, including artist_display_name via REPAIR_KEYS)
+    # Optional repair pass (applies JSON meta—now including source_*—and respects PROTECTED_FILL_ONLY)
     if fill_missing_from_json:
         try:
             updated = merged = 0
@@ -180,6 +291,11 @@ def import_from_file(
                 spid_from_rank = rank_to_spid.get(ctr_row.ranking)
                 desired_spid = spid_from_db or spid_from_rank
                 meta = meta_by_spid.get(desired_spid) if desired_spid else None
+
+                # Mix in source_* from the item if we have it (best-effort; not all callers have item handy here)
+                # We don't have the original item by rank mapped here, so just augment from meta alone
+                meta = _augment_meta_with_source_fields(meta or {}, None)
+
                 incoming_spid = (meta or {}).get("spotify_track_id")
 
                 # merge over to canonical if SID belongs to a different row
@@ -197,7 +313,6 @@ def import_from_file(
                         continue
 
                 if meta:
-                    # This will copy artist_display_name (and other fields) from JSON
                     changes = _apply_json_track_meta(t, meta, prefer_json)
                     if changes:
                         db.add(t)

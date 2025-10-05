@@ -254,9 +254,8 @@ async def play_track_by_rank(
         "decade": decade, "genre": genre, "rank": rank,
         "played": {"intro": play_intro, "detail": play_detail, "track": play_track, "artist": play_artist_description}
     }
-
 # ─────────────────────────────────────────────────────────────────────────────
-# Load (decade, genre) data and store context
+# Load (decade, genre) data and store context — UPDATED
 # ─────────────────────────────────────────────────────────────────────────────
 @router.get("/load-decade-genre-data")
 def load_decade_genre_data(
@@ -277,7 +276,10 @@ def load_decade_genre_data(
 
         rankings = get_rankings_for_combo(db, dg.id)
         if not rankings:
-            return {"decade": decade, "genre": genre, "language": lang, "track_count": 0, "rankings": [], "message": "No rankings found."}
+            return {
+                "decade": decade, "genre": genre, "language": lang,
+                "track_count": 0, "rankings": [], "message": "No rankings found."
+            }
 
         intro_bucket  = bucket_for(lang, "intro")
         detail_bucket = bucket_for(lang, "detail")
@@ -287,34 +289,89 @@ def load_decade_genre_data(
         for r in rankings:
             track = db.get(Track, r.track_id)
             if not track:
-                logger.warning("⚠️ Track ID %s not found", r.track_id); continue
-            artist = db.get(Artist, track.artist_id)
-            if not artist:
-                logger.warning("⚠️ Artist ID %s not found", track.artist_id); continue
+                logger.warning("⚠️ Track ID %s not found", r.track_id)
+                continue
 
+            # Try to load the canonical artist row (may be None for various imports)
+            artist = None
+            artist_name_for_output = None
+            if getattr(track, "artist_id", None):
+                artist = db.get(Artist, track.artist_id)
+                artist_name_for_output = getattr(artist, "artist_name", None)
+
+            # ✅ display-name fallback chain (great for DUETs)
+            artist_name_for_output = (
+                artist_name_for_output
+                or getattr(track, "artist_display_name", None)
+                or getattr(track, "artist_name", None)
+                or "Unknown Artist"
+            )
+
+            # Build media keys (guard artist None)
             intro_filename  = build_intro_filename(decade, genre, r.ranking)
             detail_filename = build_detail_filename(track.spotify_track_id)
-            artist_filename = build_artist_filename(artist.spotify_artist_id) if artist.spotify_artist_id else None
+            artist_filename = (
+                build_artist_filename(artist.spotify_artist_id)
+                if artist and getattr(artist, "spotify_artist_id", None)
+                else None
+            )
 
+            # Localized text
             intro_text, detail_text = get_localized_texts(db, lang, r, track)
+
+            # ── New TV/Source fields (with legacy fallbacks) ───────────────────
+            source_type  = getattr(track, "source_type", None)
+            source_title = (
+                getattr(track, "source_title", None)
+                or getattr(track, "show_name", None)        # legacy JSON field
+            )
+            years_on_air = (
+                getattr(track, "years_on_air", None)
+                or getattr(track, "year_on_air", None)      # legacy JSON field
+            )
+            source_role  = (
+                getattr(track, "source_role", None)
+                or getattr(track, "show_genre", None)       # legacy JSON field
+            )
+            version_notes = getattr(track, "version_notes", None)
+
+            # If we see any TV-ish fields but no explicit type, default to TV
+            if not source_type and (source_title or years_on_air or source_role):
+                source_type = "TV"
 
             response.append({
                 "rank": r.ranking,
                 "trackName": track.track_name,
-                "artistName": artist.artist_name,
+                # use the computed display-name chain
+                "artistName": artist_name_for_output,
                 "modeFlag": getattr(getattr(track, "mode_flag", None), "value", getattr(track, "mode_flag", None)),
                 "intro": intro_text,
                 "detail": detail_text,
-                "artistDescription": getattr(artist, "artist_description", None),
+                "artistDescription": getattr(artist, "artist_description", None) if artist else None,
+
+                # S3 / object keys
                 "introKey":  {"bucket": intro_bucket,  "key": key_for("intro",  intro_filename)},
                 "detailKey": {"bucket": detail_bucket, "key": key_for("detail", detail_filename)} if detail_filename else None,
                 "artistKey": {"bucket": artist_bucket, "key": key_for("artist", artist_filename)} if artist_filename else None,
-                "artistArtwork": artist.artist_artwork,
-                "albumArtwork": track.album_artwork
+
+                # Images
+                "artistArtwork": getattr(artist, "artist_artwork", None) if artist else None,
+                "albumArtwork": track.album_artwork,
+
+                # NEW: source/TV fields in the payload
+                "sourceType": source_type,
+                "sourceTitle": source_title,
+                "yearsOnAir": years_on_air,
+                "sourceRole": source_role,
+                "versionNotes": version_notes,
             })
 
         logger.info("✅ Loaded %d ranked tracks for %s / %s (lang=%s)", len(response), decade, genre, lang)
-        return {"decade": decade, "genre": genre, "language": lang, "track_count": len(response), "rankings": sorted(response, key=lambda x: x["rank"])}
+        return {
+            "decade": decade, "genre": genre, "language": lang,
+            "track_count": len(response),
+            "rankings": sorted(response, key=lambda x: x["rank"])
+        }
 
     except HTTPException:
         raise

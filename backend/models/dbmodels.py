@@ -46,19 +46,24 @@ class Artist(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[Track.featured_artist_id]"},
     )
 
-
 class Decade(SQLModel, table=True):
     __tablename__ = "decade"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     decade_name: str
+    slug: Optional[str] = Field(default=None, index=True)         # NEW (optional)
+    description: Optional[str] = Field(default=None)              # NEW (optional)
 
 
 class Genre(SQLModel, table=True):
     __tablename__ = "genre"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     genre_name: str
+    slug: Optional[str] = Field(default=None, index=True)         # NEW (optional)
+    description: Optional[str] = Field(default=None)              # NEW (optional)
 
 
 class Language(SQLModel, table=True):
@@ -84,10 +89,9 @@ class DecadeGenre(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     decade_id: Optional[int] = Field(default=None, foreign_key="decade.id")
     genre_id: Optional[int] = Field(default=None, foreign_key="genre.id")
+    slug: Optional[str] = Field(default=None, index=True)  # NEW (optional)
 
-    # Relationships
     decade: Optional["Decade"] = Relationship()
-    genre: Optional["Genre"] = Relationship()
 
 
 class TrackGenre(SQLModel, table=True):
@@ -150,7 +154,6 @@ class Tracklist(SQLModel, table=True):
     notes: Optional[str] = Field(default=None)
     created_at: Optional[datetime] = Field(default=None)
 
-
 class Track(SQLModel, table=True):
     __tablename__ = "track"
     __table_args__ = {"extend_existing": True}
@@ -160,6 +163,7 @@ class Track(SQLModel, table=True):
     album_name: Optional[str] = Field(default=None)
     artist_display_name: Optional[str] = Field(default=None)
     spotify_track_id: str = Field(nullable=False)
+
     mode_flag: ModeFlag = Field(
         sa_column=Column(SqlEnum(ModeFlag, name="modeflag", create_constraint=True)),
         default=ModeFlag.SOLO,
@@ -168,12 +172,21 @@ class Track(SQLModel, table=True):
     popularity: Optional[int] = Field(default=None)
     album_artwork: Optional[str] = Field(default=None)
     year_released: Optional[int] = Field(default=None)
-    artist_id: int = Field(foreign_key="artist.id")  # Required main artist
-    featured_artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")  # Optional guest
+
+    artist_id: int = Field(foreign_key="artist.id")                     # main artist
+    featured_artist_id: Optional[int] = Field(default=None, foreign_key="artist.id")
+
     is_explicit: Optional[bool] = Field(default=False)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     detail: Optional[str] = Field(default=None)
     language: Optional[str] = Field(default="en", max_length=2)
+
+    # ── NEW: media/source metadata for TV / film / stage etc. ───────────────
+    source_type: Optional[str] = Field(default=None)         # e.g., "TV", "Film", "Stage", "Game"
+    source_title: Optional[str] = Field(default=None)        # e.g., show / film / production title
+    years_on_air: Optional[str] = Field(default=None)        # e.g., "1959–1973" (TEXT)
+    source_role: Optional[str] = Field(default=None)         # e.g., "THEME", "OPENING", "CLOSING"
+    version_notes: Optional[str] = Field(default=None)       # e.g., "TV Opening", "Single edit"
 
     # Relationships
     artist: "Artist" = Relationship(
@@ -186,13 +199,10 @@ class Track(SQLModel, table=True):
     )
     rankings: list["TrackRanking"] = Relationship(back_populates="track")
 
-    # NEW: backref used by CollectionTrackRanking.track
+    # ✅ FIX: use SQLModel's Relationship with kwargs, not a raw sa_relationship
     collection_rankings: List["CollectionTrackRanking"] = Relationship(
-        sa_relationship=sa_relationship(
-            "CollectionTrackRanking",
-            back_populates="track",
-            cascade="all, delete-orphan",
-        )
+        back_populates="track",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
 
 

@@ -21,6 +21,7 @@ REPAIR_KEYS = [
     "album_name", "album_artwork", "year_released", "is_explicit", "detail",
     "artist_display_name",   # backfill nicer display names
     "track_name",            # backfill pretty titles
+    "show_name", "years_on_air", "show_genre", "track_display_name",
 ]
 
 def strip_accents(s: str) -> str:
