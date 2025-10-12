@@ -1,4 +1,4 @@
-# backend/routers/supabase_loader.py
+# backend/routers/supabase_loader_legacy.py
 from __future__ import annotations
 
 # NEW for mobile playback UI / signed URLs
@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 import json
 
 
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Query, Depends
 from typing import Literal
 from sqlmodel import Session, select
 
@@ -18,17 +18,11 @@ from backend.utils.naming import normalize_language_code_canon
 from sqlmodel import Session as SQLSession
 from sqlalchemy.exc import OperationalError, InterfaceError
 from backend.models.dbmodels import TrackRanking, Track, Artist
-from backend.services.localization import get_localized_texts
 from backend.database import get_db, engine
 
-from backend.state import current_decade_genre, skip_event
+from backend.state import skip_event
 
-from backend.services.db_queries import get_decade_genre, get_rankings_for_combo
-from backend.services.playback_helpers import (
-    bucket_for, key_for,
-    build_intro_filename, build_detail_filename, build_artist_filename
-)
-
+from backend.services.db_queries import get_decade_genre
 # NEW modular helpers
 from backend.services.radio_pick import fetch_random_pick
 
@@ -42,6 +36,10 @@ from backend.services.radio_runtime import (
     build_intro_jobs, narration_keys_for,
     maybe_play_bed, play_narrations, play_track_with_skip
 )
+
+from backend.services.supabase_loader_service import load_decade_genre, load_collection
+from backend.state import current_decade_genre, current_collection
+
 
 logger = logging.getLogger(__name__)  # -> "backend.routers.supabase_loader"
 router = APIRouter(prefix="/supabase", tags=["Supabase"])
@@ -254,130 +252,44 @@ async def play_track_by_rank(
         "decade": decade, "genre": genre, "rank": rank,
         "played": {"intro": play_intro, "detail": play_detail, "track": play_track, "artist": play_artist_description}
     }
-# ─────────────────────────────────────────────────────────────────────────────
-# Load (decade, genre) data and store context — UPDATED
-# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# Load (decade, genre) data — now uses modular service
+# ─────────────────────────────────────────────────────────────
 @router.get("/load-decade-genre-data")
 def load_decade_genre_data(
-    decade: str = Query(..., description="Decade name, e.g., '1980s'"),
-    genre: str = Query(..., description="Genre name, e.g., 'country'"),
+    decade: str = Query(...),
+    genre: str = Query(...),
     tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
     db: Session = Depends(get_db)
 ):
-    try:
-        current_decade_genre["decade"] = decade
-        current_decade_genre["genre"]  = genre
-        lang = normalize_language_code_canon(tts_language)
-        logger.info("📌 Stored context for play-by-rank-only: %s / %s (lang=%s)", decade, genre, lang)
+    result = load_decade_genre(db, decade, genre, tts_language)
+    current_decade_genre.update({"decade": decade, "genre": genre, "lang": result["language"]})
+    return result
 
-        dg = get_decade_genre(db, decade, genre)
-        if not dg:
-            raise HTTPException(status_code=404, detail=f"No DecadeGenre found for {decade} / {genre}")
+@router.get("/current-context")
+def get_current_context():
+    mode = "collection" if current_collection.get("collection") else (
+        "decade_genre" if current_decade_genre.get("decade") and current_decade_genre.get("genre") else None
+    )
+    return {
+        "mode": mode,
+        "decade_genre": current_decade_genre,
+        "collection": current_collection,
+    }
 
-        rankings = get_rankings_for_combo(db, dg.id)
-        if not rankings:
-            return {
-                "decade": decade, "genre": genre, "language": lang,
-                "track_count": 0, "rankings": [], "message": "No rankings found."
-            }
+# ─────────────────────────────────────────────────────────────
+# Load (collection) data — parallel to decade/genre
+# ─────────────────────────────────────────────────────────────
+@router.get("/load-collection-data")
+def load_collection_data(
+    collection: str = Query(..., description="Collection name, e.g., 'Motown Magic'"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+    db: Session = Depends(get_db)
+):
+    result = load_collection(db, collection, tts_language)
+    current_collection.update({"collection": collection, "lang": result["language"]})
+    return result
 
-        intro_bucket  = bucket_for(lang, "intro")
-        detail_bucket = bucket_for(lang, "detail")
-        artist_bucket = bucket_for(lang, "artist")
-
-        response = []
-        for r in rankings:
-            track = db.get(Track, r.track_id)
-            if not track:
-                logger.warning("⚠️ Track ID %s not found", r.track_id)
-                continue
-
-            # Try to load the canonical artist row (may be None for various imports)
-            artist = None
-            artist_name_for_output = None
-            if getattr(track, "artist_id", None):
-                artist = db.get(Artist, track.artist_id)
-                artist_name_for_output = getattr(artist, "artist_name", None)
-
-            # ✅ display-name fallback chain (great for DUETs)
-            artist_name_for_output = (
-                artist_name_for_output
-                or getattr(track, "artist_display_name", None)
-                or getattr(track, "artist_name", None)
-                or "Unknown Artist"
-            )
-
-            # Build media keys (guard artist None)
-            intro_filename  = build_intro_filename(decade, genre, r.ranking)
-            detail_filename = build_detail_filename(track.spotify_track_id)
-            artist_filename = (
-                build_artist_filename(artist.spotify_artist_id)
-                if artist and getattr(artist, "spotify_artist_id", None)
-                else None
-            )
-
-            # Localized text
-            intro_text, detail_text = get_localized_texts(db, lang, r, track)
-
-            # ── New TV/Source fields (with legacy fallbacks) ───────────────────
-            source_type  = getattr(track, "source_type", None)
-            source_title = (
-                getattr(track, "source_title", None)
-                or getattr(track, "show_name", None)        # legacy JSON field
-            )
-            years_on_air = (
-                getattr(track, "years_on_air", None)
-                or getattr(track, "year_on_air", None)      # legacy JSON field
-            )
-            source_role  = (
-                getattr(track, "source_role", None)
-                or getattr(track, "show_genre", None)       # legacy JSON field
-            )
-            version_notes = getattr(track, "version_notes", None)
-
-            # If we see any TV-ish fields but no explicit type, default to TV
-            if not source_type and (source_title or years_on_air or source_role):
-                source_type = "TV"
-
-            response.append({
-                "rank": r.ranking,
-                "trackName": track.track_name,
-                # use the computed display-name chain
-                "artistName": artist_name_for_output,
-                "modeFlag": getattr(getattr(track, "mode_flag", None), "value", getattr(track, "mode_flag", None)),
-                "intro": intro_text,
-                "detail": detail_text,
-                "artistDescription": getattr(artist, "artist_description", None) if artist else None,
-
-                # S3 / object keys
-                "introKey":  {"bucket": intro_bucket,  "key": key_for("intro",  intro_filename)},
-                "detailKey": {"bucket": detail_bucket, "key": key_for("detail", detail_filename)} if detail_filename else None,
-                "artistKey": {"bucket": artist_bucket, "key": key_for("artist", artist_filename)} if artist_filename else None,
-
-                # Images
-                "artistArtwork": getattr(artist, "artist_artwork", None) if artist else None,
-                "albumArtwork": track.album_artwork,
-
-                # NEW: source/TV fields in the payload
-                "sourceType": source_type,
-                "sourceTitle": source_title,
-                "yearsOnAir": years_on_air,
-                "sourceRole": source_role,
-                "versionNotes": version_notes,
-            })
-
-        logger.info("✅ Loaded %d ranked tracks for %s / %s (lang=%s)", len(response), decade, genre, lang)
-        return {
-            "decade": decade, "genre": genre, "language": lang,
-            "track_count": len(response),
-            "rankings": sorted(response, key=lambda x: x["rank"])
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("load_decade_genre_data failed")
-        return {"error": "load_decade_genre_data failed", "detail": f"{type(e).__name__}: {e!s}"}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Play a sequence starting from a rank (localized)

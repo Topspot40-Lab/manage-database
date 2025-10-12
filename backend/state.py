@@ -1,11 +1,25 @@
 # backend/state.py
 import asyncio
 
-# Stores the most recently loaded decade + genre from Supabase
+# ─────────────────────────────────────────────
+# Currently loaded decade/genre context
+# ─────────────────────────────────────────────
 current_decade_genre = {
     "decade": None,
-    "genre": None
+    "genre": None,
+    "lang": "en",   # keep the last selected language here too
 }
 
-# 👇 New: signal used to skip the currently playing track
+# ─────────────────────────────────────────────
+# Currently loaded collection context
+# ─────────────────────────────────────────────
+current_collection = {
+    "collection": None,
+    "lang": "en",
+}
+
+# ─────────────────────────────────────────────
+# Global async signal to skip the currently playing track
+# (matches your async playback flow)
+# ─────────────────────────────────────────────
 skip_event = asyncio.Event()

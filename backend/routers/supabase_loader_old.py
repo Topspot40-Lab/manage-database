@@ -1,4 +1,4 @@
-# backend/routers/supabase_loader.py
+# backend/routers/supabase_loader_legacy.py
 
 from fastapi import APIRouter, Query, Depends
 from sqlmodel import Session, select

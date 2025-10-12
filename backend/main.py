@@ -86,6 +86,7 @@ def create_app() -> FastAPI:
         {"name": "Narration",      "description": "Mobile narration player & signed URLs."},
     ]
 
+    # ── API app + docs metadata ─────────────────────────────────────
     app = FastAPI(
         title="TopSpot API",
         version=APP_VERSION,
@@ -97,11 +98,24 @@ def create_app() -> FastAPI:
             "defaultModelExpandDepth": 0,
             "displayRequestDuration": True,
             "persistAuthorization": True,
-            # "docExpansion": "list",   # set to "none" to collapse sections by default
-            "docExpansion": "none",   # set to "none" to collapse sections by default
+            "docExpansion": "none",
         },
         generate_unique_id_function=custom_generate_unique_id,
     )
+
+    # ADD THIS BLOCK ↓↓↓
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    # END CORS BLOCK ↑↑↑
 
     # Startup breadcrumb (level controlled by LOG_SHOW_STARTUP)
     _startup_log = logging.getLogger("backend.startup")
@@ -179,6 +193,9 @@ def create_app() -> FastAPI:
     from backend.routers.collections_player import router as collections_player_router
     from backend.routers.tts_collection_intro import collection_intro_router
 
+    from backend.routers import catalog
+    # from backend.routers.supabase_loader import router as supabase_router
+
     # ── Include routers (tags defined ONLY here) ────────────────────
     # 1) Core JSON / Files / Playback / TTS
     app.include_router(json_router,         tags=["JSON & Files"])
@@ -224,7 +241,13 @@ def create_app() -> FastAPI:
 
     app.include_router(collection_intro_router)
 
-    app.include_router(spotify_auth_router)
+    app.include_router(spotify_auth_router, tags=["Meta"])
+
+    app.include_router(catalog.router)
+
+    # app.include_router(supabase_router)
+
+    from backend.routers import catalog
 
     # ── Normalize tags so each route has exactly ONE canonical tag ──
     CANON_BY_PREFIX = [
