@@ -3,15 +3,15 @@ from __future__ import annotations
 import logging
 from sqlmodel import Session, select
 
-from fastapi import HTTPException
-from sqlalchemy import select, func
-
-from backend.models.dbmodels import Track, Artist
-from backend.models.collection_models import Collection
 from backend.services.db_queries import get_decade_genre, get_rankings_for_combo
 from backend.utils.naming import normalize_language_code_canon
 from backend.services.localization import get_localized_texts
 from backend.services.playback_helpers import bucket_for, key_for, build_intro_filename, build_detail_filename, build_artist_filename
+
+from sqlalchemy import select, func
+from fastapi import HTTPException
+from backend.models.collection_models import Collection, CollectionTrackRanking
+from backend.models.dbmodels import Track, Artist
 
 logger = logging.getLogger(__name__)
 
@@ -72,36 +72,63 @@ def load_decade_genre(db: Session, decade: str, genre: str, tts_language: str):
 # Collection Loader
 # ──────────────────────────────────────────────────────────────
 
-
 def load_collection(db, slug: str, tts_language: str):
     """Load ranked track data for a collection by slug or name."""
     lang = tts_language.lower().replace("-", "")
     slug_norm = slug.strip().lower()
 
-    # Query for ORM instance by slug first, fallback to name
+    # ── 1️⃣ Find the collection by slug or name ─────────────────────
     coll = db.exec(
         select(Collection).where(func.lower(Collection.slug) == slug_norm)
     ).first()
-
     if not coll:
         coll = db.exec(
             select(Collection).where(func.lower(Collection.name) == slug_norm)
         ).first()
-
-    # ✅ unwrap the Collection if it’s inside a RowMapping
     if coll is not None and not isinstance(coll, Collection):
         coll = coll[0]
 
     if not coll:
         raise HTTPException(status_code=404, detail=f"Collection not found for '{slug}'")
+    # ---- 2) Fetch ranked tracks (joined with Track + Artist) ----
+    stmt = (
+        select(
+            CollectionTrackRanking.ranking,
+            Track.id,  # will be available as key "id"
+            Track.track_name,  # "track_name"
+            Artist.artist_name,  # "artist_name"
+            Track.album_artwork,  # "album_artwork"
+            Track.year_released,  # "year_released"
+        )
+        .join(Track, Track.id == CollectionTrackRanking.track_id)
+        .join(Artist, Artist.id == Track.artist_id)
+        .where(CollectionTrackRanking.collection_id == coll.id)
+        .order_by(CollectionTrackRanking.ranking)
+    )
 
-    # ✅ Now coll is a proper ORM instance
-    result = {
+    rows = db.exec(stmt).all()
+
+    # ---- 3) Build structured result ----
+    tracks = []
+    for r in rows:
+        row = getattr(r, "_mapping", r)  # Row or RowMapping
+        tracks.append({
+            "rank": row["ranking"],
+            "trackId": row["id"],  # from Track.id
+            "trackName": row["track_name"],
+            "artistName": row["artist_name"],
+            "yearReleased": row["year_released"],
+            "albumArtwork": row["album_artwork"],
+        })
+
+    # ── 4️⃣ Return JSON payload ─────────────────────────────────────
+    return {
         "collection": {
             "id": coll.id,
             "name": coll.name,
-            "slug": coll.slug
+            "slug": coll.slug,
         },
         "language": lang,
+        "totalTracks": len(tracks),
+        "tracks": tracks,
     }
-    return result
