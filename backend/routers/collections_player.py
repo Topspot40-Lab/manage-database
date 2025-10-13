@@ -1,9 +1,7 @@
-# backend/routers/collections_player.py
 from __future__ import annotations
 
 import json
 from typing import Literal
-
 from fastapi import APIRouter, Query, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlmodel import Session, select
@@ -43,11 +41,14 @@ def collection_intro_jobs(*, lang: str, slug: str, rank: int):
     return [(bucket, key, "collection", slug, rank)]
 
 
+# ─────────────────────────────────────────────────────────────
+# PLAY SINGLE TRACK BY RANK (server-side playback)
+# ─────────────────────────────────────────────────────────────
 @router.get("/play-track-by-rank")
 async def play_track_by_rank(
     collection_slug: str = Query(...),
     rank: int = Query(...),
-    play_intro: bool = Query(True),                 # NEW: allow server-side intro playback
+    play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
@@ -59,28 +60,54 @@ async def play_track_by_rank(
     if not coll:
         return {"error": f"No Collection for {collection_slug!r}"}
 
-    ctr = db.exec(select(CollectionTrackRanking).where(
-        CollectionTrackRanking.collection_id == coll.id,
-        CollectionTrackRanking.ranking == rank
-    )).first()
-    if not ctr:
+    # Explicitly include intro_text from collection_track_ranking
+    ctr_row = db.exec(
+        select(
+            CollectionTrackRanking.id,
+            CollectionTrackRanking.ranking,
+            CollectionTrackRanking.track_id,
+            CollectionTrackRanking.intro_text,
+        ).where(
+            CollectionTrackRanking.collection_id == coll.id,
+            CollectionTrackRanking.ranking == rank
+        )
+    ).first()
+
+    if not ctr_row:
         return {"error": f"No ranking #{rank} in collection {collection_slug}"}
 
-    track = db.get(Track, ctr.track_id)
+    ctr = getattr(ctr_row, "_mapping", ctr_row)
+    track = db.get(Track, ctr["track_id"])
     artist = db.get(Artist, track.artist_id) if track else None
     if not track or not artist:
         return {"error": "Track or Artist not found"}
 
-    # ✅ Collection-aware logs (shows collection name + slug) and prints CTR.intro box
-    log_collection_header_and_texts(lang=lang, collection=coll, ctr=ctr, track=track, artist=artist)
+    # ✅ Pull texts from the correct sources
+    intro_text = ctr.get("intro_text")
+    detail_text = (
+        getattr(track, "detail_text", None)
+        or getattr(track, "track_detail", None)
+        or getattr(track, "detail", None)
+    )
+
+    # ✅ Log both intro and detail text correctly
+    log_collection_header_and_texts(
+        lang=lang,
+        collection=coll,
+        ctr=ctr,
+        track=track,
+        artist=artist,
+        intro_text=intro_text,
+        detail_text=detail_text,
+    )
 
     # Narration assets
     detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
 
-    # ✅ Collection intro mp3 job(s)
+    # Collection intro MP3 job(s)
     intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rank) if play_intro else []
 
-    # Play narrations server-side
+    # Play narrations
     if intro_jobs or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
         await maybe_play_bed()
     await play_narrations(
@@ -92,7 +119,7 @@ async def play_track_by_rank(
         artist_bucket=artist_bucket, artist_key=artist_key
     )
 
-    # Main track (Spotify)
+    # Spotify playback
     if play_track and track.spotify_track_id:
         skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
         if skipped_mid:
@@ -101,13 +128,16 @@ async def play_track_by_rank(
     return {"status": "success", "collection": collection_slug, "rank": rank}
 
 
+# ─────────────────────────────────────────────────────────────
+# PLAY COLLECTION SEQUENCE (count up / down / random)
+# ─────────────────────────────────────────────────────────────
 @router.get("/play-sequence", response_class=HTMLResponse)
 async def play_sequence(
     request: Request,
     collection_slug: str = Query(...),
     starting_rank: int = Query(...),
     mode: Literal["count_up","count_down","random"] = Query("count_up"),
-    play_intro: bool = Query(True),                 # NEW: include collection intro
+    play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
@@ -139,7 +169,9 @@ async def play_sequence(
         play_order = [r for r in order if r >= starting_rank]
         random.shuffle(play_order)
 
-    # SERVER mode: narrate + play on server (✅ now includes collection intro)
+    # ─────────────────────────────────────────────────────────────
+    # SERVER MODE: playback handled here (Car Mode)
+    # ─────────────────────────────────────────────────────────────
     if server:
         results = []
         for rk in play_order:
@@ -151,10 +183,25 @@ async def play_sequence(
             if not track or not artist:
                 continue
 
-            # ✅ Collection-aware header + shows CTR.intro text
-            log_collection_header_and_texts(lang=lang, collection=coll, ctr=r, track=track, artist=artist)
+            # ✅ Collection intro from CTR + detail from Track
+            intro_text = getattr(r, "intro_text", None)
+            detail_text = (
+                getattr(track, "detail_text", None)
+                or getattr(track, "track_detail", None)
+                or getattr(track, "detail", None)
+            )
 
-            # narration keys + optional collection intro job(s)
+            log_collection_header_and_texts(
+                lang=lang,
+                collection=coll,
+                ctr=r,
+                track=track,
+                artist=artist,
+                intro_text=intro_text,
+                detail_text=detail_text,
+            )
+
+            # Narrations
             detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
             intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rk) if play_intro else []
 
@@ -169,7 +216,7 @@ async def play_sequence(
                 artist_bucket=artist_bucket, artist_key=artist_key
             )
 
-            # spotify
+            # Spotify playback
             if play_track and track.spotify_track_id:
                 skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
                 if skipped_mid:
@@ -180,7 +227,9 @@ async def play_sequence(
 
         return JSONResponse({"status": "completed", "collection": collection_slug, "mode": mode, "language": lang, "tracks_played": results})
 
-    # BROWSER mode: build client bundle of signed URLs + spotify ids (now includes collection intro if enabled)
+    # ─────────────────────────────────────────────────────────────
+    # BROWSER MODE: return signed URL bundle for client playback
+    # ─────────────────────────────────────────────────────────────
     sequence = []
     for rk in play_order:
         bundle, err = urls_for_rank_collection(
@@ -188,12 +237,12 @@ async def play_sequence(
             lang=lang,
             collection_id=coll.id,
             rank=rk,
-            use_intro=play_intro,                # ✅ include intro when requested
+            use_intro=play_intro,
             use_detail=play_detail,
             use_artist=play_artist_description,
             expires=expires,
             request=request,
-            collection_slug=coll.slug,          # pass slug so filenames resolve
+            collection_slug=coll.slug,
         )
         if err or not bundle:
             continue
@@ -295,4 +344,3 @@ document.getElementById('go').onclick = async () => {{
 </script>
 """
     return HTMLResponse(html)
-

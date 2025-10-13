@@ -27,7 +27,7 @@ def log_collection_header_and_texts(
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Log a header tailored for Collections (shows collection name + slug),
-    and print the collection intro text (ctr.intro) when present.
+    and print the collection intro text (ctr.intro_text) when present.
     Returns (intro_text, detail_text, artist_text).
     """
     header_lines = [
@@ -42,9 +42,11 @@ def log_collection_header_and_texts(
     ]
     logger.info("\n%s", "\n".join(header_lines))
 
-    intro_text = clean_text(getattr(ctr, "intro", None))
-    if intro_text:
-        logger.info(box("INTRO", intro_text, width=BOX_WIDTH))
+    # ✅ FIX: use intro_text instead of intro
+    intro_text = clean_text(
+        getattr(ctr, "intro_text", None)
+        or getattr(ctr, "intro", None)  # fallback for legacy field
+    )
 
     # Reuse existing detail/artist logging pattern
     detail_text = clean_text(getattr(track, "detail", None))

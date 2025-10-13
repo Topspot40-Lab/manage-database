@@ -18,6 +18,8 @@ from backend.services.radio_runtime import (
     play_narrations,
     play_track_with_skip,
 )
+from backend.services.supabase_loader_service import current_decade_genre_tracks
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Supabase: Play Random"])
@@ -114,3 +116,16 @@ async def skip_current_track():
     """Signal the current track playback loop to stop immediately."""
     skip_event.set()
     return {"status": "skipping"}
+
+# ─────────────────────────────────────────────────────────────
+# Debug endpoint: check what’s loaded in memory
+# ─────────────────────────────────────────────────────────────
+@router.get("/debug/loaded-tracks")
+def debug_loaded_tracks():
+    """Show count and first few loaded tracks from in-memory cache."""
+    if not current_decade_genre_tracks:
+        return {"count": 0, "sample": []}
+    return {
+        "count": len(current_decade_genre_tracks),
+        "sample": current_decade_genre_tracks[:3],
+    }

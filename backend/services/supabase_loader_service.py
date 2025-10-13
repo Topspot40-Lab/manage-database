@@ -16,6 +16,12 @@ from backend.models.dbmodels import Track, Artist
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────
+# Global in-memory cache for currently loaded tracks
+# ──────────────────────────────────────────────────────────────
+current_decade_genre_tracks: list[dict] = []
+
+
+# ──────────────────────────────────────────────────────────────
 # Generic helpers
 # ──────────────────────────────────────────────────────────────
 def _artist_display_name(track: Track, artist: Artist | None) -> str:
@@ -66,6 +72,10 @@ def load_decade_genre(db: Session, decade: str, genre: str, tts_language: str):
             "albumArtwork": track.album_artwork,
         })
     logger.info("✅ Loaded %d tracks for %s / %s (%s)", len(payload), decade, genre, lang)
+
+    global current_decade_genre_tracks
+    current_decade_genre_tracks = payload
+
     return {"decade": decade, "genre": genre, "language": lang, "rankings": payload}
 
 # ──────────────────────────────────────────────────────────────
