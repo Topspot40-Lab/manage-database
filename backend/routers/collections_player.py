@@ -60,13 +60,13 @@ async def play_track_by_rank(
     if not coll:
         return {"error": f"No Collection for {collection_slug!r}"}
 
-    # Explicitly include intro_text from collection_track_ranking
+    # Explicitly include intro from collection_track_ranking
     ctr_row = db.exec(
         select(
             CollectionTrackRanking.id,
             CollectionTrackRanking.ranking,
             CollectionTrackRanking.track_id,
-            CollectionTrackRanking.intro_text,
+            CollectionTrackRanking.intro,
         ).where(
             CollectionTrackRanking.collection_id == coll.id,
             CollectionTrackRanking.ranking == rank
@@ -83,7 +83,7 @@ async def play_track_by_rank(
         return {"error": "Track or Artist not found"}
 
     # ✅ Pull texts from the correct sources
-    intro_text = ctr.get("intro_text")
+    intro_text = ctr.get("intro")
     detail_text = (
         getattr(track, "detail_text", None)
         or getattr(track, "track_detail", None)
@@ -97,7 +97,7 @@ async def play_track_by_rank(
         ctr=ctr,
         track=track,
         artist=artist,
-        intro_text=intro_text,
+        intro=intro_text,
         detail_text=detail_text,
     )
 
@@ -184,7 +184,7 @@ async def play_sequence(
                 continue
 
             # ✅ Collection intro from CTR + detail from Track
-            intro_text = getattr(r, "intro_text", None)
+            intro_text = getattr(r, "intro", None)
             detail_text = (
                 getattr(track, "detail_text", None)
                 or getattr(track, "track_detail", None)
@@ -197,7 +197,7 @@ async def play_sequence(
                 ctr=r,
                 track=track,
                 artist=artist,
-                intro_text=intro_text,
+                intro=intro_text,
                 detail_text=detail_text,
             )
 

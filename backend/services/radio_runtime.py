@@ -20,15 +20,16 @@ from backend.state import skip_event
 
 logger = logging.getLogger(__name__)
 
-
 # ---------- Collections: header + intros ----------
 def log_collection_header_and_texts(
-    *, lang: str, collection, ctr, track, artist
+    *, lang: str, collection, ctr, track, artist,
+    intro: str | None = None,
+    detail_text: str | None = None,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Log a header tailored for Collections (shows collection name + slug),
-    and print the collection intro text (ctr.intro_text) when present.
-    Returns (intro_text, detail_text, artist_text).
+    and print the collection intro text (ctr.intro) when present.
+    Returns (intro, detail_text, artist_text).
     """
     header_lines = [
         "┌" + "─" * (BOX_WIDTH - 2),
@@ -42,14 +43,17 @@ def log_collection_header_and_texts(
     ]
     logger.info("\n%s", "\n".join(header_lines))
 
-    # ✅ FIX: use intro_text instead of intro
+    # ✅ Use the correct intro field (`ctr.intro`)
     intro_text = clean_text(
-        getattr(ctr, "intro_text", None)
-        or getattr(ctr, "intro", None)  # fallback for legacy field
+        intro or getattr(ctr, "intro", None)
     )
+    if intro_text:
+        logger.info(box("INTRO", intro_text, width=BOX_WIDTH))
 
     # Reuse existing detail/artist logging pattern
-    detail_text = clean_text(getattr(track, "detail", None))
+    detail_text = clean_text(
+        detail_text or getattr(track, "detail", None)
+    )
     if detail_text:
         logger.info(box("DETAIL", detail_text, width=BOX_WIDTH))
 
