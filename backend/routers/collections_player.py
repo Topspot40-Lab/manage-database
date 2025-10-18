@@ -29,6 +29,9 @@ from backend.services.narration_bundle import urls_for_rank_collection
 
 router = APIRouter(prefix="/supabase/collections", tags=["Collections"])
 
+# optional helper for consistent casing
+def _titleize(s: str | None) -> str:
+    return s.replace("_", " ").title() if s else ""
 
 def collection_intro_jobs(*, lang: str, slug: str, rank: int):
     """
@@ -131,129 +134,266 @@ async def play_track_by_rank(
 # ─────────────────────────────────────────────────────────────
 # PLAY COLLECTION SEQUENCE (count up / down / random)
 # ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# PLAY COLLECTION SEQUENCE (supports start/end rank + "All")
+# ─────────────────────────────────────────────────────────────
+
 @router.get("/play-sequence", response_class=HTMLResponse)
 async def play_sequence(
     request: Request,
-    collection_slug: str = Query(...),
-    starting_rank: int = Query(...),
-    mode: Literal["count_up","count_down","random"] = Query("count_up"),
+    collection_slug: str = Query(..., description="'All' plays all collections combined"),
+    start_rank: int = Query(1, ge=1, le=40),
+    end_rank: int = Query(40, ge=1, le=40),
+    mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
     play_intro: bool = Query(True),
     play_detail: bool = Query(True),
     play_track: bool = Query(True),
     play_artist_description: bool = Query(True),
-    tts_language: Literal["en","es","ptbr","pt-BR"] = Query("en"),
-    ui: int = Query(1, description="1=HTML player (mobile/browser). 0=JSON bundle."),
-    server: bool = Query(True, description="True=server-side playback like decade/genre."),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+    ui: int = Query(1, description="1=HTML player (browser). 0=JSON bundle."),
+    server: bool = Query(True, description="True=server-side playback like Car Mode."),
     expires: int = Query(300, ge=60, le=3600),
     db: Session = Depends(get_db),
 ):
     lang = normalize_language_code_canon(tts_language)
-    coll = db.exec(select(Collection).where(Collection.slug == collection_slug)).first()
-    if not coll:
-        return JSONResponse({"error": f"No Collection for {collection_slug!r}"}, status_code=404)
 
-    rows = db.exec(select(CollectionTrackRanking).where(
-        CollectionTrackRanking.collection_id == coll.id
-    )).all()
+    # Handle "All" collections
+    if collection_slug.lower() == "all":
+        collections = db.exec(select(Collection)).all()
+        if not collections:
+            return JSONResponse({"error": "No collections found."}, status_code=404)
+    else:
+        coll = db.exec(select(Collection).where(Collection.slug == collection_slug)).first()
+        if not coll:
+            return JSONResponse({"error": f"No Collection for {collection_slug!r}"}, status_code=404)
+        collections = [coll]
+
+    # Gather all ranking rows
+    rows = []
+    for c in collections:
+        rows.extend(
+            db.exec(
+                select(CollectionTrackRanking)
+                .where(CollectionTrackRanking.collection_id == c.id)
+                .order_by(CollectionTrackRanking.ranking)
+            ).all()
+        )
+
     if not rows:
-        return JSONResponse({"error": "No rankings for this collection."}, status_code=404)
+        return JSONResponse({"error": "No rankings found for selection."}, status_code=404)
 
-    max_rank = max(r.ranking for r in rows)
-    order = list(range(1, max_rank + 1))
+    # Filter by rank range
+    rows = [r for r in rows if start_rank <= r.ranking <= end_rank]
+    if not rows:
+        return JSONResponse({"error": f"No tracks in rank range {start_rank}-{end_rank}."}, status_code=404)
+
+    # Determine play order
+    order = sorted({r.ranking for r in rows})
     if mode == "count_up":
-        play_order = [r for r in order if r >= starting_rank]
+        play_order = sorted(order)
     elif mode == "count_down":
-        play_order = [r for r in order if r <= starting_rank][::-1]
+        play_order = sorted(order, reverse=True)
     else:
         import random
-        play_order = [r for r in order if r >= starting_rank]
+        play_order = list(order)
         random.shuffle(play_order)
 
     # ─────────────────────────────────────────────────────────────
-    # SERVER MODE: playback handled here (Car Mode)
+    # SERVER MODE: playback handled on backend (Car Mode)
     # ─────────────────────────────────────────────────────────────
     if server:
         results = []
         for rk in play_order:
-            r = next((x for x in rows if x.ranking == rk), None)
-            if not r:
-                continue
-            track = db.get(Track, r.track_id)
-            artist = db.get(Artist, track.artist_id) if track else None
-            if not track or not artist:
-                continue
+            matching_rows = [r for r in rows if r.ranking == rk]
+            for r in matching_rows:
+                track = db.get(Track, r.track_id)
+                artist = db.get(Artist, track.artist_id) if track else None
+                if not track or not artist:
+                    continue
 
-            # ✅ Collection intro from CTR + detail from Track
-            intro_text = getattr(r, "intro", None)
-            detail_text = (
-                getattr(track, "detail_text", None)
-                or getattr(track, "track_detail", None)
-                or getattr(track, "detail", None)
-            )
+                # ✅ Use intro from CollectionTrackRanking
+                intro_text = getattr(r, "intro", None)
+                detail_text = (
+                    getattr(track, "detail_text", None)
+                    or getattr(track, "track_detail", None)
+                    or getattr(track, "detail", None)
+                )
 
-            log_collection_header_and_texts(
-                lang=lang,
-                collection=coll,
-                ctr=r,
-                track=track,
-                artist=artist,
-                intro=intro_text,
-                detail_text=detail_text,
-            )
+                # ✅ Display header and intro
+                coll_for_row = next((c for c in collections if c.id == r.collection_id), None)
+                log_collection_header_and_texts(
+                    lang=lang,
+                    collection=coll_for_row,
+                    ctr=r,
+                    track=track,
+                    artist=artist,
+                    intro=intro_text,
+                    detail_text=detail_text,
+                )
 
-            # Narrations
-            detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
-            intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rk) if play_intro else []
+                # Narrations (optional playback order, but no autoplay)
+                detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(
+                    lang=lang, track=track, artist=artist
+                )
+                intro_jobs = collection_intro_jobs(lang=lang, slug=coll_for_row.slug, rank=rk) if play_intro else []
 
-            if intro_jobs or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
+                # Queue narrations if available (no autoplay)
                 await maybe_play_bed()
-            await play_narrations(
-                play_intro=play_intro,
-                play_detail=play_detail,
-                play_artist=play_artist_description,
-                intro_jobs=intro_jobs,
-                detail_bucket=detail_bucket, detail_key=detail_key,
-                artist_bucket=artist_bucket, artist_key=artist_key
-            )
+                await play_narrations(
+                    play_intro=False,  # ❌ no autoplay
+                    play_detail=False,
+                    play_artist=False,
+                    intro_jobs=intro_jobs,
+                    detail_bucket=detail_bucket, detail_key=detail_key,
+                    artist_bucket=artist_bucket, artist_key=artist_key,
+                )
 
-            # Spotify playback
-            if play_track and track.spotify_track_id:
-                skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
-                if skipped_mid:
-                    results.append({"rank": rk, "track": track.track_name, "skipped": True})
-                    return JSONResponse({"status": "skipped", "collection": collection_slug, "mode": mode, "language": lang, "tracks_played": results})
+                results.append({
+                    "rank": rk,
+                    "track": track.track_name,
+                    "collection": coll_for_row.slug if coll_for_row else None
+                })
 
-            results.append({"rank": rk, "track": track.track_name})
 
-        return JSONResponse({"status": "completed", "collection": collection_slug, "mode": mode, "language": lang, "tracks_played": results})
+
+        # ─────────────────────────────────────────────────────────────
+        # Return HTML page (for UI popup) or JSON (for API)
+        # ─────────────────────────────────────────────────────────────
+        if ui == 1:
+            # Sort results by rank for consistent display
+            detailed_results = []
+            for r in sorted(results, key=lambda r: r["rank"]):
+                track = db.exec(select(Track).where(Track.track_name == r["track"])).first()
+                artist = db.exec(select(Artist).where(Artist.id == track.artist_id)).first() if track else None
+                detailed_results.append({
+                    "rank": r["rank"],
+                    "track": _titleize(getattr(track, "track_name", None) or r["track"]),
+                    "artist": _titleize(getattr(artist, "artist_name", None) or "Unknown Artist"),
+                    "year_released": getattr(track, "year_released", None),
+                    "collection": _titleize(r["collection"]),
+                })
+
+            html = f"""
+            <html>
+              <head>
+                <title>TopSpot — {collections[0].name if collections else 'Collection'}</title>
+                <style>
+                  body {{
+                    font-family: 'Segoe UI', sans-serif;
+                    background: #121212;
+                    color: #e0e0e0;
+                    padding: 1.5rem;
+                    line-height: 1.5;
+                  }}
+                  h2 {{
+                    color: #24c661;
+                    margin-bottom: 1rem;
+                  }}
+                  table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 1rem;
+                  }}
+                  th, td {{
+                    border-bottom: 1px solid #333;
+                    padding: 0.5rem 0.75rem;
+                    text-align: left;
+                  }}
+                  th {{
+                    background-color: #1e1e1e;
+                    color: #76e2ff;
+                  }}
+                  tr:hover td {{
+                    background-color: #222;
+                  }}
+                  td.rank {{
+                    color: #24c661;
+                    font-weight: bold;
+                  }}
+                  td.year {{
+                    color: #aaa;
+                  }}
+                </style>
+              </head>
+              <body>
+                <h2>🎧 TopSpot Player — {collections[0].name if collections else ''}</h2>
+                <p><b>Mode:</b> {mode.replace('_',' ').title()} &nbsp; | &nbsp;
+                   <b>Range:</b> {start_rank}-{end_rank} &nbsp; | &nbsp;
+                   <b>Language:</b> {lang.upper()}</p>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th><th>Track</th><th>Artist</th><th>Year</th><th>Collection</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {''.join(f"<tr><td class='rank'>{r['rank']}</td><td>{r['track']}</td><td>{r['artist']}</td><td class='year'>{r['year_released'] or ''}</td><td>{r['collection']}</td></tr>" for r in detailed_results)}
+                  </tbody>
+                </table>
+              </body>
+            </html>
+            """
+            return HTMLResponse(content=html)
+
+        # Default JSON response (for backend or Car Mode)
+        return JSONResponse({
+            "status": "loaded",
+            "collections": [c.slug for c in collections],
+            "mode": mode,
+            "range": [start_rank, end_rank],
+            "language": lang,
+            "tracks_loaded": results,
+        })
 
     # ─────────────────────────────────────────────────────────────
-    # BROWSER MODE: return signed URL bundle for client playback
+    # BROWSER MODE: return signed URL bundle (no autoplay)
     # ─────────────────────────────────────────────────────────────
     sequence = []
-    for rk in play_order:
+    for r in rows:
+        coll_for_row = next((c for c in collections if c.id == r.collection_id), None)
+        if not coll_for_row:
+            continue
         bundle, err = urls_for_rank_collection(
             db=db,
             lang=lang,
-            collection_id=coll.id,
-            rank=rk,
+            collection_id=coll_for_row.id,
+            rank=r.ranking,
             use_intro=play_intro,
             use_detail=play_detail,
             use_artist=play_artist_description,
             expires=expires,
             request=request,
-            collection_slug=coll.slug,
+            collection_slug=coll_for_row.slug,
         )
         if err or not bundle:
             continue
-        sequence.append({"rank": rk, **bundle})
+        sequence.append({
+            "rank": r.ranking,
+            "collection": coll_for_row.slug,
+            **bundle,
+        })
+
+    # Keep DB rank, not bundle rank
+    for s in sequence:
+        # ensure rank is from CollectionTrackRanking, not bundle
+        s["rank"] = int(s.get("rank", 0))
+
+    # Sort to match mode
+    if mode == "count_up":
+        sequence.sort(key=lambda s: s["rank"])
+    elif mode == "count_down":
+        sequence.sort(key=lambda s: s["rank"], reverse=True)
+    else:  # random
+        import random
+        random.shuffle(sequence)
 
     base = str(request.base_url).rstrip("/")
     if ui == 0:
         return JSONResponse({
-            "collection": collection_slug,
+            "collections": [c.slug for c in collections],
             "mode": mode,
             "language": lang,
+            "range": [start_rank, end_rank],
             "play_track": play_track,
             "expires": expires,
             "sequence": sequence
@@ -261,26 +401,24 @@ async def play_sequence(
 
     html = f"""<!doctype html>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>TopSpot: Collection {collection_slug} ({mode})</title>
+<title>TopSpot Collections — Range {start_rank}-{end_rank}</title>
 <style>
  body{{font:16px/1.5 system-ui,Segoe UI,Roboto,Arial;background:#0b0b0c;color:#e6e6e6;max-width:760px;margin:24px auto;padding:0 14px}}
  button{{font:inherit;padding:10px 14px;border-radius:12px;border:0;background:#2b6;cursor:pointer}}
- button[disabled]{{opacity:.5;cursor:not-allowed}}
  .muted{{color:#9aa}} .row{{margin:.5rem 0}}
  .badge{{display:inline-block;background:#222;border:1px solid #333;border-radius:10px;padding:2px 8px;margin-right:6px}}
- .log{{white-space:pre-wrap;background:#111;border:1px solid #222;border-radius:12px;padding:10px;margin-top:12px;max-height:40vh;overflow:auto}}
+ ol{{margin-top:12px}} .log{{white-space:pre-wrap;background:#111;border:1px solid #222;border-radius:12px;padding:10px;margin-top:12px;max-height:40vh;overflow:auto}}
 </style>
-<h2>TopSpot — Collection: {collection_slug}</h2>
+<h2>TopSpot — Collections Range {start_rank}-{end_rank}</h2>
 <p class="muted">Mode: <b>{mode}</b> • Language: <b>{lang}</b></p>
-<div class="row"><button id="go">▶ Start</button> <span id="status" class="badge">idle</span></div>
+<p class="muted">Collections: {', '.join(c.slug for c in collections)}</p>
+<div class="row"><button id="loadBtn">📦 Load Tracks</button> <span id="status" class="badge">idle</span></div>
 <ol id="list"></ol>
 <div class="log" id="log"></div>
+
 <script>
 const seq = {json.dumps(sequence)};
-const base = {json.dumps(base)};
-const lang = {json.dumps(lang)};
-const playTrack = {json.dumps(play_track)};
-const extra = {json.dumps({"collection_slug": collection_slug})};
+const collections = {json.dumps([c.slug for c in collections])};
 
 const elList = document.getElementById('list');
 const elStatus = document.getElementById('status');
@@ -290,57 +428,17 @@ function setStatus(s){{ elStatus.textContent = s; }}
 
 seq.forEach(step => {{
   const li = document.createElement('li');
-  li.textContent = `#${{step.rank}} — ${{step.track_name}} — ${{step.artist_name||""}}`;
+  li.textContent = `#${{step.rank}} — ${{step.track_name}} — ${{step.artist_name||""}} [${{step.collection}}]`;
   elList.appendChild(li);
 }});
 
-function playOne(url) {{
-  return new Promise((resolve, reject) => {{
-    const a = new Audio(url);
-    a.preload = "auto";
-    a.onended = () => resolve();
-    a.onerror = () => reject(new Error("Audio error: " + url));
-    a.play().catch(reject);
-  }});
-}}
+document.getElementById('loadBtn').onclick = () => {{
+  setStatus("loaded");
+  log(`Loaded ${{seq.length}} tracks across ${{collections.length || 1}} collections`);
 
-async function playNarrations(step) {{
-  const urls = [];
-  if (Array.isArray(step.intros)) urls.push(...step.intros);
-  if (step.detail) urls.push(step.detail);
-  if (step.artist) urls.push(step.artist);
-  for (const u of urls) {{
-    setStatus("narration"); log("▶ " + u);
-    try {{ await playOne(u); }} catch(e) {{ log("skip: " + e.message); }}
-  }}
-}}
-
-async function startSpotify(rank, spotifyId) {{
-  setStatus("spotify");
-  const qs = new URLSearchParams({{ ...extra, rank,
-    play_detail: "false", play_artist_description: "false", play_track: "true", tts_language: lang, play_intro: "false" }});
-  const url = `${{base}}/supabase/collections/play-track-by-rank?${{qs.toString()}}`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("Spotify play failed: " + r.status);
-}}
-
-document.getElementById('go').onclick = async () => {{
-  const btn = document.getElementById('go'); btn.disabled = true;
-  try {{
-    for (const step of seq) {{
-      await playNarrations(step);
-      if (playTrack && step.spotify_track_id) {{
-        await startSpotify(step.rank, step.spotify_track_id);
-        setStatus("waiting");
-      }}
-    }}
-    setStatus("done");
-  }} catch (e) {{
-    console.error(e); log("ERROR: " + e.message); setStatus("error");
-  }} finally {{
-    btn.disabled = false;
-  }}
 }};
+
 </script>
+
 """
     return HTMLResponse(html)
