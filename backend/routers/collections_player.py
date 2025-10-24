@@ -5,11 +5,12 @@ from typing import Literal
 from fastapi import APIRouter, Query, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlmodel import Session, select
-
+import logging
 from backend.database import get_db
 from backend.utils.naming import normalize_language_code_canon
 from backend.models.collection_models import Collection, CollectionTrackRanking
 from backend.models.dbmodels import Track, Artist
+from backend.services.narration_texts import assemble_narration_texts
 
 # server-side playback helpers you already have
 from backend.services.radio_runtime import (
@@ -27,7 +28,9 @@ from backend.config.volume import PLAY_FULL_TRACK
 # centralized bundler for signed URLs / spotify ids (now includes collection intros)
 from backend.services.narration_bundle import urls_for_rank_collection
 
+logger = logging.getLogger(__name__)  # <-- define it once per module
 router = APIRouter(prefix="/supabase/collections", tags=["Collections"])
+
 
 # optional helper for consistent casing
 def _titleize(s: str | None) -> str:
@@ -43,7 +46,6 @@ def collection_intro_jobs(*, lang: str, slug: str, rank: int):
     key = f"collections-intro/{slug}_{rank:02d}.mp3"
     return [(bucket, key, "collection", slug, rank)]
 
-
 # ─────────────────────────────────────────────────────────────
 # PLAY SINGLE TRACK BY RANK (server-side playback)
 # ─────────────────────────────────────────────────────────────
@@ -51,19 +53,41 @@ def collection_intro_jobs(*, lang: str, slug: str, rank: int):
 async def play_track_by_rank(
     collection_slug: str = Query(...),
     rank: int = Query(...),
-    play_intro: bool = Query(True),
-    play_detail: bool = Query(True),
-    play_track: bool = Query(True),
-    play_artist_description: bool = Query(True),
+    play_intro: bool | str = Query(True),
+    play_detail: bool | str = Query(True),
+    play_track: bool | str = Query(True),
+    play_artist_description: bool | str = Query(True),
     tts_language: Literal["en","es","ptbr","pt-BR"] = Query("en"),
     db: Session = Depends(get_db),
 ):
+    # ─────────────────────────────────────────────
+    # Normalize boolean query params
+    # ─────────────────────────────────────────────
+    def str_to_bool(val):
+        if isinstance(val, bool):
+            return val
+        if val is None:
+            return False
+        return str(val).strip().lower() in {"true", "1", "yes", "y", "t"}
+
+    play_intro = str_to_bool(play_intro)
+    play_detail = str_to_bool(play_detail)
+    play_artist_description = str_to_bool(play_artist_description)
+    play_track = str_to_bool(play_track)
+
+    logger.info(
+        f"🎛️ Flags received → intro={play_intro}, detail={play_detail}, "
+        f"artist={play_artist_description}, track={play_track}"
+    )
+
+    # ─────────────────────────────────────────────
+    # Resolve collection and track data
+    # ─────────────────────────────────────────────
     lang = normalize_language_code_canon(tts_language)
     coll = db.exec(select(Collection).where(Collection.slug == collection_slug)).first()
     if not coll:
         return {"error": f"No Collection for {collection_slug!r}"}
 
-    # Explicitly include intro from collection_track_ranking
     ctr_row = db.exec(
         select(
             CollectionTrackRanking.id,
@@ -85,7 +109,9 @@ async def play_track_by_rank(
     if not track or not artist:
         return {"error": "Track or Artist not found"}
 
-    # ✅ Pull texts from the correct sources
+    # ─────────────────────────────────────────────
+    # Pull texts from correct sources
+    # ─────────────────────────────────────────────
     intro_text = ctr.get("intro")
     detail_text = (
         getattr(track, "detail_text", None)
@@ -93,7 +119,6 @@ async def play_track_by_rank(
         or getattr(track, "detail", None)
     )
 
-    # ✅ Log both intro and detail text correctly
     log_collection_header_and_texts(
         lang=lang,
         collection=coll,
@@ -104,31 +129,67 @@ async def play_track_by_rank(
         detail_text=detail_text,
     )
 
-    # Narration assets
-    detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(lang=lang, track=track, artist=artist)
+    # ─────────────────────────────────────────────
+    # Narration playback setup
+    # ─────────────────────────────────────────────
+    detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(
+        lang=lang, track=track, artist=artist
+    )
 
-    # Collection intro MP3 job(s)
-    intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rank) if play_intro else []
+    intro_jobs = (
+        collection_intro_jobs(lang=lang, slug=coll.slug, rank=rank)
+        if play_intro
+        else []
+    )
 
-    # Play narrations
-    if intro_jobs or (play_detail and detail_bucket and detail_key) or (play_artist_description and artist_bucket and artist_key):
+    # Play narrations only for selected flags
+    if intro_jobs or (play_detail and detail_bucket and detail_key) or (
+        play_artist_description and artist_bucket and artist_key
+    ):
         await maybe_play_bed()
+
     await play_narrations(
         play_intro=play_intro,
         play_detail=play_detail,
         play_artist=play_artist_description,
         intro_jobs=intro_jobs,
-        detail_bucket=detail_bucket, detail_key=detail_key,
-        artist_bucket=artist_bucket, artist_key=artist_key
+        detail_bucket=detail_bucket,
+        detail_key=detail_key,
+        artist_bucket=artist_bucket,
+        artist_key=artist_key,
     )
 
+    # ─────────────────────────────────────────────
     # Spotify playback
+    # ─────────────────────────────────────────────
     if play_track and track.spotify_track_id:
         skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
         if skipped_mid:
-            return {"status": "skipped", "collection": collection_slug, "rank": rank}
+            return {
+                "status": "skipped",
+                "collection": collection_slug,
+                "rank": rank,
+            }
 
-    return {"status": "success", "collection": collection_slug, "rank": rank}
+    collection_intro = None
+    if hasattr(ctr, "get"):
+        collection_intro = ctr.get("intro")
+    else:
+        collection_intro = getattr(ctr, "intro", None)
+
+    texts = assemble_narration_texts(
+        track=track,
+        artist=artist,
+        collection_intro=collection_intro,
+        mode="collection"
+    )
+
+    return {
+        "status": "success",
+        "collection": collection_slug,
+        "rank": rank,
+        **texts
+    }
 
 
 # ─────────────────────────────────────────────────────────────
@@ -251,10 +312,11 @@ async def play_sequence(
                 results.append({
                     "rank": rk,
                     "track": track.track_name,
-                    "collection": coll_for_row.slug if coll_for_row else None
+                    "artist": artist.artist_name if artist else None,
+                    "album_name": getattr(track, "album_name", None),
+                    "album_artwork": getattr(track, "album_artwork", None),
+                    "collection": coll_for_row.slug if coll_for_row else None,
                 })
-
-
 
         # ─────────────────────────────────────────────────────────────
         # Return HTML page (for UI popup) or JSON (for API)
@@ -336,13 +398,24 @@ async def play_sequence(
             return HTMLResponse(content=html)
 
         # Default JSON response (for backend or Car Mode)
+        # ✅ Include album fields for Car Mode and frontend
         return JSONResponse({
             "status": "loaded",
             "collections": [c.slug for c in collections],
             "mode": mode,
             "range": [start_rank, end_rank],
             "language": lang,
-            "tracks_loaded": results,
+            "tracks_loaded": [
+                {
+                    "rank": r["rank"],
+                    "track": r["track"],
+                    "artist": r["artist"],
+                    "album_name": r.get("album_name"),
+                    "album_artwork": r.get("album_artwork"),
+                    "collection": r["collection"],
+                }
+                for r in results
+            ],
         })
 
     # ─────────────────────────────────────────────────────────────
@@ -353,6 +426,13 @@ async def play_sequence(
         coll_for_row = next((c for c in collections if c.id == r.collection_id), None)
         if not coll_for_row:
             continue
+
+        # ✅ fetch track & artist so we can include album fields
+        t = db.get(Track, r.track_id)
+        a = db.get(Artist, t.artist_id) if t else None
+        if not t:
+            continue
+
         bundle, err = urls_for_rank_collection(
             db=db,
             lang=lang,
@@ -367,9 +447,15 @@ async def play_sequence(
         )
         if err or not bundle:
             continue
+
         sequence.append({
             "rank": r.ranking,
             "collection": coll_for_row.slug,
+            # ✅ include names + album info
+            "track_name": getattr(t, "track_name", None),
+            "artist_name": getattr(a, "artist_name", None) if a else None,
+            "album_name": getattr(t, "album_name", None),
+            "album_artwork": getattr(t, "album_artwork", None),
             **bundle,
         })
 
