@@ -194,6 +194,9 @@ def create_app() -> FastAPI:
     from backend.routers.tts_collection_intro import collection_intro_router
 
     from backend.routers import catalog
+
+    from backend.routers.decade_genre_player import router as decade_genre_player_router
+
     # from backend.routers.supabase_loader import router as supabase_router
 
     # ── Include routers (tags defined ONLY here) ────────────────────
@@ -244,6 +247,8 @@ def create_app() -> FastAPI:
     app.include_router(spotify_auth_router, tags=["Meta"])
 
     app.include_router(catalog.router)
+
+    app.include_router(decade_genre_player_router)
 
     # app.include_router(supabase_router)
 

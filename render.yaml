@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: topspot-backend
+    env: python
+    plan: free
+    autoDeploy: true
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Add your own app secrets here or via the dashboard:
+      # - key: SECRET_KEY
+      #   generateValue: true
+      # - key: SPOTIFY_CLIENT_ID
+      #   value: your-id
+      # - key: SPOTIFY_CLIENT_SECRET
+      #   value: your-secret
+      - key: SUPABASE
+          value:
