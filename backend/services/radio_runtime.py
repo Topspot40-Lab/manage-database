@@ -145,11 +145,14 @@ def narration_keys_for(*, lang: str, track, artist):
 
 # ---------- Playback pieces ----------
 async def maybe_play_bed():
+    """Play a soft bed track before narration, but wait briefly so timing stays in sync."""
     if not SPOTIFY_BED_TRACK_ID:
         return
     try:
+        logger.info("🎧 Starting bed track (5s ambient intro)")
         play_spotify_track(SPOTIFY_BED_TRACK_ID)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(5)  # Wait long enough for bed intro to set mood
+        logger.info("🎧 Bed intro finished; continuing to sequence playback.")
     except Exception as e:
         logger.warning("Bed track failed: %s", e)
 
