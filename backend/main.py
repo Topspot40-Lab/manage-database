@@ -8,12 +8,15 @@ from pathlib import Path
 from fastapi import FastAPI, Query, Request
 from fastapi.routing import APIRoute
 
-# ── Project path bootstrap (safe for uvicorn --reload) ─────────────
+# ─────────────────────────────────────────────
+# 🧭  Project Bootstrap
+# ─────────────────────────────────────────────
+# Add the project root to sys.path so "backend.*" imports work even under uvicorn --reload
 project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# ── Stdout UTF-8 (prefer reconfigure; fall back if missing) ─────────
+# Ensure stdout handles UTF-8 characters for logs and print()
 try:
     sys.stdout.reconfigure(encoding="utf-8")  # py3.7+
 except Exception:
@@ -23,8 +26,11 @@ except Exception:
         pass
 
 
+# ─────────────────────────────────────────────
+# 🧩  Helper: Custom route IDs for cleaner OpenAPI docs
+# ─────────────────────────────────────────────
 def custom_generate_unique_id(route: APIRoute) -> str:
-    """Include method(s), path, tag, and function name for readability/uniqueness."""
+    """Include method, path, tag, and function name for readability/uniqueness."""
     methods = "-".join(sorted(m.lower() for m in (route.methods or [])))
     path = re.sub(r"[{}\/]", "_", route.path_format).strip("_")
     tag = (route.tags[0] if route.tags else "default").lower()
@@ -32,12 +38,15 @@ def custom_generate_unique_id(route: APIRoute) -> str:
     return f"{tag}__{methods}__{path}__{func}"
 
 
+# ─────────────────────────────────────────────
+# 🚀  Factory: create_app()
+# ─────────────────────────────────────────────
 def create_app() -> FastAPI:
-    """Factory to build the FastAPI app (keeps import-time side effects out)."""
+    """Factory to build the FastAPI app and attach routers, metadata, and middleware."""
     import os
     import logging
 
-    # ── Env + logging (inside factory) ──────────────────────────────
+    # ─────────────── Environment & Logging ───────────────
     try:
         from dotenv import load_dotenv
         load_dotenv(dotenv_path=project_root / ".env")
@@ -58,7 +67,7 @@ def create_app() -> FastAPI:
             "set" if os.getenv("SUPABASE_URL") else "missing",
         )
 
-    # ── App metadata (tolerant if module missing) ───────────────────
+    # ─────────────── Metadata ───────────────
     APP_VERSION, LAST_UPDATED = "dev", "n/a"
     try:
         from backend.config.app_cfg import (
@@ -71,22 +80,22 @@ def create_app() -> FastAPI:
     except Exception:
         pass
 
-    # ── API app + docs metadata ─────────────────────────────────────
+    # ─────────────── OpenAPI / Tags ───────────────
     TAGS_METADATA = [
         {"name": "Meta",           "description": "Health, version, and misc app metadata."},
         {"name": "JSON & Files",   "description": "Read/write JSON and saved-file helpers."},
-        {"name": "Playback",       "description": "Play tracks from JSON/DB (Spotify/local)."},
-        {"name": "TTS",            "description": "Intro/Detail/Artist speech synthesis & regen."},
+        {"name": "Playback",       "description": "Play tracks (Spotify/local) and control playback."},
+        {"name": "TTS",            "description": "Intro/Detail/Artist speech synthesis."},
         {"name": "Generators",     "description": "Build/enrich data (xAI, Spotify, TV Themes)."},
-        {"name": "Locales",        "description": "ES/PT-BR texts and MP3 generation utilities."},
+        {"name": "Locales",        "description": "ES/PT-BR text and MP3 generation utilities."},
         {"name": "Collections",    "description": "Collections import/read/generate pipelines."},
-        {"name": "Supabase/DB",    "description": "DB summaries, loaders, diagnostics."},
-        {"name": "Supabase",       "description": "DB-backed playback and loaders."},  # ← added
+        {"name": "Supabase/DB",    "description": "Database summaries, diagnostics, loaders."},
+        {"name": "Supabase",       "description": "DB-backed playback and data loaders."},
         {"name": "Upsert/Import",  "description": "Import & upsert JSON track data into DB."},
         {"name": "Narration",      "description": "Mobile narration player & signed URLs."},
     ]
 
-    # ── API app + docs metadata ─────────────────────────────────────
+    # ─────────────── FastAPI App ───────────────
     app = FastAPI(
         title="TopSpot API",
         version=APP_VERSION,
@@ -103,35 +112,34 @@ def create_app() -> FastAPI:
         generate_unique_id_function=custom_generate_unique_id,
     )
 
-    # ADD THIS BLOCK ↓↓↓
+    # ─────────────── CORS Middleware ───────────────
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        ],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # END CORS BLOCK ↑↑↑
 
-    # Startup breadcrumb (level controlled by LOG_SHOW_STARTUP)
+    # ─────────────── Startup Log ───────────────
     _startup_log = logging.getLogger("backend.startup")
     if os.getenv("LOG_SHOW_STARTUP", "").lower() in ("1", "true", "yes", "on"):
         _startup_log.info("🔄 main.py loaded (FastAPI starting up)")
     else:
         _startup_log.debug("🔄 main.py loaded (FastAPI starting up)")
 
-    # ── Meta + utilities (inline endpoints) ─────────────────────────
+    # ─────────────────────────────────────────────
+    # 🩺 Meta / Utility Routes
+    # ─────────────────────────────────────────────
     @app.get("/__routes", include_in_schema=False)
     def __routes(request: Request):
+        """Debug endpoint listing all route paths."""
         return sorted(getattr(r, "path", getattr(r, "path_format", "?")) for r in request.app.routes)
 
     @app.get("/", tags=["Meta"])
     def read_root():
-        return {"message": "TopSpot is up and running, partner Mr. Ed: Official Curator 🐴"}
+        return {"message": "TopSpot is up and running, partner Mr. Ed 🐴"}
 
     @app.get("/health", tags=["Meta"], include_in_schema=False)
     def health():
@@ -146,19 +154,21 @@ def create_app() -> FastAPI:
         logger.info("🔁 Received auth callback with code: %s", code)
         return {"message": "✅ Auth callback handled"}
 
+    # ─────────────────────────────────────────────
+    # 📦 Router Imports (grouped by domain)
+    # ─────────────────────────────────────────────
     from backend.routers.spotify_auth import router as spotify_auth_router
-
-    # ── Router imports inside factory (avoid early side effects) ────
-    # TTS
-    from backend.routers.tts_intro import intro_router
-    from backend.routers.tts_detail import detail_router
-    from backend.routers.tts_artist import artist_router
-    from backend.routers.tts_regenerator import router as tts_regen_router
 
     # JSON / Files / Playback
     from backend.routers import router as json_router
     from backend.router_saved_files import router as save_router
     from backend.routers.play_json_track_by_rank import router as playback_router
+
+    # TTS (intro/detail/artist/regenerator)
+    from backend.routers.tts_intro import intro_router
+    from backend.routers.tts_detail import detail_router
+    from backend.routers.tts_artist import artist_router
+    from backend.routers.tts_regenerator import router as tts_regen_router
 
     # Generators / Enrichers
     from backend.routers.generate_poprock import router as poprock_router
@@ -166,18 +176,18 @@ def create_app() -> FastAPI:
     from backend.routers.enrich_tv_themes import router as enrich_tv_router
     from backend.routers.expand_tv_themes import router as expand_tv_router
 
+    # Locales
+    from backend.routers import locales as locales_router
+    from backend.routers import artist_locales, track_detail_locales, intros_locales
+
     # Collections
     from backend.routers.collections import router as collections_router
     from backend.routers.collections_read import router as collections_read_router
     from backend.routers.collections_generate import router as collections_generate_router
+    from backend.routers.collections_player import router as collections_player_router
+    from backend.routers.tts_collection_intro import collection_intro_router
 
-    # Locales
-    from backend.routers import locales as locales_router
-    from backend.routers import artist_locales
-    from backend.routers import track_detail_locales
-    from backend.routers import intros_locales
-
-    # Supabase / DB Utilities
+    # Supabase / DB
     from backend.routers import supabase_summary, supabase_loader
 
     # Upsert / Import
@@ -187,20 +197,19 @@ def create_app() -> FastAPI:
     from backend.routers.ads_scripts import router as ads_router
     from backend.routers.meta_logging import router as meta_logging_router
 
-    # Mobile narration (new, modularized)
+    # Narration (mobile playback)
     from backend.routers.narration import router as narration_router
 
-    from backend.routers.collections_player import router as collections_player_router
-    from backend.routers.tts_collection_intro import collection_intro_router
-
+    # Catalog + Decade/Genre
     from backend.routers import catalog
-
     from backend.routers.decade_genre_player import router as decade_genre_player_router
 
-    # from backend.routers.supabase_loader import router as supabase_router
+    # 🆕 Playback Control (hybrid plan support)
+    from backend.routers import playback_control
 
-    # ── Include routers (tags defined ONLY here) ────────────────────
-    # 1) Core JSON / Files / Playback / TTS
+    # ─────────────────────────────────────────────
+    # 🧩 Router Registration (canonical tagging)
+    # ─────────────────────────────────────────────
     app.include_router(json_router,         tags=["JSON & Files"])
     app.include_router(save_router,         tags=["JSON & Files"])
     app.include_router(playback_router,     tags=["Playback"])
@@ -209,69 +218,59 @@ def create_app() -> FastAPI:
     app.include_router(artist_router,       tags=["TTS"])
     app.include_router(tts_regen_router,    tags=["TTS"])
 
-    # 2) Generators / Enrichers
     app.include_router(poprock_router,      tags=["Generators"])
     app.include_router(folk_router,         tags=["Generators"])
     app.include_router(enrich_tv_router,    tags=["Generators"])
     app.include_router(expand_tv_router,    tags=["Generators"])
 
-    # 3) Locales
     app.include_router(locales_router.router,       tags=["Locales"])
     app.include_router(artist_locales.router,       tags=["Locales"])
     app.include_router(track_detail_locales.router, tags=["Locales"])
     app.include_router(intros_locales.router,       tags=["Locales"])
 
-    # 4) Collections
     app.include_router(collections_router,          tags=["Collections"])
     app.include_router(collections_read_router,     tags=["Collections"])
     app.include_router(collections_generate_router, tags=["Collections"])
+    app.include_router(collections_player_router)
+    app.include_router(collection_intro_router)
 
-    # 5) Supabase / DB Utilities
-    app.include_router(supabase_summary.router, tags=["Supabase/DB"])  # diagnostics
-    app.include_router(supabase_loader.router,  tags=["Supabase"])     # playback/loaders
+    app.include_router(supabase_summary.router, tags=["Supabase/DB"])
+    app.include_router(supabase_loader.router,  tags=["Supabase"])
 
-    # 6) Upsert / Import
     app.include_router(upsert_router, tags=["Upsert/Import"])
 
-    # 7) Ads + Meta diagnostics
     app.include_router(ads_router,          tags=["Meta"])
     app.include_router(meta_logging_router, tags=["Meta"])
 
-    # 8) Mobile narration (MP3-on-phone flow)
     app.include_router(narration_router, tags=["Narration"])
-
-    app.include_router(collections_player_router)
-
-    app.include_router(collection_intro_router)
-
     app.include_router(spotify_auth_router, tags=["Meta"])
 
     app.include_router(catalog.router)
-
     app.include_router(decade_genre_player_router)
 
-    # app.include_router(supabase_router)
+    # 🆕 Register the playback control endpoints
+    app.include_router(playback_control.router, tags=["Playback"])
 
-    from backend.routers import catalog
-
-    # ── Normalize tags so each route has exactly ONE canonical tag ──
+    # ─────────────────────────────────────────────
+    # 🧹 Canonical Tag Normalization
+    # ─────────────────────────────────────────────
     CANON_BY_PREFIX = [
-        ("/tts",               "TTS"),
-        ("/playback",          "Playback"),
-        ("/json",              "JSON & Files"),
-        ("/files",             "JSON & Files"),
-        ("/gen",               "Generators"),
-        ("/locales",           "Locales"),
-        ("/collections",       "Collections"),
-        ("/supabase/summary",  "Supabase/DB"),
-        ("/supabase",          "Supabase"),
-        ("/upsert",            "Upsert/Import"),
-        ("/narration",         "Narration"),
-        ("/meta",              "Meta"),
-        ("/ads",               "Meta"),
-        ("/version",           "Meta"),
-        ("/health",            "Meta"),
-        ("/",                  None),  # let root keep its explicit tag
+        ("/tts",              "TTS"),
+        ("/playback",         "Playback"),
+        ("/json",             "JSON & Files"),
+        ("/files",            "JSON & Files"),
+        ("/gen",              "Generators"),
+        ("/locales",          "Locales"),
+        ("/collections",      "Collections"),
+        ("/supabase/summary", "Supabase/DB"),
+        ("/supabase",         "Supabase"),
+        ("/upsert",           "Upsert/Import"),
+        ("/narration",        "Narration"),
+        ("/meta",             "Meta"),
+        ("/ads",              "Meta"),
+        ("/version",          "Meta"),
+        ("/health",           "Meta"),
+        ("/",                 None),
     ]
     ALLOWED = {t["name"] for t in TAGS_METADATA}
 
@@ -281,23 +280,20 @@ def create_app() -> FastAPI:
                 return tag
         return None
 
-    # Do the rewrite BEFORE docs are first rendered
     from fastapi.routing import APIRoute as _APIRoute
     for r in list(app.routes):
         if isinstance(r, _APIRoute):
             desired = _canonical_for(r.path)
             if desired:
-                r.tags[:] = [desired]  # enforce single canonical tag
+                r.tags[:] = [desired]
 
-    # Warn on any stray/unknown tags (helps keep things tidy)
+    # ─────────────────────────────────────────────
+    # 🧾 Startup Validation / Logging
+    # ─────────────────────────────────────────────
     @app.on_event("startup")
     async def _verify_tags():
         warn = logging.getLogger("backend.tags")
-        seen = set()
-        for r in app.routes:
-            if isinstance(r, APIRoute):
-                for t in (r.tags or []):
-                    seen.add(t)
+        seen = {t for r in app.routes if isinstance(r, APIRoute) for t in (r.tags or [])}
         unknown = sorted(seen - ALLOWED)
         if unknown:
             warn.warning("⚠️ Unknown/stray tags in routes: %s", ", ".join(unknown))
@@ -311,5 +307,7 @@ def create_app() -> FastAPI:
     return app
 
 
-# Optional export for uvicorn:  uvicorn backend.main:app
+# ─────────────────────────────────────────────
+# 🧩  Export app for uvicorn
+# ─────────────────────────────────────────────
 app = create_app()

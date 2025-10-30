@@ -1,36 +1,39 @@
 from __future__ import annotations
 
 import json
-from typing import Literal
-from fastapi import APIRouter, Query, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from sqlmodel import Session, select
+import random
 import logging
+from typing import Literal
+
+from fastapi import APIRouter, Query, Depends, Request
+from fastapi.responses import JSONResponse, HTMLResponse
+from sqlmodel import Session, select
 
 from backend.database import get_db
 from backend.utils.naming import normalize_language_code_canon
 from backend.models.collection_models import Collection, CollectionTrackRanking
 from backend.models.dbmodels import Track, Artist
 from backend.services.narration_texts import assemble_narration_texts
-
-# server-side playback helpers
 from backend.services.radio_runtime import (
     narration_keys_for,
-    maybe_play_bed, play_narrations, play_track_with_skip,
+    maybe_play_bed,
+    play_narrations,
+    play_track_with_skip,
     log_collection_header_and_texts,
 )
-
-# bucket resolver for language-aware audio buckets
 from backend.services.playback_helpers import bucket_for
-
-from backend.config.volume import PLAY_FULL_TRACK
 from backend.services.narration_bundle import urls_for_rank_collection
+from backend.config.volume import PLAY_FULL_TRACK
 
 logger = logging.getLogger(__name__)
+
+# Main router for collection endpoints
 router = APIRouter(prefix="/supabase/collections", tags=["Collections"])
 
 
-# Helper
+# ─────────────────────────────────────────────
+# Helper Functions
+# ─────────────────────────────────────────────
 def _titleize(s: str | None) -> str:
     return s.replace("_", " ").title() if s else ""
 
@@ -41,9 +44,17 @@ def collection_intro_jobs(*, lang: str, slug: str, rank: int):
     return [(bucket, key, "collection", slug, rank)]
 
 
-# ─────────────────────────────────────────────────────────────
+def str_to_bool(val):
+    if isinstance(val, bool):
+        return val
+    if val is None:
+        return False
+    return str(val).strip().lower() in {"true", "1", "yes", "y", "t"}
+
+
+# ─────────────────────────────────────────────
 # PLAY SINGLE TRACK BY RANK
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 @router.get("/play-track-by-rank")
 async def play_track_by_rank(
     collection_slug: str = Query(...),
@@ -52,22 +63,16 @@ async def play_track_by_rank(
     play_detail: bool | str = Query(True),
     play_track: bool | str = Query(True),
     play_artist_description: bool | str = Query(True),
-    tts_language: Literal["en","es","ptbr","pt-BR"] = Query("en"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
     db: Session = Depends(get_db),
 ):
-    def str_to_bool(val):
-        if isinstance(val, bool):
-            return val
-        if val is None:
-            return False
-        return str(val).strip().lower() in {"true", "1", "yes", "y", "t"}
-
     play_intro = str_to_bool(play_intro)
     play_detail = str_to_bool(play_detail)
     play_artist_description = str_to_bool(play_artist_description)
     play_track = str_to_bool(play_track)
 
     lang = normalize_language_code_canon(tts_language)
+
     coll = db.exec(select(Collection).where(Collection.slug == collection_slug)).first()
     if not coll:
         return {"error": f"No Collection for {collection_slug!r}"}
@@ -80,7 +85,7 @@ async def play_track_by_rank(
             CollectionTrackRanking.intro,
         ).where(
             CollectionTrackRanking.collection_id == coll.id,
-            CollectionTrackRanking.ranking == rank
+            CollectionTrackRanking.ranking == rank,
         )
     ).first()
     if not ctr_row:
@@ -113,10 +118,7 @@ async def play_track_by_rank(
         lang=lang, track=track, artist=artist
     )
 
-    intro_jobs = (
-        collection_intro_jobs(lang=lang, slug=coll.slug, rank=rank)
-        if play_intro else []
-    )
+    intro_jobs = collection_intro_jobs(lang=lang, slug=coll.slug, rank=rank) if play_intro else []
 
     if intro_jobs or (play_detail and detail_bucket and detail_key) or (
         play_artist_description and artist_bucket and artist_key
@@ -137,25 +139,21 @@ async def play_track_by_rank(
     if play_track and track.spotify_track_id:
         skipped_mid = await play_track_with_skip(track=track, full_flag=PLAY_FULL_TRACK)
         if skipped_mid:
-            return {
-                "status": "skipped",
-                "collection": collection_slug,
-                "rank": rank,
-            }
+            return {"status": "skipped", "collection": collection_slug, "rank": rank}
 
     texts = assemble_narration_texts(
         track=track,
         artist=artist,
         collection_intro=ctr.get("intro"),
-        mode="collection"
+        mode="collection",
     )
 
     return {"status": "success", "collection": collection_slug, "rank": rank, **texts}
 
 
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 # PLAY COLLECTION SEQUENCE (count up / down / random)
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 @router.get("/play-sequence", response_class=HTMLResponse)
 async def play_sequence(
     request: Request,
@@ -186,7 +184,7 @@ async def play_sequence(
             return JSONResponse({"error": f"No Collection for {collection_slug!r}"}, status_code=404)
         collections = [coll]
 
-    # Gather all ranking rows
+    # Gather ranking rows
     rows = []
     for c in collections:
         rows.extend(
@@ -211,7 +209,6 @@ async def play_sequence(
     elif mode == "count_down":
         play_order = sorted(order, reverse=True)
     else:
-        import random
         play_order = list(order)
         random.shuffle(play_order)
 
@@ -242,14 +239,16 @@ async def play_sequence(
                     play_detail=False,
                     play_artist=False,
                     intro_jobs=collection_intro_jobs(lang=lang, slug=coll_for_row.slug, rank=rk),
-                    detail_bucket=None, detail_key=None,
-                    artist_bucket=None, artist_key=None,
+                    detail_bucket=None,
+                    detail_key=None,
+                    artist_bucket=None,
+                    artist_key=None,
                 )
 
                 results.append({
                     "rank": rk,
                     "track": track.track_name,
-                    "artist": artist.artist_name if artist else None,
+                    "artist": artist.artist_name,
                     "album_name": getattr(track, "album_name", None),
                     "album_artwork": getattr(track, "album_artwork", None),
                     "collection": coll_for_row.slug if coll_for_row else None,
@@ -264,7 +263,7 @@ async def play_sequence(
             "tracks_loaded": results,
         })
 
-    # Browser mode
+    # Browser preview (no playback)
     sequence = []
     for r in rows:
         coll_for_row = next((c for c in collections if c.id == r.collection_id), None)
@@ -305,7 +304,6 @@ async def play_sequence(
     elif mode == "count_down":
         sequence.sort(key=lambda s: s["rank"], reverse=True)
     else:
-        import random
         random.shuffle(sequence)
 
     return JSONResponse({
@@ -315,5 +313,58 @@ async def play_sequence(
         "range": [start_rank, end_rank],
         "play_track": play_track,
         "expires": expires,
-        "sequence": sequence
+        "sequence": sequence,
     })
+
+
+# ─────────────────────────────────────────────
+# GET /supabase/get-collection-sequence
+# ─────────────────────────────────────────────
+@router.get("/get-collection-sequence")
+async def get_collection_sequence(
+    collection_slug: str = Query(..., description="Slug of the collection to preview"),
+    start_rank: int = Query(1),
+    end_rank: int = Query(40),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve track metadata for a given collection.
+    Used by the frontend to preview tracks before playback.
+    """
+    logger.info(f"📜 Fetching collection preview for '{collection_slug}' ranks {start_rank}–{end_rank}")
+
+    q = (
+        select(CollectionTrackRanking, Track, Artist, Collection)
+        .join(Track, Track.id == CollectionTrackRanking.track_id)
+        .join(Artist, Artist.id == Track.artist_id)
+        .join(Collection, Collection.id == CollectionTrackRanking.collection_id)
+        .where(
+            Collection.slug == collection_slug,
+            CollectionTrackRanking.ranking >= start_rank,
+            CollectionTrackRanking.ranking <= end_rank,
+        )
+        .order_by(CollectionTrackRanking.ranking)
+    )
+
+    rows = db.exec(q).all()
+    if not rows:
+        logger.warning(f"⚠️ No tracks found for collection '{collection_slug}'.")
+        return {"status": "empty", "collection_slug": collection_slug, "tracks": []}
+
+    tracks = [
+        {
+            "rank": ctr.ranking,
+            "trackName": track.track_name,
+            "artistName": artist.artist_name,
+            "yearReleased": getattr(track, "year_released", None),
+            "durationMs": getattr(track, "duration_ms", None),
+            "albumArtwork": getattr(track, "album_artwork", None),
+            "spotifyTrackId": getattr(track, "spotify_track_id", None),
+            "albumName": getattr(track, "album_name", None),
+        }
+        for ctr, track, artist, coll in rows
+    ]
+
+    logger.info(f"✅ Returning {len(tracks)} tracks for collection '{collection_slug}'")
+
+    return {"status": "ok", "collection_slug": collection_slug, "total": len(tracks), "tracks": tracks}

@@ -8,6 +8,35 @@ from backend.services.supabase_playback import play_mp3
 
 logger = logging.getLogger(__name__)
 
+# ─────────────────────────────────────────────
+# Playback control integration
+# ─────────────────────────────────────────────
+from backend.routers.playback_control import _flags  # global playback state
+
+async def _respect_user_controls():
+    """Pause or stop check (cooperative)."""
+    while getattr(_flags, "is_paused", False):
+        await asyncio.sleep(0.25)
+    if getattr(_flags, "stopped", False):
+        logger.info("🛑 Playback stopped by user.")
+        raise asyncio.CancelledError("Playback stopped")
+
+def _update_flags_for_play(kind: str, bucket: str, key: str):
+    """Helper to mark which MP3 is currently playing."""
+    try:
+        _flags.is_playing = True
+        _flags.is_paused = False
+        _flags.stopped = False
+        phase = kind.lower()
+        _flags.context = {
+            "phase": phase,
+            "bucket": bucket,
+            "key": key,
+        }
+    except Exception:
+        logger.debug("⚠️ Failed to update playback flags for %s", kind)
+
+
 # 🔁 Canonical language codes (pt-BR)
 Lang  = Literal["en", "es", "pt-BR"]
 # ➕ include collections_intro as a 4th kind (plural to match narration_bundle + config)
@@ -166,8 +195,13 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
 
     async with _play_lock:
         for attempt in range(1, _SUPA_FETCH_RETRIES + 1):
-            t0 = time.perf_counter()
             try:
+                # 🔸 Respect pause/stop between retries
+                await _respect_user_controls()
+
+                _update_flags_for_play(kind, bucket, key)
+                t0 = time.perf_counter()
+
                 async with httpx.AsyncClient(timeout=_SUPA_FETCH_TIMEOUT) as client:
                     resp = await client.get(url, headers=headers)
                     resp.raise_for_status()
@@ -178,6 +212,9 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
                     raise RuntimeError(f"Downloaded size too small: {size} bytes")
                 if not _looks_like_mp3(b):
                     raise RuntimeError("Not an MP3 (bad header)")
+
+                # 🔸 Respect pause/stop before playing
+                await _respect_user_controls()
 
                 # Apply gain if configured; else fast path
                 if abs(gain_db) > 0.05:
@@ -200,12 +237,9 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
                     kind, attempt, _SUPA_FETCH_RETRIES, rc, bucket, key
                 )
 
-            except httpx.ReadTimeout as e:
-                last_err = e
-                logger.warning(
-                    "⏳ %s GET timeout (attempt %d/%d) %s/%s",
-                    kind, attempt, _SUPA_FETCH_RETRIES, bucket, key
-                )
+            except asyncio.CancelledError:
+                logger.info("🛑 %s playback cancelled by user", kind)
+                return False
             except Exception as e:
                 last_err = e
                 logger.warning(

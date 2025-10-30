@@ -1,8 +1,9 @@
+# backend/routers/decade_genre_player.py
 from fastapi import APIRouter, Query, Depends, BackgroundTasks
+import asyncio
 import logging
-from sqlmodel import select, Session
-from sqlalchemy import asc
 from typing import Literal
+from sqlmodel import select, Session
 from backend.database import get_db
 from backend.models.dbmodels import Track, Artist, TrackRanking, DecadeGenre, Decade, Genre
 from backend.services.radio_runtime import (
@@ -18,6 +19,9 @@ router = APIRouter(prefix="/supabase", tags=["Supabase: Play by Decade/Genre"])
 logger = logging.getLogger(__name__)
 
 
+# ─────────────────────────────────────────────
+# Core playback loop
+# ─────────────────────────────────────────────
 async def _run_play_sequence_decade_genre(
     *,
     decade: str,
@@ -35,9 +39,21 @@ async def _run_play_sequence_decade_genre(
     text_artist_description: bool,
     db: Session,
 ):
-    """Internal worker that performs actual playback."""
-    logger.info("🎧 Background playback started: %s / %s ranks %s–%s", decade, genre, start_rank, end_rank)
+    """
+    Perform full playback sequence for Decade/Genre mode:
+    bed → intro → detail → artist → track.
+    """
+    from backend.routers.playback_control import _flags
+    from backend.services.radio_runtime import _update_flags, _respect_user_controls
+    from backend.services.play_policy import compute_play_seconds, sleep_with_skip
+    from backend.services.spotify.playback import play_spotify_track
+    from backend.state import skip_event
 
+    logger.info(f"🎧 Background playback started: {decade}/{genre} ranks {start_rank}–{end_rank}")
+
+    # ───────────────────────────────
+    # 1️⃣ Query all matching tracks
+    # ───────────────────────────────
     q = (
         select(Track, Artist, TrackRanking, Decade, Genre)
         .join(Artist, Artist.id == Track.artist_id)
@@ -51,51 +67,128 @@ async def _run_play_sequence_decade_genre(
             TrackRanking.ranking >= start_rank,
             TrackRanking.ranking <= end_rank,
         )
-        .order_by(asc(TrackRanking.ranking))
+        .order_by(TrackRanking.ranking)
     )
 
     rows = db.exec(q).all()
     if not rows:
-        logger.warning("⚠️ No tracks found for %s/%s", decade, genre)
+        logger.warning(f"⚠️ No tracks found for {decade}/{genre}")
         return
 
+    # ───────────────────────────────
+    # 2️⃣ Optional bed track
+    # ───────────────────────────────
     await maybe_play_bed()
 
+    # ───────────────────────────────
+    # 3️⃣ Sequential playback loop
+    # ───────────────────────────────
     for track, artist, tr_rank, decade_obj, genre_obj in rows:
-        intro_text, detail_text, artist_text = log_header_and_texts(
-            lang=tts_language,
-            track=track,
-            artist=artist,
-            tr_rows=[(tr_rank, decade_obj.decade_name, genre_obj.genre_name)]
-        )
+        try:
+            rank = tr_rank.ranking
+            logger.info("──────────────────────────────────────────────")
+            logger.info(f"▶ Rank #{rank:02d}: {track.track_name} — {artist.artist_name}")
 
-        intro_jobs = build_intro_jobs(
-            lang=tts_language,
-            tr_rows=[(tr_rank, decade_obj.decade_name, genre_obj.genre_name)]
-        )
+            # Update flags for this track
+            _update_flags(
+                phase="prelude",
+                lang=tts_language,
+                mode="decade_genre",
+                rank=rank,
+                track_name=track.track_name,
+                artist_name=artist.artist_name,
+            )
+            await _respect_user_controls()
 
-        detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(
-            lang=tts_language, track=track, artist=artist
-        )
+            # ───────────────────────────────
+            # Narration phase
+            # ───────────────────────────────
+            intro_text, detail_text, artist_text = log_header_and_texts(
+                lang=tts_language,
+                track=track,
+                artist=artist,
+                tr_rows=[(tr_rank, decade_obj.decade_name, genre_obj.genre_name)],
+            )
 
-        await play_narrations(
-            play_intro=play_intro,
-            play_detail=play_detail,
-            play_artist=play_artist_description,
-            intro_jobs=intro_jobs,
-            detail_bucket=detail_bucket,
-            detail_key=detail_key,
-            artist_bucket=artist_bucket,
-            artist_key=artist_key,
-        )
+            intro_jobs = build_intro_jobs(
+                lang=tts_language,
+                tr_rows=[(tr_rank, decade_obj.decade_name, genre_obj.genre_name)],
+            )
 
-        if play_track and track.spotify_track_id:
-            skipped = await play_track_with_skip(track=track, full_flag=True)
-            logger.info("⏭️ skip=%s for rank %s", skipped, tr_rank.ranking)
+            detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(
+                lang=tts_language, track=track, artist=artist
+            )
 
-    logger.info("✅ Playback finished for %s / %s", decade, genre)
+            logger.debug(
+                f"🎙️ Narration assets for rank #{rank}: "
+                f"intro_jobs={len(intro_jobs)} | detail={bool(detail_key)} | artist={bool(artist_key)}"
+            )
+
+            await play_narrations(
+                play_intro=play_intro,
+                play_detail=play_detail,
+                play_artist=play_artist_description,
+                intro_jobs=intro_jobs,
+                detail_bucket=detail_bucket,
+                detail_key=detail_key,
+                artist_bucket=artist_bucket,
+                artist_key=artist_key,
+                lang=tts_language,
+                mode="decade_genre",
+                rank=rank,
+                track_name=track.track_name,
+                artist_name=artist.artist_name,
+            )
+
+            # ───────────────────────────────
+            # Track playback phase
+            # ───────────────────────────────
+            if play_track and track.spotify_track_id:
+                _update_flags(
+                    phase="track",
+                    lang=tts_language,
+                    mode="decade_genre",
+                    rank=rank,
+                    track_name=track.track_name,
+                    artist_name=artist.artist_name,
+                )
+                await _respect_user_controls()
+
+                logger.info(
+                    f"🎵 Now playing rank #{rank}: {track.track_name} — {artist.artist_name}"
+                )
+                play_spotify_track(track.spotify_track_id)
+
+                play_secs = compute_play_seconds(track)
+                skipped = await sleep_with_skip(skip_event, play_secs)
+
+                if skipped:
+                    logger.info("⏭️ Skip triggered; moving to next track.")
+                else:
+                    logger.info("✅ Track finished normally.")
+            else:
+                logger.warning(f"⚠️ Missing Spotify track_id for rank {rank}.")
+
+            await _respect_user_controls()
+            await asyncio.sleep(0.5)  # short pacing delay between tracks
+
+        except asyncio.CancelledError:
+            logger.info("🛑 Playback loop cancelled mid-sequence.")
+            break
+        except Exception as e:
+            logger.warning(f"⚠️ Error during playback loop (rank {rank}): {e}", exc_info=True)
+
+    # ───────────────────────────────
+    # 4️⃣ Wrap-up
+    # ───────────────────────────────
+    _flags.is_playing = False
+    _flags.stopped = True
+    logger.info(f"✅ Playback finished for {decade}/{genre} ranks {start_rank}–{end_rank}")
 
 
+# ─────────────────────────────────────────────
+# FastAPI route: /supabase/play-sequence
+# ─────────────────────────────────────────────
 @router.get("/play-sequence")
 async def play_sequence_decade_genre(
     background_tasks: BackgroundTasks,
@@ -116,11 +209,9 @@ async def play_sequence_decade_genre(
 ):
     """Starts playback asynchronously and returns immediately."""
     logger.info(
-        "▶ Received playback request for %s / %s | %s–%s (async mode)",
-        decade, genre, start_rank, end_rank
+        f"▶ Received playback request for {decade}/{genre} | {start_rank}–{end_rank} (async mode)"
     )
 
-    # Launch playback in background
     background_tasks.add_task(
         _run_play_sequence_decade_genre,
         decade=decade,
@@ -139,5 +230,75 @@ async def play_sequence_decade_genre(
         db=db,
     )
 
-    # Immediate non-blocking response
-    return {"status": "started", "decade": decade, "genre": genre}
+    return {
+        "status": "started",
+        "decade": decade,
+        "genre": genre,
+        "message": f"Playback started for {decade}/{genre} ranks {start_rank}–{end_rank}.",
+    }
+
+# Add this just below your /play-sequence route in
+# backend/routers/decade_genre_player.py
+
+@router.get("/get-sequence")
+async def get_sequence_decade_genre(
+    decade: str = Query(...),
+    genre: str = Query(...),
+    start_rank: int = Query(1),
+    end_rank: int = Query(40),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve track metadata for a given decade and genre.
+    Used by the frontend to preview tracks before playback.
+    """
+    logger.info(
+        f"📜 Fetching track preview for {decade}/{genre} ranks {start_rank}–{end_rank}"
+    )
+
+    q = (
+        select(Track, Artist, TrackRanking, Decade, Genre)
+        .join(Artist, Artist.id == Track.artist_id)
+        .join(TrackRanking, TrackRanking.track_id == Track.id)
+        .join(DecadeGenre, DecadeGenre.id == TrackRanking.decade_genre_id)
+        .join(Decade, Decade.id == DecadeGenre.decade_id)
+        .join(Genre, Genre.id == DecadeGenre.genre_id)
+        .where(
+            Decade.decade_name == decade,
+            Genre.genre_name == genre,
+            TrackRanking.ranking >= start_rank,
+            TrackRanking.ranking <= end_rank,
+        )
+        .order_by(TrackRanking.ranking)
+    )
+
+    rows = db.exec(q).all()
+    if not rows:
+        logger.warning(f"⚠️ No tracks found for {decade}/{genre}")
+        return {"status": "empty", "decade": decade, "genre": genre, "tracks": []}
+
+    # Build the response list
+    tracks = []
+    for track, artist, tr_rank, decade_obj, genre_obj in rows:
+        tracks.append(
+            {
+                "rank": tr_rank.ranking,
+                "trackName": track.track_name,
+                "artistName": artist.artist_name,
+                "yearReleased": getattr(track, "year_released", None),
+                "durationMs": getattr(track, "duration_ms", None),
+                "albumArtwork": getattr(track, "album_artwork", None),
+                "spotifyTrackId": getattr(track, "spotify_track_id", None),
+                "albumName": getattr(track, "album_name", None),
+            }
+        )
+
+    logger.info(f"✅ Returning {len(tracks)} tracks for {decade}/{genre}")
+
+    return {
+        "status": "ok",
+        "decade": decade,
+        "genre": genre,
+        "total": len(tracks),
+        "tracks": tracks,
+    }
