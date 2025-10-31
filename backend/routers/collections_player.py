@@ -16,7 +16,7 @@ from backend.models.dbmodels import Track, Artist
 from backend.services.narration_texts import assemble_narration_texts
 from backend.services.radio_runtime import (
     narration_keys_for,
-    maybe_play_bed,
+    play_intro_then_bed,
     play_narrations,
     play_track_with_skip,
     log_collection_header_and_texts,
@@ -123,7 +123,7 @@ async def play_track_by_rank(
     if intro_jobs or (play_detail and detail_bucket and detail_key) or (
         play_artist_description and artist_bucket and artist_key
     ):
-        await maybe_play_bed()
+        await play_intro_then_bed()
 
     await play_narrations(
         play_intro=play_intro,
@@ -233,7 +233,7 @@ async def play_sequence(
                     detail_text=getattr(track, "detail_text", None),
                 )
 
-                await maybe_play_bed()
+                await play_intro_then_bed()
                 await play_narrations(
                     play_intro=False,
                     play_detail=False,

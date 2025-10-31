@@ -302,17 +302,25 @@ async def generate_missing_detail_tts(
         track_name = t.track_name or ""
         artist_name = (t.artist.artist_name if t.artist else "") or "Unknown Artist"
 
-        if lang == "en":
+        # --- English language path ------------------------------------------
+        if lang.lower() in ("en", "english"):
+            # Always treat English as canonical; pull from Track.detail only.
             base_text = (t.detail or "").strip()
+
+            # If both Track.detail and a stale TrackLocale row are empty, count once.
             if not base_text:
+                # optional sanity check — never read from TrackLocale for English
                 missing_text_count += 1
+                logger.debug("🧩 Missing English detail for track_id=%s '%s'", t.id, t.track_name)
                 continue
+
             text = base_text
         else:
             existing = localized_by_track_id.get(t.id)
             if existing:
                 text = existing
             else:
+                existing = localized_by_track_id.get(t.id)
                 en_text = (t.detail or "").strip()
                 if not en_text:
                     missing_text_count += 1

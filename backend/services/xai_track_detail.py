@@ -177,38 +177,42 @@ def regenerate_missing_track_details(
     language: str = "English",
     limit: int = 100,
     offset: int = 0,
-    overwrite: bool = False,   # if False, skip rows that already have text
+    overwrite: bool = False,
     dry_run: bool = False,
 ) -> int:
-    """
-    Finds tracks missing locale 'detail' text for the requested language,
-    generates blurbs via get_track_details_from_xai, and upserts into TrackLocale.
-    Returns the number of rows written (or that would be written in dry_run).
-    """
     lang_code = _norm_lang(language)        # "English" -> "en", etc.
     lang_label = _lang_label(lang_code)     # "en" -> "English"
+
+    # 🔒 Skip English: canonical English detail lives in Track, not TrackLocale
+    if lang_code in ("en", "english"):
+        logger.info("🔤 English details are stored in the Track table — skipping TrackLocale generation.")
+        return 0
 
     if Track is None or Artist is None or TrackLocale is None:
         logger.error("Required models not importable (Track/Artist/TrackLocale).")
         return 0
 
-    # Build a query for tracks needing detail text in this language
-    # TrackLocale assumed to have columns: track_id, lang, detail_text
-    # If your column names differ, tweak here.
     tl = TrackLocale
-    t  = Track
-    a  = Artist
+    t = Track
+    a = Artist
 
-    # existing locale rows for this lang
+    # ─────────────────────────────────────────────────────────────
+    # 1️⃣ Select tracks missing details for this language
+    # ─────────────────────────────────────────────────────────────
     q = (
         select(t.id, t.track_name, a.artist_name, t.year_released, tl.detail_text)
         .join(a, a.id == t.artist_id)
         .join(tl, tl.track_id == t.id, isouter=True)
         .where(
-            ( (tl.lang == lang_code) & ( (tl.detail_text == None) | (tl.detail_text == "") ) )  # missing in this lang
-            | (tl.lang == None)  # no locale row at all
+            # Case A: locale row exists but detail_text missing
+            ((tl.language_code == lang_code) & ((tl.detail_text.is_(None)) | (tl.detail_text == "")))
+            |
+            # Case B: no locale row at all for this lang
+            (tl.language_code.is_(None))
         )
         .order_by(t.id)
+        .limit(limit)
+        .offset(offset)
     )
 
     rows = db.exec(q).all()
@@ -216,12 +220,16 @@ def regenerate_missing_track_details(
         logger.info("✅ No tracks missing detail text for lang=%s", lang_code)
         return 0
 
-    # Create a distinct list of items to send to XAI
+    logger.info("🧠 Found %d tracks missing detail text for '%s'", len(rows), lang_label)
+
+    # ─────────────────────────────────────────────────────────────
+    # 2️⃣ Prepare payload for XAI generation
+    # ─────────────────────────────────────────────────────────────
     items = []
     seen = set()
     for (track_id, track_name, artist_name, year_released, detail_text) in rows:
         if not overwrite and detail_text:
-            continue  # already has text and we are not overwriting
+            continue
         if track_id in seen:
             continue
         seen.add(track_id)
@@ -233,41 +241,37 @@ def regenerate_missing_track_details(
         })
 
     if not items:
-        logger.info("✅ Nothing to do (either none missing or overwrite=False skipped all).")
+        logger.info("✅ Nothing to process (overwrite=False skipped all).")
         return 0
 
-    # Batch call to your existing LLM helper
+    # ─────────────────────────────────────────────────────────────
+    # 3️⃣ Generate details using XAI batch helper
+    # ─────────────────────────────────────────────────────────────
     results = get_track_details_from_xai_batch(items, target_language_label=lang_label)
-
     if dry_run:
-        logger.info("🧪 dry_run=True — would write %d locale detail rows for %s", len(results), lang_code)
+        logger.info("🧪 dry_run=True — would write %d locale rows for %s", len(results), lang_code)
         return len(results)
 
-    # Upsert results into TrackLocale (insert new or update existing)
+    # ─────────────────────────────────────────────────────────────
+    # 4️⃣ Upsert into TrackLocale
+    # ─────────────────────────────────────────────────────────────
     updated = 0
-    by_id = {r["track_id"]: r for r in results if r.get("detail_text")}
-    if not by_id:
-        logger.warning("xAI returned no usable results.")
-        return 0
-
-    # For each track_id, either update existing locale row or insert one
-    for track_id, payload in by_id.items():
-        text = payload["detail_text"].strip()
-        if not text:
+    for r in results:
+        track_id = r.get("track_id")
+        text = (r.get("detail_text") or "").strip()
+        if not (track_id and text):
             continue
 
-        # Find existing locale row for (track_id, lang)
         existing = db.exec(
-            select(tl).where((tl.track_id == track_id) & (tl.lang == lang_code))
+            select(tl).where((tl.track_id == track_id) & (tl.language_code == lang_code))
         ).first()
 
         if existing:
-            if not existing.detail_text or overwrite:
+            if overwrite or not existing.detail_text:
                 existing.detail_text = text
                 updated += 1
         else:
-            # Insert new locale row
-            obj = tl(track_id=track_id, lang=lang_code, detail_text=text)
+            obj = tl(track_id=track_id, language_code=lang_code, detail_text=text)
             db.add(obj)
             updated += 1
 

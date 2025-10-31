@@ -14,7 +14,7 @@ from backend.services.radio_runtime import (
     log_header_and_texts,
     build_intro_jobs,
     narration_keys_for,
-    maybe_play_bed,
+    play_intro_then_bed,
     play_narrations,
     play_track_with_skip,
 )
@@ -64,7 +64,7 @@ async def play_random_track_from_db(
         if (play_intro and intro_jobs) or (play_detail and detail_bucket and detail_key) or (
             play_artist_description and artist_bucket and artist_key
         ):
-            await maybe_play_bed()
+            await play_intro_then_bed()
 
         await play_narrations(
             play_intro=play_intro,

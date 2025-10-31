@@ -9,17 +9,15 @@ from backend.services.xai_common import query_xai
 
 logger = logging.getLogger("STEP_9.ArtistDetail")
 
-
-def get_artist_descriptions_from_xai(artists, language):
+def get_artist_descriptions_from_xai(artists, language: str, batch_size: int = 25):
     """
-    Returns a list of artist descriptions (1 per unique artist).
-    Each item has: artist_name, artist_description.
+    Calls xAI in smaller batches to generate artist descriptions safely.
+    Each result: {"artist_name": str, "artist_description": str}
     """
     seen_artists = {}
     unique_input = []
-
     for a in artists:
-        name = a.get("artist_name", "").strip()
+        name = (a.get("artist_name") or "").strip()
         if name and name.lower() not in seen_artists:
             seen_artists[name.lower()] = True
             unique_input.append({"artist_name": name})
@@ -28,34 +26,55 @@ def get_artist_descriptions_from_xai(artists, language):
         logger.warning("🚫 No unique artists found for description.")
         return []
 
-    prompt = (
-        f"Generate the following fields in {language}: artist_description. "
-        "• For each artist, write 2–3 sentences about their career, legacy, genre influence, or signature style. "
-        "You may include notable awards, famous songs, cultural impact, or little-known facts.\n"
-        f"Artists:\n{json.dumps(unique_input, indent=2)}"
-    )
+    all_results: list[dict] = []
 
-    responses = query_xai(prompt)
-    if not responses:
-        logger.warning("⚠️ Artist description query returned no results.")
-        return []
+    # ─────────────────────────────────────────────────────────────
+    # Process in manageable chunks (avoid token / timeouts)
+    # ─────────────────────────────────────────────────────────────
+    for i in range(0, len(unique_input), batch_size):
+        batch = unique_input[i:i + batch_size]
+        logger.info(f"🎨 Sending artist batch {i//batch_size + 1} ({len(batch)} artists) to xAI...")
 
-    artist_descriptions = []
+        prompt = (
+            f"Write artist descriptions in {language}.\n"
+            "For each artist below, output a JSON array where each item has:\n"
+            "  - artist_name\n"
+            "  - artist_description (2–3 sentences about career, genre, legacy, and influence).\n"
+            "Avoid listing songs unless iconic. Be concise and factual.\n\n"
+            f"Artists:\n{json.dumps(batch, indent=2)}\n\n"
+            "Output ONLY valid JSON (no markdown or commentary)."
+        )
 
-    for resp in responses:
-        name = resp.get("artist_name", "").strip()
-        desc = resp.get("artist_description")
-        if name and desc:
-            logger.debug(f"🎙️ Artist '{name}' description added.")
-            artist_descriptions.append({
-                "artist_name": name,
-                "artist_description": desc
-            })
+        raw = query_xai(prompt)
+        if not raw:
+            logger.warning(f"⚠️ Empty response from xAI for batch {i//batch_size + 1}")
+            continue
+
+        # Debug preview
+        logger.debug("🪶 Raw xAI content (first 300 chars): %s", str(raw)[:300])
+
+        # Try to parse JSON directly if query_xai() didn't already
+        parsed = None
+        if isinstance(raw, list):
+            parsed = raw
         else:
-            logger.warning(f"❌ Missing description for response: {resp}")
+            try:
+                parsed = json.loads(raw)
+            except Exception as ex:
+                logger.error("⚠️ Failed to parse xAI response (batch %d): %s", i//batch_size + 1, ex)
+                continue
 
-    return artist_descriptions
+        # Validate and collect
+        for r in parsed or []:
+            name = (r.get("artist_name") or "").strip()
+            desc = (r.get("artist_description") or "").strip()
+            if name and desc:
+                all_results.append({"artist_name": name, "artist_description": desc})
+            else:
+                logger.warning(f"⚠️ Invalid artist entry skipped: {r}")
 
+    logger.info(f"✅ xAI generated {len(all_results)} artist descriptions in total.")
+    return all_results
 
 def regenerate_missing_artist_descriptions(db: Session, language: str = "English") -> int:
     """

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query
+# backend/routers/tts_regenerator.py
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import or_
 import logging
@@ -8,70 +9,110 @@ from backend.models.dbmodels import Artist
 from backend.services.xai_track_detail import regenerate_missing_track_details
 from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 
-router = APIRouter(prefix="/tts")
+router = APIRouter(prefix="/tts", tags=["TTS Regeneration"])
 logger = logging.getLogger("STEP_9.MissingTTS")
+
 
 @router.post("/regenerate/missing-details")
 def regenerate_missing_details(
-    language: str = Query("English", description="Language for detail and artist description"),
-    regenerate_track_detail: bool = Query(False, description="Regenerate missing track 'detail' fields"),
-    regenerate_artist_description: bool = Query(False, description="Regenerate missing artist descriptions"),
-    db: Session = Depends(get_db)
+    language: str = Query("English", description="Target language (e.g., English, Spanish, Portuguese)"),
+    regenerate_track_detail: bool = Query(
+        False, description="Regenerate missing track 'detail_text' entries"
+    ),
+    regenerate_artist_description: bool = Query(
+        False, description="Regenerate missing artist descriptions"
+    ),
+    overwrite: bool = Query(
+        False, description="Overwrite existing values even if present"
+    ),
+    dry_run: bool = Query(
+        False, description="Run without committing DB writes (for testing)"
+    ),
+    limit: int = Query(100, ge=1, le=500, description="Maximum rows to process"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    db: Session = Depends(get_db),
 ):
-    results = {}
-
-    # 🔁 1. Regenerate missing Track details
-    if regenerate_track_detail:
-        track_count = regenerate_missing_track_details(db, language=language)
-        results["track_details_regenerated"] = track_count
-    else:
-        results["track_details_regenerated"] = 0
-
-    # 🎙️ 2. Regenerate missing Artist descriptions
-    if regenerate_artist_description:
-        # Step 1: Query artists with missing description
-        stmt = select(Artist).where(
-            or_(
-                Artist.artist_description.is_(None),
-                Artist.artist_description == ""
-            )
-        )
-        artists = db.exec(stmt).all()
-
-        if not artists:
-            logger.info("✅ No artists missing descriptions.")
-            results["artist_descriptions_regenerated"] = 0
-        else:
-            logger.info(f"🧠 Found {len(artists)} artists missing descriptions. Sending to XAI...")
-
-            # Step 2: Prepare input for XAI
-            input_list = [{"artist_name": artist.artist_name} for artist in artists]
-
-            # Step 3: Call XAI
-            responses = get_artist_descriptions_from_xai(input_list, language)
-
-            # Step 4: Save responses to DB
-            name_to_artist = {a.artist_name.lower(): a for a in artists}
-            updated_count = 0
-
-            for resp in responses:
-                name = resp.get("artist_name", "").lower()
-                desc = resp.get("artist_description", "").strip()
-                if name and desc and name in name_to_artist:
-                    artist = name_to_artist[name]
-                    artist.artist_description = desc
-                    updated_count += 1
-                    logger.debug(f"📝 Updated description for: {artist.artist_name}")
-                else:
-                    logger.warning(f"⚠️ Skipping empty or unmatched response: {resp}")
-
-            db.commit()
-            results["artist_descriptions_regenerated"] = updated_count
-            logger.info(f"✅ Regenerated {updated_count} artist descriptions.")
-    else:
-        results["artist_descriptions_regenerated"] = 0
-
-    return {
-        "message": "✅ Regeneration process completed.",
-        **results
+    """
+    Regenerate missing TTS-related text fields using xAI:
+      - TrackLocale.detail_text (via regenerate_missing_track_details)
+      - Artist.artist_description (via get_artist_descriptions_from_xai)
+    """
+    results = {
+        "language": language,
+        "track_details_regenerated": 0,
+        "artist_descriptions_regenerated": 0,
+        "dry_run": dry_run,
+        "overwrite": overwrite,
+        "limit": limit,
+        "offset": offset,
     }
+
+    try:
+        # ─────────────────────────────────────────────────────────────
+        # 1️⃣ Regenerate missing Track 'detail_text' fields
+        # ─────────────────────────────────────────────────────────────
+        if regenerate_track_detail:
+            logger.info(
+                f"🧠 Regenerating track details — lang={language}, limit={limit}, "
+                f"offset={offset}, overwrite={overwrite}, dry_run={dry_run}"
+            )
+            track_count = regenerate_missing_track_details(
+                db,
+                language=language,
+                limit=limit,
+                offset=offset,
+                overwrite=overwrite,
+                dry_run=dry_run,
+            )
+            results["track_details_regenerated"] = track_count
+            logger.info(f"✅ Regenerated {track_count} track detail rows for {language}")
+
+        # ─────────────────────────────────────────────────────────────
+        # 2️⃣ Regenerate missing Artist descriptions
+        # ─────────────────────────────────────────────────────────────
+        if regenerate_artist_description:
+            stmt = select(Artist).where(
+                or_(Artist.artist_description.is_(None), Artist.artist_description == "")
+            )
+            artists = db.exec(stmt).all()
+
+            if not artists:
+                logger.info("✅ No artists missing descriptions.")
+            else:
+                logger.info(f"🧠 Found {len(artists)} artists missing descriptions. Sending to XAI...")
+                input_list = [{"artist_name": artist.artist_name} for artist in artists]
+
+                responses = get_artist_descriptions_from_xai(input_list, language)
+                if not responses:
+                    logger.warning("⚠️ No artist descriptions generated by XAI.")
+                else:
+                    name_to_artist = {a.artist_name.lower(): a for a in artists}
+                    updated_count = 0
+                    for resp in responses:
+                        name = resp.get("artist_name", "").lower()
+                        desc = (resp.get("artist_description") or "").strip()
+                        if name and desc and name in name_to_artist:
+                            artist = name_to_artist[name]
+                            if overwrite or not artist.artist_description:
+                                artist.artist_description = desc
+                                updated_count += 1
+                                logger.debug(f"📝 Updated description for {artist.artist_name}")
+                        else:
+                            logger.warning(f"⚠️ Skipping unmatched or empty response: {resp}")
+
+                    if not dry_run:
+                        db.commit()
+                    logger.info(f"✅ Regenerated {updated_count} artist descriptions.")
+                    results["artist_descriptions_regenerated"] = updated_count
+
+        # ─────────────────────────────────────────────────────────────
+        # 3️⃣ Return summary JSON
+        # ─────────────────────────────────────────────────────────────
+        return {
+            "message": "✅ Regeneration process completed.",
+            **results
+        }
+
+    except Exception as e:
+        logger.exception("❌ Error during regeneration process: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))

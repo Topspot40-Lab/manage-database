@@ -265,69 +265,115 @@ async def check_intro_mp3s(db: Session, client: httpx.AsyncClient, *, language: 
     }
     return missing_mp3s, stats
 
-
 # ----------------------------------------------------------------------
 # 🎶 Check for missing detail MP3s (set-diff + stats)
 # ----------------------------------------------------------------------
 async def check_detail_mp3s(
     tracks, client: httpx.AsyncClient, *, language: str = DEFAULT_TTS_LANGUAGE
 ) -> tuple[list[Track], dict[str, int]]:
+    lang_code = (language or DEFAULT_TTS_LANGUAGE).strip().lower()
+    is_english = lang_code in ("en", "english")
+
+    # ─────────────────────────────────────────────────────────────
+    # Filter valid tracks with Spotify IDs
+    # ─────────────────────────────────────────────────────────────
     detail_tracks = [t for t in tracks if t.spotify_track_id]
-
-    # Text presence
-    text_missing = [t for t in detail_tracks if not t.detail or t.detail.strip().lower() == "null"]
     total_tracks = len(detail_tracks)
-    if text_missing:
-        logger.info("🛑 %d detail text(s) missing/invalid out of %d", len(text_missing), total_tracks)
-        logger.debug("\n" + "\n".join(f"- {t.track_name} ({t.spotify_track_id})" for t in text_missing))
-    else:
-        logger.info("✅ All %d detail text fields present and valid.", total_tracks)
+    logger.info("🎶 Checking %d detail MP3s for language=%s", total_tracks, lang_code)
 
-    # Expected keys
+    # ─────────────────────────────────────────────────────────────
+    # Text presence check — canonical field for EN, locale table for others
+    # ─────────────────────────────────────────────────────────────
+    if is_english:
+        text_missing = [t for t in detail_tracks if not t.detail or not t.detail.strip()]
+        if text_missing:
+            logger.info(
+                "🛑 %d English detail text(s) missing/invalid out of %d",
+                len(text_missing),
+                total_tracks,
+            )
+            logger.debug(
+                "\n" + "\n".join(f"- {t.track_name} ({t.spotify_track_id})" for t in text_missing[:50])
+            )
+        else:
+            logger.info("✅ All %d English detail text fields present and valid.", total_tracks)
+    else:
+        # Non-English → check TrackLocale for this language
+        from backend.models.dbmodels import TrackLocale
+        text_missing = []
+        for t in detail_tracks:
+            loc_row = None
+            if hasattr(t, "locales"):
+                loc_row = next(
+                    (loc for loc in t.locales if loc.language_code == lang_code and loc.detail_text and loc.detail_text.strip()),
+                    None,
+                )
+            if not loc_row:
+                text_missing.append(t)
+
+        if text_missing:
+            logger.info(
+                "🛑 %d %s detail text(s) missing/invalid out of %d",
+                len(text_missing),
+                lang_code.upper(),
+                total_tracks,
+            )
+            logger.debug(
+                "\n" + "\n".join(f"- {t.track_name} ({t.spotify_track_id})" for t in text_missing[:50])
+            )
+        else:
+            logger.info("✅ All %d %s detail text fields present and valid.", total_tracks, lang_code.upper())
+
+    # ─────────────────────────────────────────────────────────────
+    # MP3 presence check (set-diff via Supabase)
+    # ─────────────────────────────────────────────────────────────
     detail_bucket = _bucket_for(language, "detail")
     expected_map: dict[str, Track] = {}
     for t in detail_tracks:
         key = _prefixed_key("detail", f"{t.spotify_track_id}.mp3")
         expected_map[key] = t
 
-    # Existing keys (single list) and set-diff
     existing = await _list_keys(detail_bucket, "detail", client)
     expected_keys = set(expected_map.keys())
     present = len(expected_keys & existing)
     missing_pairs = [(expected_map[k], k) for k in expected_keys if k not in existing]
 
-    # Orphans: present in storage but not expected
+    # Orphans
     orphans = sorted(existing - expected_keys)
     if orphans:
         logger.info("🧹 %d detail orphan file(s) on storage not referenced by DB", len(orphans))
         logger.debug("\n" + "\n".join(f"- {o}" for o in orphans[:100]))
 
     if missing_pairs:
-        limit = 15
-        lines = []
-        for t, key in missing_pairs[:limit]:
-            title = (t.track_name or "").ljust(30)
+        preview_lines = []
+        for t, key in missing_pairs[:20]:
             artist = getattr(t, "artist_display_name", None) or "[unknown]"
-            lines.append(f"- title: {title} artist: {artist} file: {detail_bucket}/{key}")
-        suffix = "\n… (truncated)" if len(missing_pairs) > limit else ""
+            preview_lines.append(f"- {t.track_name:<30} | {artist:<25} | {key}")
+        suffix = "\n… (truncated)" if len(missing_pairs) > 20 else ""
         logger.debug(
             "🛑 %d detail MP3(s) missing (present: %d/%d):\n%s%s",
-            len(missing_pairs), present, len(expected_keys), "\n".join(lines), suffix
+            len(missing_pairs),
+            present,
+            len(expected_keys),
+            "\n".join(preview_lines),
+            suffix,
         )
     else:
         logger.debug("✅ All detail MP3s present — %d/%d", present, len(expected_keys))
 
     logger.info(
         "🎶 Detail MP3s expected: %d, present: %d, missing: %d",
-        len(expected_keys), present, len(missing_pairs)
+        len(expected_keys),
+        present,
+        len(missing_pairs),
     )
 
     # Return (missing_tracks, stats)
     stats = {
         "expected": len(expected_keys),
-        "present":  present,
-        "missing":  len(missing_pairs),
-        "orphans":  len(orphans),
+        "present": present,
+        "missing": len(missing_pairs),
+        "orphans": len(orphans),
     }
     return [t for (t, _key) in missing_pairs], stats
 
@@ -379,6 +425,9 @@ async def check_artist_mp3s(
         "orphans":  len(orphans),
     }
     return missing, stats
+# -------------------------------------------------------------------
+# 🧠 Unified TTS diagnostics across intro, detail, and artist MP3s
+# -------------------------------------------------------------------
 async def get_missing_tts_info(
     db: Session,
     check_intro_mp3: bool = False,
@@ -386,17 +435,47 @@ async def get_missing_tts_info(
     check_artist_mp3: bool = False,
     language: str = DEFAULT_TTS_LANGUAGE,
 ):
-    # Load records
+    lang_code = (language or DEFAULT_TTS_LANGUAGE).strip().lower()
+    is_english = lang_code in ("en", "english")
+
+    # Load core records
     tracks   = db.exec(select(Track)).all()
     artists  = db.exec(select(Artist)).all()
     rankings = db.exec(select(TrackRanking)).all()
 
-    # Text checks
-    missing_detail_text = [t for t in tracks   if not t.detail or not t.detail.strip()]
-    missing_artist_desc = [a for a in artists  if not a.artist_description or not a.artist_description.strip()]
-    missing_intro_text  = [r for r in rankings if not r.intro or not r.intro.strip()]
+    # ─────────────────────────────────────────────────────────────
+    # TEXT PRESENCE CHECKS
+    # ─────────────────────────────────────────────────────────────
+    if is_english:
+        # Canonical EN detail lives in Track.detail
+        missing_detail_text = [t for t in tracks if not t.detail or not t.detail.strip()]
+    else:
+        from backend.models.dbmodels import TrackLocale
+        track_ids = [t.id for t in tracks]
+        locale_rows = db.exec(
+            select(TrackLocale)
+            .where(TrackLocale.language_code == lang_code)
+            .where(TrackLocale.track_id.in_(track_ids))
+        ).all()
+        loc_by_id = {loc.track_id: loc for loc in locale_rows}
+        missing_detail_text = [
+            t for t in tracks
+            if t.id not in loc_by_id or not (loc_by_id[t.id].detail_text or "").strip()
+        ]
 
-    # MP3 results + stats (defaults)
+    # Artist description (always English source field)
+    missing_artist_desc = [
+        a for a in artists if not a.artist_description or not a.artist_description.strip()
+    ]
+
+    # Intro text (always English source field)
+    missing_intro_text = [
+        r for r in rankings if not r.intro or not r.intro.strip()
+    ]
+
+    # ─────────────────────────────────────────────────────────────
+    # MP3 RESULTS + STATS (defaults)
+    # ─────────────────────────────────────────────────────────────
     missing_intro_mp3:  list = []
     missing_detail_mp3: list = []
     missing_artist_mp3: list = []
@@ -405,6 +484,9 @@ async def get_missing_tts_info(
     detail_stats = {"expected": 0, "present": 0, "missing": 0, "orphans": 0}
     artist_stats = {"expected": 0, "present": 0, "missing": 0, "orphans": 0}
 
+    # ─────────────────────────────────────────────────────────────
+    # Run async MP3 presence checks
+    # ─────────────────────────────────────────────────────────────
     async with httpx.AsyncClient() as client:
         if check_intro_mp3:
             missing_intro_mp3, intro_stats = await measure_and_log(
@@ -419,6 +501,9 @@ async def get_missing_tts_info(
                 "Artist MP3s", lambda: check_artist_mp3s(artists, client, language=language)
             )
 
+    # ─────────────────────────────────────────────────────────────
+    # Assemble diagnostics payload
+    # ─────────────────────────────────────────────────────────────
     payload = {
         "missing_text": {
             "track_detail":       missing_detail_text,
@@ -430,14 +515,24 @@ async def get_missing_tts_info(
             "track_detail": missing_detail_mp3,
             "artist_mp3":   missing_artist_mp3,
         },
-        "stats": {}
+        "stats": {},
     }
+
     if check_intro_mp3:
         payload["stats"]["intro"] = intro_stats
     if check_detail_mp3:
         payload["stats"]["detail"] = detail_stats
     if check_artist_mp3:
         payload["stats"]["artist"] = artist_stats
+
+    # Summary log
+    logger.info(
+        "🧾 TTS Diagnostics summary | lang=%s | intro=%d missing | detail=%d missing | artist=%d missing",
+        lang_code,
+        len(missing_intro_text),
+        len(missing_detail_text),
+        len(missing_artist_desc),
+    )
 
     return payload
 

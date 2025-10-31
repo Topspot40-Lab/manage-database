@@ -10,9 +10,7 @@ from backend.services.radio_runtime import (
     log_header_and_texts,
     build_intro_jobs,
     narration_keys_for,
-    maybe_play_bed,
     play_narrations,
-    play_track_with_skip,
 )
 
 router = APIRouter(prefix="/supabase", tags=["Supabase: Play by Decade/Genre"])
@@ -76,12 +74,7 @@ async def _run_play_sequence_decade_genre(
         return
 
     # ───────────────────────────────
-    # 2️⃣ Optional bed track
-    # ───────────────────────────────
-    await maybe_play_bed()
-
-    # ───────────────────────────────
-    # 3️⃣ Sequential playback loop
+    # 2️⃣ Sequential playback loop
     # ───────────────────────────────
     for track, artist, tr_rank, decade_obj, genre_obj in rows:
         try:
@@ -100,8 +93,9 @@ async def _run_play_sequence_decade_genre(
             )
             await _respect_user_controls()
 
+
             # ───────────────────────────────
-            # Narration phase
+            # 3️⃣ Narration phase
             # ───────────────────────────────
             intro_text, detail_text, artist_text = log_header_and_texts(
                 lang=tts_language,
@@ -141,7 +135,7 @@ async def _run_play_sequence_decade_genre(
             )
 
             # ───────────────────────────────
-            # Track playback phase
+            # 4️⃣ Track playback phase
             # ───────────────────────────────
             if play_track and track.spotify_track_id:
                 _update_flags(
@@ -154,9 +148,7 @@ async def _run_play_sequence_decade_genre(
                 )
                 await _respect_user_controls()
 
-                logger.info(
-                    f"🎵 Now playing rank #{rank}: {track.track_name} — {artist.artist_name}"
-                )
+                logger.info(f"🎵 Now playing rank #{rank}: {track.track_name} — {artist.artist_name}")
                 play_spotify_track(track.spotify_track_id)
 
                 play_secs = compute_play_seconds(track)
@@ -179,7 +171,7 @@ async def _run_play_sequence_decade_genre(
             logger.warning(f"⚠️ Error during playback loop (rank {rank}): {e}", exc_info=True)
 
     # ───────────────────────────────
-    # 4️⃣ Wrap-up
+    # 5️⃣ Wrap-up
     # ───────────────────────────────
     _flags.is_playing = False
     _flags.stopped = True
@@ -208,9 +200,7 @@ async def play_sequence_decade_genre(
     db: Session = Depends(get_db),
 ):
     """Starts playback asynchronously and returns immediately."""
-    logger.info(
-        f"▶ Received playback request for {decade}/{genre} | {start_rank}–{end_rank} (async mode)"
-    )
+    logger.info(f"▶ Received playback request for {decade}/{genre} | {start_rank}–{end_rank} (async mode)")
 
     background_tasks.add_task(
         _run_play_sequence_decade_genre,
@@ -237,9 +227,10 @@ async def play_sequence_decade_genre(
         "message": f"Playback started for {decade}/{genre} ranks {start_rank}–{end_rank}.",
     }
 
-# Add this just below your /play-sequence route in
-# backend/routers/decade_genre_player.py
 
+# ─────────────────────────────────────────────
+# FastAPI route: /supabase/get-sequence
+# ─────────────────────────────────────────────
 @router.get("/get-sequence")
 async def get_sequence_decade_genre(
     decade: str = Query(...),
@@ -252,9 +243,7 @@ async def get_sequence_decade_genre(
     Retrieve track metadata for a given decade and genre.
     Used by the frontend to preview tracks before playback.
     """
-    logger.info(
-        f"📜 Fetching track preview for {decade}/{genre} ranks {start_rank}–{end_rank}"
-    )
+    logger.info(f"📜 Fetching track preview for {decade}/{genre} ranks {start_rank}–{end_rank}")
 
     q = (
         select(Track, Artist, TrackRanking, Decade, Genre)
@@ -277,7 +266,6 @@ async def get_sequence_decade_genre(
         logger.warning(f"⚠️ No tracks found for {decade}/{genre}")
         return {"status": "empty", "decade": decade, "genre": genre, "tracks": []}
 
-    # Build the response list
     tracks = []
     for track, artist, tr_rank, decade_obj, genre_obj in rows:
         tracks.append(
@@ -294,7 +282,6 @@ async def get_sequence_decade_genre(
         )
 
     logger.info(f"✅ Returning {len(tracks)} tracks for {decade}/{genre}")
-
     return {
         "status": "ok",
         "decade": decade,

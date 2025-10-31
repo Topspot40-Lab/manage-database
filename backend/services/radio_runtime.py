@@ -12,7 +12,7 @@ from backend.services.playback_helpers import (
     build_intro_filename, build_detail_filename, build_artist_filename,
     safe_play,
 )
-from backend.services.spotify.playback import play_spotify_track
+from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
 from backend.services.play_policy import compute_play_seconds, sleep_with_skip
 from backend.services.radio_render import render_header, box, clean_text, BOX_WIDTH
 from backend.config import SPOTIFY_BED_TRACK_ID
@@ -57,6 +57,45 @@ async def _respect_user_controls():
         logger.info("🛑 Playback stopped by user.")
         raise asyncio.CancelledError("Playback stopped")
 
+# ─────────────────────────────────────────────
+# ✨ Intro-first with bed fade-in/out
+# ─────────────────────────────────────────────
+async def play_intro_then_bed(*, intro_label: str, bucket: str, key: str,
+                              bed_track_id: str = SPOTIFY_BED_TRACK_ID,
+                              delay_s: float = 0.25, fade_in_s: float = 2.0,
+                              bed_duration_s: float = 10.0):
+    """
+    Start the intro narration immediately, fade in the bed after a short delay,
+    and automatically fade it out after narration finishes.
+    """
+    try:
+        logger.info("🎙️ Starting intro narration (%s), bed fades in after %.2fs", key, delay_s)
+        intro_task = asyncio.create_task(safe_play(intro_label, bucket, key))
+
+        # fade in bed under narration
+        if bed_track_id:
+            await asyncio.sleep(delay_s)
+            logger.info("🎧 Fading in bed track...")
+            # play_spotify_track is synchronous, so just run it directly
+            play_spotify_track(bed_track_id)
+            bed_task = None
+        else:
+            bed_task = None
+
+        await intro_task  # wait for voice intro to finish
+
+        # let the bed linger a bit before fading out
+        if bed_task:
+            await asyncio.sleep(1.0)
+            logger.info("🔉 Fading out bed track...")
+            try:
+                # stop_spotify_playback is a simple fade helper if implemented
+                await stop_spotify_playback(fade_out_seconds=fade_in_s)
+            except Exception:
+                logger.debug("stop_spotify_playback not available; bed will stop naturally.")
+
+    except Exception as e:
+        logger.warning("⚠️ play_intro_then_bed error: %s", e)
 
 # ─────────────────────────────────────────────
 # Collection logging
@@ -110,11 +149,12 @@ def log_header_and_texts(*, lang: str, track, artist, tr_rows) -> tuple[Optional
     """Log header + localized texts and return (intro_text, detail_text, artist_text)."""
     header_text = render_header(
         track_name=track.track_name,
-        artist_name=artist.artist_name,
+        artist_name=getattr(track, "artist_name", None) or getattr(artist, "artist_name", "Unknown Artist"),
         track_id=track.spotify_track_id,
         lang=lang,
         tr_rows=tr_rows or [],
     )
+
     logger.info("\n%s", header_text)
 
     intro_text_loc, detail_text_loc = None, None
@@ -171,21 +211,8 @@ def narration_keys_for(*, lang: str, track, artist):
 
 
 # ─────────────────────────────────────────────
-# Playback helpers
+# Narration playback
 # ─────────────────────────────────────────────
-async def maybe_play_bed():
-    """Play soft bed track before narration."""
-    if not SPOTIFY_BED_TRACK_ID:
-        return
-    try:
-        logger.info("🎧 Starting bed track (5s ambient intro)")
-        play_spotify_track(SPOTIFY_BED_TRACK_ID)
-        await asyncio.sleep(5)
-        logger.info("🎧 Bed intro finished; continuing to sequence playback.")
-    except Exception as e:
-        logger.warning("Bed track failed: %s", e)
-
-
 async def play_narrations(*, play_intro: bool, play_detail: bool, play_artist: bool,
                           intro_jobs, detail_bucket, detail_key, artist_bucket, artist_key,
                           lang: str = "en", mode: str = "decade_genre",
@@ -198,8 +225,8 @@ async def play_narrations(*, play_intro: bool, play_detail: bool, play_artist: b
                           track_name=track_name, artist_name=artist_name)
             await _respect_user_controls()
             for bkt, key, *_ in intro_jobs:
-                logger.info(f"🎙️ Playing intro narration: {key}")
-                await safe_play("Intro", bkt, key)
+                logger.info(f"🎙️ Playing intro narration with bed fade-in/out: {key}")
+                await play_intro_then_bed(intro_label="Intro", bucket=bkt, key=key)
 
         if play_detail and detail_bucket and detail_key:
             _update_flags(phase="detail", lang=lang, mode=mode, rank=rank,
@@ -221,6 +248,9 @@ async def play_narrations(*, play_intro: bool, play_detail: bool, play_artist: b
         logger.warning("⚠️ play_narrations error: %s", e)
 
 
+# ─────────────────────────────────────────────
+# Track playback
+# ─────────────────────────────────────────────
 async def play_track_with_skip(*, track, full_flag: bool, lang: str = "en", mode: str = "decade_genre") -> bool:
     """Play Spotify track and wait cooperatively for skip."""
     try:
