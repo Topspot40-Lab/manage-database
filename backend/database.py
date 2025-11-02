@@ -63,3 +63,23 @@ def get_db():
     """FastAPI dependency: yield a Session per request and close it afterward."""
     with Session(engine) as session:
         yield session
+
+# --- Context manager for scripts (CLI jobs, one-off tools) ---
+from contextlib import contextmanager
+
+@contextmanager
+def get_db_session():
+    """
+    Wrap the existing get_db() generator dependency into a context manager
+    so scripts can do: `with get_db_session() as db:`
+    """
+    gen = get_db()           # use the local generator defined above
+    db = next(gen)           # retrieve the Session
+    try:
+        yield db
+    finally:
+        # advance the generator so its teardown/close logic executes
+        try:
+            next(gen)
+        except StopIteration:
+            pass

@@ -110,7 +110,12 @@ def regenerate_missing_details(
         # ─────────────────────────────────────────────────────────────
         return {
             "message": "✅ Regeneration process completed.",
-            **results
+            "language": language.lower(),
+            **results,
+            "dry_run": False,
+            "overwrite": overwrite,  # ✅ fixes the 'faalse' typo
+            "limit": limit,
+            "offset": 0,
         }
 
     except Exception as e:

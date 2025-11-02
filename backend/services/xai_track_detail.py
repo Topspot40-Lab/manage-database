@@ -183,32 +183,80 @@ def regenerate_missing_track_details(
     lang_code = _norm_lang(language)        # "English" -> "en", etc.
     lang_label = _lang_label(lang_code)     # "en" -> "English"
 
-    # 🔒 Skip English: canonical English detail lives in Track, not TrackLocale
-    if lang_code in ("en", "english"):
-        logger.info("🔤 English details are stored in the Track table — skipping TrackLocale generation.")
-        return 0
-
     if Track is None or Artist is None or TrackLocale is None:
         logger.error("Required models not importable (Track/Artist/TrackLocale).")
         return 0
 
+    # ─────────────────────────────────────────────────────────────
+    # 🇬🇧 English case — regenerate missing details in the Track table
+    # ─────────────────────────────────────────────────────────────
+    if lang_code in ("en", "english"):
+        from sqlalchemy import or_, func
+        logger.info("🔤 English details are stored in the Track table — regenerating missing English details...")
+
+        q = (
+            select(Track)
+            .join(Artist, Artist.id == Track.artist_id)
+            .where(
+                or_(
+                    Track.detail.is_(None),
+                    func.trim(Track.detail) == "",
+                    func.lower(Track.detail) == "null",
+                )
+            )
+            .order_by(Track.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        tracks = db.exec(q).all()
+        if not tracks:
+            logger.info("✅ No English tracks missing detail text.")
+            return 0
+
+        logger.info("🧠 Found %d English tracks missing detail text. Sending to XAI...", len(tracks))
+
+        items = []
+        for t in tracks:
+            items.append({
+                "track_id": t.id,
+                "track_name": t.track_name,
+                "artist_name": t.artist.artist_name if t.artist else "",
+                "year_released": t.year_released,
+            })
+
+        results = get_track_details_from_xai_batch(items, target_language_label="English")
+        if dry_run:
+            logger.info("🧪 dry_run=True — would update %d English rows.", len(results))
+            return len(results)
+
+        updated = 0
+        for r in results:
+            track = next((t for t in tracks if t.id == r.get("track_id")), None)
+            if not track:
+                continue
+            text = (r.get("detail_text") or "").strip()
+            if text:
+                track.detail = text
+                updated += 1
+
+        db.commit()
+        logger.info("✅ Regenerated %d track detail rows for English", updated)
+        return updated
+
+    # ─────────────────────────────────────────────────────────────
+    # 🌎 Non-English case — use TrackLocale for other languages
+    # ─────────────────────────────────────────────────────────────
     tl = TrackLocale
     t = Track
     a = Artist
 
-    # ─────────────────────────────────────────────────────────────
-    # 1️⃣ Select tracks missing details for this language
-    # ─────────────────────────────────────────────────────────────
     q = (
         select(t.id, t.track_name, a.artist_name, t.year_released, tl.detail_text)
         .join(a, a.id == t.artist_id)
         .join(tl, tl.track_id == t.id, isouter=True)
         .where(
-            # Case A: locale row exists but detail_text missing
             ((tl.language_code == lang_code) & ((tl.detail_text.is_(None)) | (tl.detail_text == "")))
-            |
-            # Case B: no locale row at all for this lang
-            (tl.language_code.is_(None))
+            | (tl.language_code.is_(None))
         )
         .order_by(t.id)
         .limit(limit)
@@ -222,9 +270,6 @@ def regenerate_missing_track_details(
 
     logger.info("🧠 Found %d tracks missing detail text for '%s'", len(rows), lang_label)
 
-    # ─────────────────────────────────────────────────────────────
-    # 2️⃣ Prepare payload for XAI generation
-    # ─────────────────────────────────────────────────────────────
     items = []
     seen = set()
     for (track_id, track_name, artist_name, year_released, detail_text) in rows:
@@ -244,17 +289,11 @@ def regenerate_missing_track_details(
         logger.info("✅ Nothing to process (overwrite=False skipped all).")
         return 0
 
-    # ─────────────────────────────────────────────────────────────
-    # 3️⃣ Generate details using XAI batch helper
-    # ─────────────────────────────────────────────────────────────
     results = get_track_details_from_xai_batch(items, target_language_label=lang_label)
     if dry_run:
         logger.info("🧪 dry_run=True — would write %d locale rows for %s", len(results), lang_code)
         return len(results)
 
-    # ─────────────────────────────────────────────────────────────
-    # 4️⃣ Upsert into TrackLocale
-    # ─────────────────────────────────────────────────────────────
     updated = 0
     for r in results:
         track_id = r.get("track_id")
@@ -278,7 +317,6 @@ def regenerate_missing_track_details(
     db.commit()
     logger.info("✅ Wrote %d locale detail rows for %s", updated, lang_code)
     return updated
-
 
 XAI_API_KEY = os.getenv("XAI_API_KEY", "").strip()
 XAI_MODEL   = os.getenv("XAI_MODEL", "grok-2-latest").strip()  # adjust if needed
