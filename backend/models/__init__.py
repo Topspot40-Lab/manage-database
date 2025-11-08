@@ -14,7 +14,7 @@ from .dbmodels import (
 )
 
 from .collection_models import (
-    Collection, CollectionTrackRanking, CollectionTrackRankingLocale,
+    Collection, CollectionCategory, CollectionTrackRanking, CollectionTrackRankingLocale,
 )
 
 __all__ = [
@@ -27,5 +27,5 @@ __all__ = [
     # locales
     "TrackRankingLocale", "TrackLocale", "ArtistLocale", "Language",
     # collections
-    "Collection", "CollectionTrackRanking", "CollectionTrackRankingLocale",
+    "Collection", "CollectionCategory", "CollectionTrackRanking", "CollectionTrackRankingLocale",
 ]
