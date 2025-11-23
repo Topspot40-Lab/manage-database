@@ -5,10 +5,11 @@ import asyncio
 import logging
 import random
 from typing import Literal
-from fastapi import APIRouter, Query
 
+from fastapi import APIRouter, Query, Depends
 from sqlmodel import select
-from backend.database import get_db_session
+
+from backend.database import get_db_session, get_db
 from backend.models.dbmodels import (
     Track,
     Artist,
@@ -23,27 +24,25 @@ from backend.routers.playback_control import (
     _flags,
 )
 
-# Narration + playback services
+# Narration + playback pipeline
 from backend.services.radio_runtime import (
-    _update_flags,
-    _respect_user_controls,
     log_header_and_texts,
     build_intro_jobs,
     narration_keys_for,
     play_narrations,
+    _update_flags,
+    _respect_user_controls,
 )
 
-from backend.services.spotify.playback import play_spotify_track
-from backend.services.play_policy import compute_play_seconds, sleep_with_skip
-from backend.state import skip_event
+# NEW unified Spotify + skip handler
+from backend.services.playback_helpers import play_track_with_skip
 
 router = APIRouter(prefix="/supabase", tags=["Supabase: Collections"])
-
 logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
-# INTERNAL PLAYBACK LOOP
+# INTERNAL SEQUENCE RUNNER
 # ─────────────────────────────────────────────
 async def _run_play_sequence_collection(
     *,
@@ -61,16 +60,15 @@ async def _run_play_sequence_collection(
     text_artist_description: bool,
 ):
     """
-    Full playback loop for Collection mode.
+    Asynchronous radio-style playback for Collection mode.
+    SAFE: Creates its own DB session inside the task.
     """
 
     logger.info(
         f"🎧 COLLECTION START: {collection_slug} {start_rank}-{end_rank} mode={mode}"
     )
 
-    # ───────────────────────────────────────
-    # 1️⃣ Load collection tracks inside the task
-    # ───────────────────────────────────────
+    # 1️⃣ Load data safely inside task
     with get_db_session() as db:
         q = (
             select(Track, Artist, CollectionTrackRanking, Collection)
@@ -83,40 +81,36 @@ async def _run_play_sequence_collection(
                 CollectionTrackRanking.ranking <= end_rank,
             )
         )
-
         rows = db.exec(q).all()
 
     if not rows:
-        logger.warning(f"⚠️ No tracks found in collection: {collection_slug}")
+        logger.warning(f"⚠️ No tracks found for collection: {collection_slug}")
         cancel_current_sequence()
         return
 
-    # Apply ordering mode
+    # Ordering logic
     if mode == "count_up":
         rows.sort(key=lambda r: r[2].ranking)
     elif mode == "count_down":
         rows.sort(key=lambda r: r[2].ranking, reverse=True)
-    elif mode == "random":
+    else:
         random.shuffle(rows)
 
-    # Update global state
+    # Update global playback mode
     _flags.mode = "collection"
     _flags.context = {"collection_slug": collection_slug}
 
-    # ───────────────────────────────────────
-    # 2️⃣ RADIO PLAYBACK LOOP
-    # ───────────────────────────────────────
+    # 2️⃣ Playback loop
     for track, artist, ctr_rank, coll in rows:
         rank = ctr_rank.ranking
 
         if _flags.cancel_requested:
-            logger.info("🛑 Cancel flag detected — stopping collection playback.")
+            logger.info("🛑 Cancel requested — stopping playback.")
             break
 
         logger.info("──────────────────────────────────────────────")
         logger.info(f"▶ Rank #{rank:02d}: {track.track_name} — {artist.artist_name}")
 
-        # Update flags for UI + TTS services
         _update_flags(
             phase="prelude",
             lang=tts_language,
@@ -127,9 +121,7 @@ async def _run_play_sequence_collection(
         )
         await _respect_user_controls()
 
-        # ───────────────────────────────
-        # Narration
-        # ───────────────────────────────
+        # ─────────────── Narration ────────────────
         intro_text, detail_text, artist_text = log_header_and_texts(
             lang=tts_language,
             track=track,
@@ -165,41 +157,29 @@ async def _run_play_sequence_collection(
         )
 
         # ───────────────────────────────
-        # Track playback
+        # Unified track playback
         # ───────────────────────────────
-        if play_track and track.spotify_track_id:
-            _update_flags(
-                phase="track",
+        if play_track:
+            skipped = await play_track_with_skip(
+                track,
                 lang=tts_language,
                 mode="collection",
                 rank=rank,
                 track_name=track.track_name,
                 artist_name=artist.artist_name,
             )
-            await _respect_user_controls()
-
-            logger.info(f"🎵 Playing {track.track_name} — rank {rank}")
-            play_spotify_track(track.spotify_track_id)
-
-            play_secs = compute_play_seconds(track)
-            skipped = await sleep_with_skip(skip_event, play_secs)
-
-            if skipped:
-                logger.info("⏭️ Skip pressed — moving to next track.")
-            else:
-                logger.info("✅ Track finished normally.")
+            # helper logs skip/finish for us
 
         await _respect_user_controls()
         await asyncio.sleep(0.5)
 
-    # Wrap up
+    # Cleanup
     cancel_current_sequence()
     logger.info("✅ Collection playback finished cleanly.")
-    return
 
 
 # ─────────────────────────────────────────────
-# PUBLIC API: START COLLECTION PLAYBACK
+# PUBLIC ENDPOINT — START COLLECTION PLAYBACK
 # ─────────────────────────────────────────────
 @router.get("/play-collection")
 async def play_collection_sequence(
@@ -217,8 +197,7 @@ async def play_collection_sequence(
     text_artist_description: bool = Query(False),
 ):
     """
-    Launches a new async playback sequence.
-    Cancels any previous one automatically.
+    Launches background collection playback. Cancels any previous one.
     """
 
     logger.info(
@@ -248,3 +227,52 @@ async def play_collection_sequence(
         "mode": mode,
         "range": [start_rank, end_rank],
     }
+
+
+# ─────────────────────────────────────────────
+# PUBLIC ENDPOINT — METADATA ONLY
+# ─────────────────────────────────────────────
+@router.get("/get-collection")
+async def get_collection_metadata(
+    collection_slug: str = Query(...),
+    start_rank: int = Query(1),
+    end_rank: int = Query(40),
+    db = Depends(get_db),
+):
+    """
+    Returns track metadata for Svelte preview.
+    """
+
+    q = (
+        select(Track, Artist, CollectionTrackRanking, Collection)
+        .join(Artist, Artist.id == Track.artist_id)
+        .join(CollectionTrackRanking, CollectionTrackRanking.track_id == Track.id)
+        .join(Collection, Collection.id == CollectionTrackRanking.collection_id)
+        .where(
+            Collection.slug == collection_slug,
+            CollectionTrackRanking.ranking >= start_rank,
+            CollectionTrackRanking.ranking <= end_rank,
+        )
+        .order_by(CollectionTrackRanking.ranking)
+    )
+
+    rows = db.exec(q).all()
+    if not rows:
+        return {"status": "empty", "tracks": []}
+
+    tracks = []
+    for track, artist, ctr_rank, coll in rows:
+        tracks.append(
+            {
+                "rank": ctr_rank.ranking,
+                "trackName": track.track_name,
+                "artistName": artist.artist_name,
+                "yearReleased": getattr(track, "year_released", None),
+                "durationMs": getattr(track, "duration_ms", None),
+                "albumArtwork": getattr(track, "album_artwork", None),
+                "spotifyTrackId": getattr(track, "spotify_track_id", None),
+                "albumName": getattr(track, "album_name", None),
+            }
+        )
+
+    return {"status": "ok", "total": len(tracks), "tracks": tracks}

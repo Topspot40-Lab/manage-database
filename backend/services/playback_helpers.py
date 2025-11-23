@@ -321,3 +321,149 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
         last_err,
     )
     return False
+
+# ─────────────────────────────────────────────
+# Unified Spotify Track Playback + Skip Handler
+# ─────────────────────────────────────────────
+from backend.services.spotify.playback import play_spotify_track
+from backend.services.play_policy import compute_play_seconds, sleep_with_skip
+from backend.state import skip_event
+
+
+async def play_track_with_skip(
+    track,
+    *,
+    lang: str,
+    mode: str,
+    rank: int,
+    track_name: str,
+    artist_name: str,
+) -> bool:
+    """
+    Unified Spotify playback handler for both:
+      • decade/genre runner
+      • collection runner
+
+    Handles:
+      - update playback flags
+      - wait for pause/stop
+      - trigger Spotify track playback
+      - run skip-event wait
+      - returns True if user skipped
+    """
+
+    # Update flags so UI shows "playing track"
+    try:
+        _flags.is_playing = True
+        _flags.is_paused = False
+        _flags.stopped = False
+        _flags.context = {
+            "phase": "track",
+            "lang": lang,
+            "mode": mode,
+            "rank": rank,
+            "track_name": track_name,
+            "artist_name": artist_name,
+        }
+    except Exception:
+        logger.debug("⚠️ Failed to update flags for Spotify track start")
+
+    # Respect pause/stop prior to playing
+    await _respect_user_controls()
+
+    if not track.spotify_track_id:
+        logger.warning(f"🚫 Missing spotify_track_id for {track_name}")
+        return False
+
+    logger.info(f"🎵 PLAY: {track_name} — rank {rank}")
+    play_spotify_track(track.spotify_track_id)
+
+    play_secs = compute_play_seconds(track)
+    skipped = await sleep_with_skip(skip_event, play_secs)
+
+    if skipped:
+        logger.info("⏭️ User skipped track.")
+    else:
+        logger.info("🎶 Track finished normally.")
+
+    return skipped
+
+# ─────────────────────────────────────────────
+# Unified Spotify Track Playback w/ Skip + UI Flags
+# ─────────────────────────────────────────────
+from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
+from backend.services.play_policy import compute_play_seconds, sleep_with_skip
+from backend.state import skip_event
+
+
+async def play_track_with_skip(
+    track,
+    *,
+    lang: str,
+    mode: str,
+    rank: int,
+    track_name: str,
+    artist_name: str,
+) -> bool:
+    """
+    Plays a Spotify track with:
+      • UI state updates
+      • Pause support
+      • Stop support
+      • Skip support
+      • Graceful fade-out between tracks
+    Returns:
+      True  -> skip pressed
+      False -> track finished normally
+    """
+
+    # Nothing to play?
+    spotify_id = getattr(track, "spotify_track_id", None)
+    if not spotify_id:
+        logger.warning("🚫 No spotify_track_id — skipping track playback.")
+        return False
+
+    # First: fade out any currently playing Spotify audio
+    try:
+        await stop_spotify_playback(fade_out_seconds=0.8)
+    except Exception as e:
+        logger.debug(f"Fade-out failed (safe to ignore): {e}")
+
+    # Update UI flags BEFORE playback starts
+    _update_flags_for_play(kind="track", bucket="spotify", key=spotify_id)
+
+    # Respect pause/stop before launching track
+    await _respect_user_controls()
+
+    logger.info(f"🎵 Playing Spotify track {track_name} — rank {rank}")
+
+    # Launch the track (non-blocking Spotify API call)
+    ok = play_spotify_track(spotify_id)
+    if not ok:
+        logger.warning("❌ Spotify refused to start playback — skipping this track.")
+        return False
+
+    # Compute play duration
+    play_secs = compute_play_seconds(track)
+    logger.debug(f"⏱ play_track_with_skip: duration={play_secs:.2f}s")
+
+    # Wait for completion or skip
+    skipped = await sleep_with_skip(skip_event, play_secs)
+
+    # Skip button pressed?
+    if skipped:
+        logger.info("⏭ Skip detected — fading out now.")
+        try:
+            await stop_spotify_playback(fade_out_seconds=0.5)
+        except Exception:
+            pass
+        return True
+
+    # Finished normally — fade out
+    try:
+        await stop_spotify_playback(fade_out_seconds=1.0)
+    except Exception:
+        pass
+
+    logger.info("✅ Track finished normally.")
+    return False

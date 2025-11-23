@@ -6,9 +6,12 @@ import logging
 import random
 from typing import Literal
 from fastapi import APIRouter, Query, Depends
-from sqlmodel import Session, select
 
-from backend.database import get_db
+from sqlmodel import select
+
+from backend.services.playback_helpers import play_track_with_skip
+
+from backend.database import get_db_session, get_db
 from backend.models.dbmodels import (
     Track,
     Artist,
@@ -18,14 +21,14 @@ from backend.models.dbmodels import (
     Genre,
 )
 
-# NEW: playback control helpers
+# playback control manager
 from backend.routers.playback_control import (
     start_new_sequence,
     cancel_current_sequence,
     _flags,
 )
 
-# narration + playback services
+# narration + runtime playback
 from backend.services.radio_runtime import (
     log_header_and_texts,
     build_intro_jobs,
@@ -33,10 +36,9 @@ from backend.services.radio_runtime import (
     play_narrations,
     _update_flags,
     _respect_user_controls,
+    play_track_with_skip,     # NEW unified player
 )
 
-from backend.services.spotify.playback import play_spotify_track
-from backend.services.play_policy import compute_play_seconds, sleep_with_skip
 from backend.state import skip_event
 
 router = APIRouter(prefix="/supabase", tags=["Supabase: Play by Decade/Genre"])
@@ -44,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
-# INTERNAL PLAYBACK LOOP
+# INTERNAL BACKGROUND TASK (NO LEAKED SESSIONS)
 # ─────────────────────────────────────────────
 async def _run_play_sequence_decade_genre(
     *,
@@ -64,14 +66,12 @@ async def _run_play_sequence_decade_genre(
 ):
     """
     Fully asynchronous radio-style playback loop for Decade/Genre.
+    SAFE: Opens its own DB session inside the task.
     """
 
-    logger.info(f"🎧 Starting sequence {decade}/{genre} {start_rank}-{end_rank} mode={mode}")
+    logger.info(f"🎧 Starting sequence: {decade}/{genre} {start_rank}-{end_rank} mode={mode}")
 
-    # ───────────────────────────────────────
-    # 1️⃣ Load tracks fresh inside the task
-    # ───────────────────────────────────────
-    from backend.database import get_db_session
+    # 1️⃣ Load tracks safely inside this BG task
     with get_db_session() as db:
         q = (
             select(Track, Artist, TrackRanking, Decade, Genre)
@@ -95,9 +95,7 @@ async def _run_play_sequence_decade_genre(
         cancel_current_sequence()
         return
 
-    # Extract simplified list
-    # rows = [(track, artist, rankingObj, decadeObj, genreObj)]
-    # sort based on mode
+    # sort / random
     if mode == "count_up":
         rows.sort(key=lambda r: r[2].ranking)
     elif mode == "count_down":
@@ -105,24 +103,23 @@ async def _run_play_sequence_decade_genre(
     elif mode == "random":
         random.shuffle(rows)
 
-    # update global flags
+    # update mode
     _flags.mode = "decade_genre"
     _flags.context = {"decade": decade, "genre": genre}
 
-    # ───────────────────────────────────────
-    # 2️⃣ RADIO PLAYBACK LOOP
-    # ───────────────────────────────────────
+    # 2️⃣ Main playback loop
     for track, artist, tr_rank, decade_obj, genre_obj in rows:
         rank = tr_rank.ranking
 
+        # cancel check
         if _flags.cancel_requested:
-            logger.info("🛑 Cancel flag detected — stopping sequence now.")
+            logger.info("🛑 Cancel requested — stopping sequence.")
             break
 
         logger.info("──────────────────────────────────────")
         logger.info(f"▶ Rank #{rank:02d}: {track.track_name} — {artist.artist_name}")
 
-        # update play flags for UI + TTS services
+        # update flags for UI
         _update_flags(
             phase="prelude",
             lang=tts_language,
@@ -133,9 +130,7 @@ async def _run_play_sequence_decade_genre(
         )
         await _respect_user_controls()
 
-        # ───────────────────────────────
-        # Narration
-        # ───────────────────────────────
+        # ─────────────── Narration phase ────────────────
         intro_text, detail_text, artist_text = log_header_and_texts(
             lang=tts_language,
             track=track,
@@ -169,39 +164,26 @@ async def _run_play_sequence_decade_genre(
         )
 
         # ───────────────────────────────
-        # Track playback
+        # Track playback (Unified handler)
         # ───────────────────────────────
-        if play_track and track.spotify_track_id:
-            _update_flags(
-                phase="track",
+        if play_track:
+            skipped = await play_track_with_skip(
+                track,
                 lang=tts_language,
                 mode="decade_genre",
                 rank=rank,
                 track_name=track.track_name,
                 artist_name=artist.artist_name,
             )
-            await _respect_user_controls()
+            # skipped=True/False is logged by helper
 
-            logger.info(f"🎵 Playing {track.track_name} — rank {rank}")
-            play_spotify_track(track.spotify_track_id)
-
-            play_secs = compute_play_seconds(track)
-            skipped = await sleep_with_skip(skip_event, play_secs)
-
-            if skipped:
-                logger.info("⏭️ Skip pressed — moving on.")
-            else:
-                logger.info("✅ Track finished normally.")
 
         await _respect_user_controls()
         await asyncio.sleep(0.5)
 
-    # WRAP UP
+    # wrap-up
     cancel_current_sequence()
     logger.info("✅ Sequence finished cleanly.")
-    return
-    # end internal loop
-
 
 
 # ─────────────────────────────────────────────
@@ -224,12 +206,12 @@ async def play_sequence_decade_genre(
     text_artist_description: bool = Query(False),
 ):
     """
-    Starts NEW playback sequence.
-    Automatically cancels any existing one.
+    Launches a new background playback sequence.
+    Automatically cancels existing one.
     """
 
     logger.info(
-        f"▶ Request: {decade}/{genre} {start_rank}-{end_rank} mode={mode}, tts={tts_language}"
+        f"▶ Launch request: {decade}/{genre} {start_rank}-{end_rank} mode={mode}, lang={tts_language}"
     )
 
     coro = _run_play_sequence_decade_genre(
@@ -260,7 +242,7 @@ async def play_sequence_decade_genre(
 
 
 # ─────────────────────────────────────────────
-# PUBLIC ENDPOINT: GET TRACKS (Preview)
+# PUBLIC ENDPOINT: GET SEQUENCE METADATA
 # ─────────────────────────────────────────────
 @router.get("/get-sequence")
 async def get_sequence_decade_genre(
@@ -268,11 +250,11 @@ async def get_sequence_decade_genre(
     genre: str = Query(...),
     start_rank: int = Query(1),
     end_rank: int = Query(40),
-    db: Session = Depends(get_db),
+    db = Depends(get_db),
 ):
     """
     Returns track metadata only.
-    Used by Svelte to preview tracks.
+    Used by frontend to preview tracks.
     """
 
     q = (

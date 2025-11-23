@@ -4,8 +4,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import contextlib
-
 from typing import List, Tuple, Optional
+
 from sqlmodel import Session as SQLSession
 
 from backend.database import engine
@@ -26,6 +26,9 @@ from backend.state import skip_event
 from backend.routers.playback_control import _flags
 
 logger = logging.getLogger(__name__)
+
+# ✅ Prevent narration overlaps across intros/details/artists
+_narration_lock = asyncio.Lock()
 
 
 # ─────────────────────────────────────────────
@@ -68,11 +71,9 @@ async def _respect_user_controls():
     - stop: cancels playback
     - cancel_requested: cancels playback (new sequence started)
     """
-    # pause loop
     while getattr(_flags, "is_paused", False):
         await asyncio.sleep(0.25)
 
-    # cancel / stop
     if getattr(_flags, "cancel_requested", False):
         logger.info("🛑 Playback cancelled by new sequence.")
         raise asyncio.CancelledError("Playback cancelled")
@@ -80,6 +81,53 @@ async def _respect_user_controls():
     if getattr(_flags, "stopped", False):
         logger.info("🛑 Playback stopped by user.")
         raise asyncio.CancelledError("Playback stopped")
+
+
+# ─────────────────────────────────────────────
+# Helpers for clean narration
+# ─────────────────────────────────────────────
+async def _fade_out_spotify_before_voice(phase: str):
+    """
+    If Spotify is currently playing (bed or track), fade it out
+    before starting voice narration.
+    """
+    try:
+        logger.debug("🔉 Pre-narration fade-out (%s)...", phase)
+        await stop_spotify_playback(fade_out_seconds=0.8)
+    except Exception:
+        # non-fatal
+        pass
+
+
+async def _run_voice_clip_with_skip(kind: str, bucket: str, key: str) -> bool:
+    """
+    Run safe_play in a task so we can honor skip between polls.
+    Returns True if skip interrupted playback, else False.
+    """
+    task = asyncio.create_task(safe_play(kind, bucket, key))
+
+    try:
+        while not task.done():
+            await _respect_user_controls()
+
+            if skip_event.is_set():
+                skip_event.clear()
+                logger.info("⏭️ Skip detected during %s narration; cancelling clip.", kind)
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+                return True
+
+            await asyncio.sleep(0.1)
+
+        # finished normally
+        return False
+
+    except asyncio.CancelledError:
+        task.cancel()
+        with contextlib.suppress(Exception):
+            await task
+        raise
 
 
 # ─────────────────────────────────────────────
@@ -110,7 +158,6 @@ async def play_intro_then_bed(
         )
         intro_task = asyncio.create_task(safe_play(intro_label, bucket, key))
 
-        # Fade in bed under narration
         if bed_track_id:
             await asyncio.sleep(delay_s)
             await _respect_user_controls()
@@ -118,12 +165,10 @@ async def play_intro_then_bed(
             logger.info("🎧 Fading in bed track...")
             play_spotify_track(bed_track_id)
 
-        # Wait for intro to finish, but remain cancel-aware
         while not intro_task.done():
             await _respect_user_controls()
             await asyncio.sleep(0.1)
 
-        # Intro ended normally → fade out bed
         if bed_track_id:
             logger.info("🔉 Fading out bed track...")
             try:
@@ -133,13 +178,11 @@ async def play_intro_then_bed(
 
     except asyncio.CancelledError:
         logger.info("⏹ Intro/bed aborted by stop/cancel.")
-        # cancel intro mp3 if still running
         if intro_task and not intro_task.done():
             intro_task.cancel()
             with contextlib.suppress(Exception):
                 await intro_task
 
-        # fade out bed immediately
         if bed_track_id:
             try:
                 await stop_spotify_playback(fade_out_seconds=fade_out_s)
@@ -226,8 +269,6 @@ def log_header_and_texts(
     intro_text_loc, detail_text_loc = None, None
     if tr_rows:
         first_rk = tr_rows[0][0]
-        # NOTE: This opens a short-lived session only for localization lookup.
-        # With NullPool this is safe and closes immediately.
         with SQLSession(engine) as s_loc:
             intro_text_loc, detail_text_loc = get_localized_texts(
                 s_loc, lang, first_rk, track
@@ -293,7 +334,7 @@ def narration_keys_for(*, lang: str, track, artist):
 
 
 # ─────────────────────────────────────────────
-# Narration playback
+# Narration playback (PATCHED)
 # ─────────────────────────────────────────────
 async def play_narrations(
     *,
@@ -311,112 +352,156 @@ async def play_narrations(
     track_name: Optional[str] = None,
     artist_name: Optional[str] = None,
 ):
-    """Play narration audio segments (intro, detail, artist)."""
-    try:
-        # INTRO(S)
-        if play_intro and intro_jobs:
-            _update_flags(
-                phase="intro",
-                lang=lang,
-                mode=mode,
-                rank=rank,
-                track_name=track_name,
-                artist_name=artist_name,
-            )
+    """
+    Play narration audio segments (intro, detail, artist).
+    PATCH:
+      - fades out Spotify before each voice segment
+      - prevents overlap with a global narration lock
+      - honors skip between segments (bails early)
+    """
+    async with _narration_lock:
+        try:
             await _respect_user_controls()
 
-            for bkt, key, *_ in intro_jobs:
+            # If skip is already pressed, clear it and skip narration entirely.
+            if skip_event.is_set():
+                skip_event.clear()
+                logger.info("⏭️ Skip already set — skipping narration phase.")
+                return
+
+            # INTRO(S)
+            if play_intro and intro_jobs:
+                _update_flags(
+                    phase="intro",
+                    lang=lang,
+                    mode=mode,
+                    rank=rank,
+                    track_name=track_name,
+                    artist_name=artist_name,
+                )
                 await _respect_user_controls()
-                logger.info(
-                    "🎙️ Playing intro narration with bed fade-in/out: %s", key
+                await _fade_out_spotify_before_voice("intro")
+
+                for bkt, key, *_ in intro_jobs:
+                    if skip_event.is_set():
+                        skip_event.clear()
+                        logger.info("⏭️ Skip hit — stopping remaining intros.")
+                        return
+
+                    await _respect_user_controls()
+                    logger.info("🎙️ Playing intro narration with bed: %s", key)
+                    await play_intro_then_bed(
+                        intro_label="Intro",
+                        bucket=bkt,
+                        key=key,
+                    )
+
+            # DETAIL
+            if play_detail and detail_bucket and detail_key:
+                if skip_event.is_set():
+                    skip_event.clear()
+                    logger.info("⏭️ Skip hit — skipping detail narration.")
+                    return
+
+                _update_flags(
+                    phase="detail",
+                    lang=lang,
+                    mode=mode,
+                    rank=rank,
+                    track_name=track_name,
+                    artist_name=artist_name,
                 )
-                await play_intro_then_bed(
-                    intro_label="Intro",
-                    bucket=bkt,
-                    key=key,
+                await _respect_user_controls()
+                await _fade_out_spotify_before_voice("detail")
+
+                logger.info("🎙️ Playing detail narration: %s", detail_key)
+                skipped = await _run_voice_clip_with_skip("Detail", detail_bucket, detail_key)
+                if skipped:
+                    return
+
+            # ARTIST DESCRIPTION
+            if play_artist and artist_bucket and artist_key:
+                if skip_event.is_set():
+                    skip_event.clear()
+                    logger.info("⏭️ Skip hit — skipping artist narration.")
+                    return
+
+                _update_flags(
+                    phase="artist",
+                    lang=lang,
+                    mode=mode,
+                    rank=rank,
+                    track_name=track_name,
+                    artist_name=artist_name,
                 )
+                await _respect_user_controls()
+                await _fade_out_spotify_before_voice("artist")
 
-        # DETAIL
-        if play_detail and detail_bucket and detail_key:
-            _update_flags(
-                phase="detail",
-                lang=lang,
-                mode=mode,
-                rank=rank,
-                track_name=track_name,
-                artist_name=artist_name,
-            )
-            await _respect_user_controls()
+                logger.info("🎙️ Playing artist narration: %s", artist_key)
+                skipped = await _run_voice_clip_with_skip("Artist", artist_bucket, artist_key)
+                if skipped:
+                    return
 
-            logger.info("🎙️ Playing detail narration: %s", detail_key)
-            await safe_play("Detail", detail_bucket, detail_key)
-
-        # ARTIST DESCRIPTION
-        if play_artist and artist_bucket and artist_key:
-            _update_flags(
-                phase="artist",
-                lang=lang,
-                mode=mode,
-                rank=rank,
-                track_name=track_name,
-                artist_name=artist_name,
-            )
-            await _respect_user_controls()
-
-            logger.info("🎙️ Playing artist narration: %s", artist_key)
-            await safe_play("Artist", artist_bucket, artist_key)
-
-    except asyncio.CancelledError:
-        logger.info("⏹ Narration aborted by stop/cancel.")
-        raise
-    except Exception as e:
-        logger.warning("⚠️ play_narrations error: %s", e)
+        except asyncio.CancelledError:
+            logger.info("⏹ Narration aborted by stop/cancel.")
+            raise
+        except Exception as e:
+            logger.warning("⚠️ play_narrations error: %s", e)
 
 
 # ─────────────────────────────────────────────
-# Track playback
+# Track playback (PATCHED & unified signature)
 # ─────────────────────────────────────────────
 async def play_track_with_skip(
-    *,
     track,
-    full_flag: bool,
+    *,
     lang: str = "en",
     mode: str = "decade_genre",
+    rank: Optional[int] = None,
+    track_name: Optional[str] = None,
+    artist_name: Optional[str] = None,
+    full_flag: bool = True,
 ) -> bool:
     """
     Play Spotify track and wait cooperatively for skip.
     Returns True if skipped/cancelled, False if finished normally.
+
+    Unified signature:
+      - New callers: play_track_with_skip(track, lang=..., mode=..., rank=...)
+      - Old callers: play_track_with_skip(track=..., full_flag=True)
     """
     try:
         _update_flags(
             phase="track",
             lang=lang,
             mode=mode,
-            rank=getattr(track, "ranking", None),
-            track_name=getattr(track, "track_name", None),
-            artist_name=getattr(track, "artist_name", None),
+            rank=rank if rank is not None else getattr(track, "ranking", None),
+            track_name=track_name or getattr(track, "track_name", None),
+            artist_name=artist_name or getattr(track, "artist_name", None),
         )
         await _respect_user_controls()
 
         play_secs = compute_play_seconds(track)
         logger.info(
             "🎵 Now playing track: %s (%s) for %ss (full=%s)",
-            track.track_name,
-            track.spotify_track_id,
+            getattr(track, "track_name", "Unknown Track"),
+            getattr(track, "spotify_track_id", None),
             play_secs,
             full_flag,
         )
 
-        play_spotify_track(track.spotify_track_id)
+        if getattr(track, "spotify_track_id", None):
+            play_spotify_track(track.spotify_track_id)
+        else:
+            logger.warning("⚠️ No spotify_track_id — skipping track playback.")
+            return True
 
         skipped = await sleep_with_skip(skip_event, play_secs)
 
         if skipped or getattr(_flags, "cancel_requested", False):
             logger.info("⏭️ track skipped/cancelled → fading out Spotify.")
-            try:
+            with contextlib.suppress(Exception):
                 await stop_spotify_playback(fade_out_seconds=1.5)
-            except Exception:
-                pass
             return True
 
         logger.info("✅ Track finished normally.")
@@ -424,8 +509,6 @@ async def play_track_with_skip(
 
     except asyncio.CancelledError:
         logger.info("🛑 Track playback cancelled.")
-        try:
+        with contextlib.suppress(Exception):
             await stop_spotify_playback(fade_out_seconds=1.5)
-        except Exception:
-            pass
         return True
