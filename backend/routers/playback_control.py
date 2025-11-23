@@ -1,26 +1,33 @@
 # backend/routers/playback_control.py
 from __future__ import annotations
 
+import asyncio
 import time
+import logging
 from dataclasses import dataclass, asdict
 from fastapi import APIRouter
 from typing import Literal, Optional
 
-# We already have skip_event in your codebase; import it if available
+logger = logging.getLogger(__name__)
+
+# Try loading skip_event if available
 try:
     from backend.state import skip_event  # type: ignore
 except Exception:
-    skip_event = None  # graceful fallback if not present
+    skip_event = None
 
-router = APIRouter(prefix="/playback")
+router = APIRouter(prefix="/supabase", tags=["Supabase: Playback Control"])
 
-# Minimal in-memory controller; you can later wire these flags
-# into your playback loops (sleep/policy) to honor pause/stop.
+# ─────────────────────────────────────────────
+# Global playback flags
+# ─────────────────────────────────────────────
 @dataclass
 class _PlayFlags:
     is_playing: bool = False
     is_paused: bool = False
     stopped: bool = True
+    cancel_requested: bool = False
+
     language: Literal["en", "es", "ptbr", "pt-BR"] = "en"
     mode: Optional[str] = None          # "decade_genre" or "collection"
     context: Optional[dict] = None      # {decade,genre} or {collection_slug}
@@ -32,11 +39,65 @@ _flags = _PlayFlags()
 def _touch():
     _flags.last_action_ts = time.time()
 
-@router.get("/status", tags=["Playback"], summary="Get current playback status")
+
+# ─────────────────────────────────────────────
+# GLOBAL ASYNC TASK REFERENCE
+# ─────────────────────────────────────────────
+current_task: asyncio.Task | None = None
+
+
+# ─────────────────────────────────────────────
+# CANCEL ANY EXISTING TASK
+# ─────────────────────────────────────────────
+def cancel_current_sequence():
+    """
+    Cancels an in-flight playback coroutine (intros, details, track, bed, etc.).
+    """
+    global current_task
+
+    if current_task:
+        logger.warning("🛑 Cancelling existing playback sequence…")
+        _flags.cancel_requested = True
+        try:
+            current_task.cancel()
+        except Exception:
+            pass
+        current_task = None
+
+    _flags.is_playing = False
+    _flags.stopped = True
+    _flags.is_paused = False
+    _flags.cancel_requested = False
+
+
+# ─────────────────────────────────────────────
+# START NEW BACKGROUND TASK SAFELY
+# ─────────────────────────────────────────────
+def start_new_sequence(coro):
+    """
+    Cancels any running playback task, then schedules a new one.
+    """
+    cancel_current_sequence()
+
+    global current_task
+    _flags.stopped = False
+    _flags.is_playing = True
+    _flags.cancel_requested = False
+
+    logger.info("🎬 Launching new playback background task…")
+    current_task = asyncio.create_task(coro)
+    return current_task
+
+
+# ─────────────────────────────────────────────
+# PUBLIC API ROUTES
+# ─────────────────────────────────────────────
+@router.get("/status", summary="Get current playback status")
 def status():
     return asdict(_flags)
 
-@router.post("/start", tags=["Playback"], summary="Mark playback as started")
+
+@router.post("/start", summary="Mark playback as started")
 def start(
     language: Literal["en", "es", "ptbr", "pt-BR"] = "en",
     mode: Optional[str] = None,
@@ -51,35 +112,37 @@ def start(
     _touch()
     return {"ok": True, "status": asdict(_flags)}
 
-@router.post("/pause", tags=["Playback"], summary="Pause playback")
+
+@router.post("/pause", summary="Pause playback")
 def pause():
     _flags.is_paused = True
     _flags.is_playing = False
     _touch()
     return {"ok": True, "status": asdict(_flags)}
 
-@router.post("/resume", tags=["Playback"], summary="Resume playback")
+
+@router.post("/resume", summary="Resume playback")
 def resume():
     _flags.is_paused = False
     _flags.is_playing = True
     _touch()
     return {"ok": True, "status": asdict(_flags)}
 
-@router.post("/stop", tags=["Playback"], summary="Stop playback")
+
+@router.post("/stop", summary="Stop playback")
 def stop():
-    _flags.is_paused = False
-    _flags.is_playing = False
-    _flags.stopped = True
+    cancel_current_sequence()
     _touch()
     return {"ok": True, "status": asdict(_flags)}
 
-@router.post("/skip", tags=["Playback"], summary="Skip to next track")
+
+@router.post("/skip", summary="Skip to next track")
 def skip():
-    # Signal existing backend.sleep_with_skip() loops if available
     if skip_event is not None:
         try:
             skip_event.set()
         except Exception:
             pass
+
     _touch()
     return {"ok": True, "message": "Skip signaled", "status": asdict(_flags)}

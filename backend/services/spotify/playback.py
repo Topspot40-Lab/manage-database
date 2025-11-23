@@ -1,94 +1,151 @@
+# backend/services/spotify/playback.py
+from __future__ import annotations
+
 import asyncio
 import logging
+from typing import Optional
+
 from spotipy.exceptions import SpotifyException
 from backend.services.spotify.spotify_auth_user import get_spotify_user_client
 
 logger = logging.getLogger(__name__)
 
+# ─────────────────────────────────────────────
+# GLOBAL STATE
+# ─────────────────────────────────────────────
+# Ensures Spotify commands never overlap
+_spotify_lock = asyncio.Lock()
+
+# Global kill-switch used by “skip” and “stop”
+stop_requested = False
+
+
+# ─────────────────────────────────────────────
+# INTERNAL: fetch user client safely
+# ─────────────────────────────────────────────
+def _client():
+    try:
+        return get_spotify_user_client()
+    except Exception as e:
+        logger.error("❌ Unable to obtain Spotify user client: %s", e)
+        return None
+
+
+# ─────────────────────────────────────────────
+# PUBLIC: Start Track Playback
+# ─────────────────────────────────────────────
 def play_spotify_track(track_id: str) -> bool:
     """
-    Start playback of a single Spotify track on the active device.
-    Returns True if the start_playback call was issued successfully, False otherwise.
+    Start Spotify playback immediately.
+    Does NOT block — works like fire-and-forget.
+    Reset kill-switch before starting.
     """
-    try:
-        sp = get_spotify_user_client()
+    global stop_requested
+    stop_requested = False  # reset skip/stop flag
 
-        # 1) Check active devices
+    if not track_id:
+        logger.warning("🚫 No track_id passed to play_spotify_track")
+        return False
+
+    sp = _client()
+    if not sp:
+        return False
+
+    try:
         devices = sp.devices().get("devices", [])
         if not devices:
-            logger.error("❌ No active Spotify devices found. Open Spotify on a device first.")
+            logger.error("❌ No active Spotify device. Open Spotify somewhere!")
             return False
 
-        logger.debug("🎧 Active Spotify devices:")
-        for d in devices:
-            logger.debug(f"  • {d['name']} — type: {d['type']} — active: {d['is_active']} — id: {d['id']}")
+        active = next((d for d in devices if d.get("is_active")), devices[0])
+        device_id = active.get("id")
 
-        # Prefer an active device if present
-        active_device = next((d for d in devices if d.get("is_active")), None)
-        if not active_device:
-            logger.warning("⚠️ No device currently marked as active — Spotify may not play until a device is active.")
-        else:
-            logger.debug(f"▶ Using device: {active_device['name']} ({active_device['id']})")
-
-        # 2) Start playback
         uri = f"spotify:track:{track_id}"
-        sp.start_playback(uris=[uri])
-        logger.debug(f"▶️ Started playback for track: {track_id}")
+        sp.start_playback(device_id=device_id, uris=[uri])
+
+        logger.info(f"🎵 Spotify now playing: {track_id} on device {active['name']}")
         return True
 
     except SpotifyException as e:
-        logger.error(f"⚠️ Spotify API error: {e.msg}")
+        logger.error("⚠️ Spotify API error: %s", e.msg)
         return False
     except Exception as e:
-        logger.error(f"⚠️ Unexpected playback error for track {track_id}: {e}")
+        logger.error("⚠️ Unexpected error in play_spotify_track: %s", e)
         return False
 
 
 # ─────────────────────────────────────────────
-# ✨ Bed Fade-Out Helper
+# BLOCKING PLAYBACK LOOP (with skip)
 # ─────────────────────────────────────────────
-async def stop_spotify_playback(fade_out_seconds: float = 1.5, steps: int = 10) -> None:
+async def play_spotify_with_skip(track_id: str, play_secs: float) -> bool:
     """
-    Gracefully fade the current Spotify playback volume to zero and pause.
-    Works with the same authenticated user client.
+    Play track for `play_secs` seconds OR until skip/stop is triggered.
+
+    Returns:
+        True  => skipped
+        False => played full duration
     """
+    global stop_requested
+    stop_requested = False  # reset for this track
+
+    if not track_id:
+        logger.warning("🚫 Missing track_id in play_spotify_with_skip")
+        return False
+
+    sp = _client()
+    if not sp:
+        return False
+
+    async with _spotify_lock:
+        # Start playback
+        ok = play_spotify_track(track_id)
+        if not ok:
+            return False
+
+        # Cooperative wait
+        elapsed = 0
+        interval = 0.25
+
+        while elapsed < play_secs:
+            if stop_requested:
+                logger.info("⏭️ Skip/stop triggered — ending track early.")
+                try:
+                    sp.pause_playback()
+                except Exception:
+                    pass
+                return True
+
+            await asyncio.sleep(interval)
+            elapsed += interval
+
+        logger.info("✅ Track playback finished normally.")
+        return False
+
+
+# ─────────────────────────────────────────────
+# PUBLIC: Stop Playback Immediately
+# ─────────────────────────────────────────────
+def stop_spotify_playback():
+    """
+    Stop Spotify immediately.
+    Used by:
+      • skip
+      • stop
+      • switching tracks
+      • ending bed track
+    """
+    global stop_requested
+    stop_requested = True
+
+    sp = _client()
+    if not sp:
+        return
+
     try:
-        sp = get_spotify_user_client()
         devices = sp.devices().get("devices", [])
-        if not devices:
-            logger.debug("No Spotify devices found — nothing to fade.")
-            return
-
-        # Pick active device or first one
-        device = next((d for d in devices if d.get("is_active")), devices[0])
-        device_id = device.get("id")
-        logger.debug(f"🔉 Preparing to fade out on device: {device.get('name')} ({device_id})")
-
-        # Get current volume
-        pb = sp.current_playback()
-        current_vol = int(pb.get("device", {}).get("volume_percent", 100)) if pb else 100
-
-        # Fade down in steps
-        steps = max(1, steps)
-        delay = fade_out_seconds / steps
-        decrement = max(1, current_vol // steps)
-
-        vol = current_vol
-        while vol > 0:
-            vol = max(0, vol - decrement)
-            try:
-                sp.volume(vol, device_id=device_id)
-            except Exception as e:
-                logger.debug(f"Volume set failed at {vol}%: {e}")
-                break
-            await asyncio.sleep(max(0.05, delay))
-
-        # Pause playback once silent
-        try:
-            sp.pause_playback(device_id=device_id)
-            logger.info("⏸️ Bed track faded out and paused.")
-        except Exception as e:
-            logger.debug(f"Pause failed: {e}")
-
+        if devices:
+            active = next((d for d in devices if d.get("is_active")), devices[0])
+            sp.pause_playback(device_id=active.get("id"))
+            logger.info("🛑 Spotify playback stopped.")
     except Exception as e:
-        logger.warning(f"⚠️ stop_spotify_playback error: {e}")
+        logger.warning("⚠️ stop_spotify_playback error: %s", e)

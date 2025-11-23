@@ -1,15 +1,21 @@
 # backend/services/radio_runtime.py
 from __future__ import annotations
+
 import asyncio
 import logging
+import contextlib
+
 from typing import List, Tuple, Optional
 from sqlmodel import Session as SQLSession
 
 from backend.database import engine
 from backend.services.localization import get_localized_texts
 from backend.services.playback_helpers import (
-    bucket_for, key_for,
-    build_intro_filename, build_detail_filename, build_artist_filename,
+    bucket_for,
+    key_for,
+    build_intro_filename,
+    build_detail_filename,
+    build_artist_filename,
     safe_play,
 )
 from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
@@ -21,13 +27,19 @@ from backend.routers.playback_control import _flags
 
 logger = logging.getLogger(__name__)
 
+
 # ─────────────────────────────────────────────
 # Playback control integration
 # ─────────────────────────────────────────────
-def _update_flags(*, phase: str, lang: str | None = None,
-                  mode: str | None = None, rank: Optional[int] = None,
-                  track_name: Optional[str] = None,
-                  artist_name: Optional[str] = None):
+def _update_flags(
+    *,
+    phase: str,
+    lang: str | None = None,
+    mode: str | None = None,
+    rank: Optional[int] = None,
+    track_name: Optional[str] = None,
+    artist_name: Optional[str] = None,
+):
     """Keep playback_control._flags in sync with the current playback phase."""
     try:
         _flags.is_playing = True
@@ -50,58 +62,105 @@ def _update_flags(*, phase: str, lang: str | None = None,
 
 
 async def _respect_user_controls():
-    """Pause/stop cooperative checkpoint."""
+    """
+    Pause/stop/cancel cooperative checkpoint.
+    - pause: waits here until resume
+    - stop: cancels playback
+    - cancel_requested: cancels playback (new sequence started)
+    """
+    # pause loop
     while getattr(_flags, "is_paused", False):
         await asyncio.sleep(0.25)
+
+    # cancel / stop
+    if getattr(_flags, "cancel_requested", False):
+        logger.info("🛑 Playback cancelled by new sequence.")
+        raise asyncio.CancelledError("Playback cancelled")
+
     if getattr(_flags, "stopped", False):
         logger.info("🛑 Playback stopped by user.")
         raise asyncio.CancelledError("Playback stopped")
 
+
 # ─────────────────────────────────────────────
 # ✨ Intro-first with bed fade-in/out
 # ─────────────────────────────────────────────
-async def play_intro_then_bed(*, intro_label: str, bucket: str, key: str,
-                              bed_track_id: str = SPOTIFY_BED_TRACK_ID,
-                              delay_s: float = 0.25, fade_in_s: float = 2.0,
-                              bed_duration_s: float = 10.0):
+async def play_intro_then_bed(
+    *,
+    intro_label: str,
+    bucket: str,
+    key: str,
+    bed_track_id: str = SPOTIFY_BED_TRACK_ID,
+    delay_s: float = 0.25,
+    fade_out_s: float = 2.0,
+):
     """
-    Start the intro narration immediately, fade in the bed after a short delay,
-    and automatically fade it out after narration finishes.
+    Start intro narration immediately, fade in bed after a short delay,
+    and fade bed out after narration finishes OR on cancel/stop.
     """
+    intro_task: asyncio.Task[None] | None = None
+
     try:
-        logger.info("🎙️ Starting intro narration (%s), bed fades in after %.2fs", key, delay_s)
+        await _respect_user_controls()
+
+        logger.info(
+            "🎙️ Starting intro narration (%s), bed fades in after %.2fs",
+            key,
+            delay_s,
+        )
         intro_task = asyncio.create_task(safe_play(intro_label, bucket, key))
 
-        # fade in bed under narration
+        # Fade in bed under narration
         if bed_track_id:
             await asyncio.sleep(delay_s)
+            await _respect_user_controls()
+
             logger.info("🎧 Fading in bed track...")
-            # play_spotify_track is synchronous, so just run it directly
             play_spotify_track(bed_track_id)
-            bed_task = None
-        else:
-            bed_task = None
 
-        await intro_task  # wait for voice intro to finish
+        # Wait for intro to finish, but remain cancel-aware
+        while not intro_task.done():
+            await _respect_user_controls()
+            await asyncio.sleep(0.1)
 
-        # let the bed linger a bit before fading out
-        if bed_task:
-            await asyncio.sleep(1.0)
+        # Intro ended normally → fade out bed
+        if bed_track_id:
             logger.info("🔉 Fading out bed track...")
             try:
-                # stop_spotify_playback is a simple fade helper if implemented
-                await stop_spotify_playback(fade_out_seconds=fade_in_s)
+                await stop_spotify_playback(fade_out_seconds=fade_out_s)
             except Exception:
-                logger.debug("stop_spotify_playback not available; bed will stop naturally.")
+                logger.debug("stop_spotify_playback fade helper unavailable.")
+
+    except asyncio.CancelledError:
+        logger.info("⏹ Intro/bed aborted by stop/cancel.")
+        # cancel intro mp3 if still running
+        if intro_task and not intro_task.done():
+            intro_task.cancel()
+            with contextlib.suppress(Exception):
+                await intro_task
+
+        # fade out bed immediately
+        if bed_track_id:
+            try:
+                await stop_spotify_playback(fade_out_seconds=fade_out_s)
+            except Exception:
+                pass
+        raise
 
     except Exception as e:
         logger.warning("⚠️ play_intro_then_bed error: %s", e)
+
 
 # ─────────────────────────────────────────────
 # Collection logging
 # ─────────────────────────────────────────────
 def log_collection_header_and_texts(
-    *, lang: str, collection, ctr, track, artist,
+    *,
+    lang: str,
+    collection,
+    ctr,
+    track,
+    artist,
     intro: str | None = None,
     detail_text: str | None = None,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
@@ -145,11 +204,18 @@ def collection_intro_jobs(*, lang: str, collection_slug: str, rank: int):
 # ─────────────────────────────────────────────
 # Decade/Genre header logging
 # ─────────────────────────────────────────────
-def log_header_and_texts(*, lang: str, track, artist, tr_rows) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def log_header_and_texts(
+    *,
+    lang: str,
+    track,
+    artist,
+    tr_rows,
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """Log header + localized texts and return (intro_text, detail_text, artist_text)."""
     header_text = render_header(
         track_name=track.track_name,
-        artist_name=getattr(track, "artist_name", None) or getattr(artist, "artist_name", "Unknown Artist"),
+        artist_name=getattr(track, "artist_name", None)
+        or getattr(artist, "artist_name", "Unknown Artist"),
         track_id=track.spotify_track_id,
         lang=lang,
         tr_rows=tr_rows or [],
@@ -160,8 +226,12 @@ def log_header_and_texts(*, lang: str, track, artist, tr_rows) -> tuple[Optional
     intro_text_loc, detail_text_loc = None, None
     if tr_rows:
         first_rk = tr_rows[0][0]
+        # NOTE: This opens a short-lived session only for localization lookup.
+        # With NullPool this is safe and closes immediately.
         with SQLSession(engine) as s_loc:
-            intro_text_loc, detail_text_loc = get_localized_texts(s_loc, lang, first_rk, track)
+            intro_text_loc, detail_text_loc = get_localized_texts(
+                s_loc, lang, first_rk, track
+            )
 
     logger.info(
         f"[intro:{lang} {'OK' if intro_text_loc else 'FALLBACK'}] "
@@ -171,7 +241,11 @@ def log_header_and_texts(*, lang: str, track, artist, tr_rows) -> tuple[Optional
     if intro_text_loc:
         logger.info(box("INTRO", clean_text(intro_text_loc), width=BOX_WIDTH))
 
-    detail_text = clean_text(detail_text_loc) if detail_text_loc else clean_text(getattr(track, "detail", None))
+    detail_text = (
+        clean_text(detail_text_loc)
+        if detail_text_loc
+        else clean_text(getattr(track, "detail", None))
+    )
     if detail_text:
         logger.info(box("DETAIL", detail_text, width=BOX_WIDTH))
 
@@ -192,7 +266,15 @@ def build_intro_jobs(*, lang: str, tr_rows) -> List[Tuple[str, str, str, str, in
         return jobs
     for tr, decade_name, genre_name in tr_rows:
         intro_filename = build_intro_filename(decade_name, genre_name, tr.ranking)
-        jobs.append((bucket_for(lang, "intro"), key_for("intro", intro_filename), decade_name, genre_name, tr.ranking))
+        jobs.append(
+            (
+                bucket_for(lang, "intro"),
+                key_for("intro", intro_filename),
+                decade_name,
+                genre_name,
+                tr.ranking,
+            )
+        )
     return jobs
 
 
@@ -213,37 +295,80 @@ def narration_keys_for(*, lang: str, track, artist):
 # ─────────────────────────────────────────────
 # Narration playback
 # ─────────────────────────────────────────────
-async def play_narrations(*, play_intro: bool, play_detail: bool, play_artist: bool,
-                          intro_jobs, detail_bucket, detail_key, artist_bucket, artist_key,
-                          lang: str = "en", mode: str = "decade_genre",
-                          rank: Optional[int] = None, track_name: Optional[str] = None,
-                          artist_name: Optional[str] = None):
+async def play_narrations(
+    *,
+    play_intro: bool,
+    play_detail: bool,
+    play_artist: bool,
+    intro_jobs,
+    detail_bucket,
+    detail_key,
+    artist_bucket,
+    artist_key,
+    lang: str = "en",
+    mode: str = "decade_genre",
+    rank: Optional[int] = None,
+    track_name: Optional[str] = None,
+    artist_name: Optional[str] = None,
+):
     """Play narration audio segments (intro, detail, artist)."""
     try:
+        # INTRO(S)
         if play_intro and intro_jobs:
-            _update_flags(phase="intro", lang=lang, mode=mode, rank=rank,
-                          track_name=track_name, artist_name=artist_name)
+            _update_flags(
+                phase="intro",
+                lang=lang,
+                mode=mode,
+                rank=rank,
+                track_name=track_name,
+                artist_name=artist_name,
+            )
             await _respect_user_controls()
-            for bkt, key, *_ in intro_jobs:
-                logger.info(f"🎙️ Playing intro narration with bed fade-in/out: {key}")
-                await play_intro_then_bed(intro_label="Intro", bucket=bkt, key=key)
 
+            for bkt, key, *_ in intro_jobs:
+                await _respect_user_controls()
+                logger.info(
+                    "🎙️ Playing intro narration with bed fade-in/out: %s", key
+                )
+                await play_intro_then_bed(
+                    intro_label="Intro",
+                    bucket=bkt,
+                    key=key,
+                )
+
+        # DETAIL
         if play_detail and detail_bucket and detail_key:
-            _update_flags(phase="detail", lang=lang, mode=mode, rank=rank,
-                          track_name=track_name, artist_name=artist_name)
+            _update_flags(
+                phase="detail",
+                lang=lang,
+                mode=mode,
+                rank=rank,
+                track_name=track_name,
+                artist_name=artist_name,
+            )
             await _respect_user_controls()
-            logger.info(f"🎙️ Playing detail narration: {detail_key}")
+
+            logger.info("🎙️ Playing detail narration: %s", detail_key)
             await safe_play("Detail", detail_bucket, detail_key)
 
+        # ARTIST DESCRIPTION
         if play_artist and artist_bucket and artist_key:
-            _update_flags(phase="artist", lang=lang, mode=mode, rank=rank,
-                          track_name=track_name, artist_name=artist_name)
+            _update_flags(
+                phase="artist",
+                lang=lang,
+                mode=mode,
+                rank=rank,
+                track_name=track_name,
+                artist_name=artist_name,
+            )
             await _respect_user_controls()
-            logger.info(f"🎙️ Playing artist narration: {artist_key}")
+
+            logger.info("🎙️ Playing artist narration: %s", artist_key)
             await safe_play("Artist", artist_bucket, artist_key)
 
     except asyncio.CancelledError:
-        logger.info("⏹ Narration aborted by stop command.")
+        logger.info("⏹ Narration aborted by stop/cancel.")
+        raise
     except Exception as e:
         logger.warning("⚠️ play_narrations error: %s", e)
 
@@ -251,8 +376,17 @@ async def play_narrations(*, play_intro: bool, play_detail: bool, play_artist: b
 # ─────────────────────────────────────────────
 # Track playback
 # ─────────────────────────────────────────────
-async def play_track_with_skip(*, track, full_flag: bool, lang: str = "en", mode: str = "decade_genre") -> bool:
-    """Play Spotify track and wait cooperatively for skip."""
+async def play_track_with_skip(
+    *,
+    track,
+    full_flag: bool,
+    lang: str = "en",
+    mode: str = "decade_genre",
+) -> bool:
+    """
+    Play Spotify track and wait cooperatively for skip.
+    Returns True if skipped/cancelled, False if finished normally.
+    """
     try:
         _update_flags(
             phase="track",
@@ -267,11 +401,31 @@ async def play_track_with_skip(*, track, full_flag: bool, lang: str = "en", mode
         play_secs = compute_play_seconds(track)
         logger.info(
             "🎵 Now playing track: %s (%s) for %ss (full=%s)",
-            track.track_name, track.spotify_track_id, play_secs, full_flag,
+            track.track_name,
+            track.spotify_track_id,
+            play_secs,
+            full_flag,
         )
+
         play_spotify_track(track.spotify_track_id)
-        return await sleep_with_skip(skip_event, play_secs)
+
+        skipped = await sleep_with_skip(skip_event, play_secs)
+
+        if skipped or getattr(_flags, "cancel_requested", False):
+            logger.info("⏭️ track skipped/cancelled → fading out Spotify.")
+            try:
+                await stop_spotify_playback(fade_out_seconds=1.5)
+            except Exception:
+                pass
+            return True
+
+        logger.info("✅ Track finished normally.")
+        return False
 
     except asyncio.CancelledError:
         logger.info("🛑 Track playback cancelled.")
+        try:
+            await stop_spotify_playback(fade_out_seconds=1.5)
+        except Exception:
+            pass
         return True
