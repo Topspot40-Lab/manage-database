@@ -19,6 +19,8 @@ from backend.services.playback_helpers import (
     safe_play,
 )
 from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
+from backend.services.spotify.playback import set_device_volume
+
 from backend.services.play_policy import compute_play_seconds, sleep_with_skip
 from backend.services.radio_render import render_header, box, clean_text, BOX_WIDTH
 from backend.config import SPOTIFY_BED_TRACK_ID
@@ -35,13 +37,13 @@ _narration_lock = asyncio.Lock()
 # Playback control integration
 # ─────────────────────────────────────────────
 def _update_flags(
-    *,
-    phase: str,
-    lang: str | None = None,
-    mode: str | None = None,
-    rank: Optional[int] = None,
-    track_name: Optional[str] = None,
-    artist_name: Optional[str] = None,
+        *,
+        phase: str,
+        lang: str | None = None,
+        mode: str | None = None,
+        rank: Optional[int] = None,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
 ):
     """Keep playback_control._flags in sync with the current playback phase."""
     try:
@@ -134,13 +136,13 @@ async def _run_voice_clip_with_skip(kind: str, bucket: str, key: str) -> bool:
 # ✨ Intro-first with bed fade-in/out
 # ─────────────────────────────────────────────
 async def play_intro_then_bed(
-    *,
-    intro_label: str,
-    bucket: str,
-    key: str,
-    bed_track_id: str = SPOTIFY_BED_TRACK_ID,
-    delay_s: float = 0.25,
-    fade_out_s: float = 2.0,
+        *,
+        intro_label: str,
+        bucket: str,
+        key: str,
+        bed_track_id: str = SPOTIFY_BED_TRACK_ID,
+        delay_s: float = 0.25,
+        fade_out_s: float = 2.0,
 ):
     """
     Start intro narration immediately, fade in bed after a short delay,
@@ -161,6 +163,13 @@ async def play_intro_then_bed(
         if bed_track_id:
             await asyncio.sleep(delay_s)
             await _respect_user_controls()
+
+            # Restore Spotify device volume before fading the bed back in
+            try:
+                await set_device_volume(100)
+                logger.info("🔊 Restored Spotify device volume to 100 before fade-in.")
+            except Exception as e:
+                logger.error(f"❌ Failed to restore device volume: {e}")
 
             logger.info("🎧 Fading in bed track...")
             play_spotify_track(bed_track_id)
@@ -193,19 +202,18 @@ async def play_intro_then_bed(
     except Exception as e:
         logger.warning("⚠️ play_intro_then_bed error: %s", e)
 
-
 # ─────────────────────────────────────────────
 # Collection logging
 # ─────────────────────────────────────────────
 def log_collection_header_and_texts(
-    *,
-    lang: str,
-    collection,
-    ctr,
-    track,
-    artist,
-    intro: str | None = None,
-    detail_text: str | None = None,
+        *,
+        lang: str,
+        collection,
+        ctr,
+        track,
+        artist,
+        intro: str | None = None,
+        detail_text: str | None = None,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """Log collection header and text blocks."""
     header_lines = [
@@ -248,23 +256,23 @@ def collection_intro_jobs(*, lang: str, collection_slug: str, rank: int):
 # Decade/Genre header logging
 # ─────────────────────────────────────────────
 def log_header_and_texts(
-    *,
-    lang: str,
-    track,
-    artist,
-    tr_rows,
+        *,
+        lang: str,
+        track,
+        artist,
+        tr_rows,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """Log header + localized texts and return (intro_text, detail_text, artist_text)."""
     header_text = render_header(
         track_name=track.track_name,
         artist_name=getattr(track, "artist_name", None)
-        or getattr(artist, "artist_name", "Unknown Artist"),
+                    or getattr(artist, "artist_name", "Unknown Artist"),
         track_id=track.spotify_track_id,
         lang=lang,
         tr_rows=tr_rows or [],
     )
 
-    logger.info("\n%s", header_text)
+    logger.debug("\n%s", header_text)
 
     intro_text_loc, detail_text_loc = None, None
     if tr_rows:
@@ -274,13 +282,13 @@ def log_header_and_texts(
                 s_loc, lang, first_rk, track
             )
 
-    logger.info(
+    logger.debug(
         f"[intro:{lang} {'OK' if intro_text_loc else 'FALLBACK'}] "
         f"[detail:{lang} {'OK' if (detail_text_loc and lang == 'pt-BR') else 'FALLBACK/EN'}]"
     )
 
     if intro_text_loc:
-        logger.info(box("INTRO", clean_text(intro_text_loc), width=BOX_WIDTH))
+        logger.debug(box("INTRO", clean_text(intro_text_loc), width=BOX_WIDTH))
 
     detail_text = (
         clean_text(detail_text_loc)
@@ -288,11 +296,11 @@ def log_header_and_texts(
         else clean_text(getattr(track, "detail", None))
     )
     if detail_text:
-        logger.info(box("DETAIL", detail_text, width=BOX_WIDTH))
+        logger.debug(box("DETAIL", detail_text, width=BOX_WIDTH))
 
     artist_text = clean_text(getattr(artist, "artist_description", None))
     if artist_text:
-        logger.info(box("ARTIST", artist_text, width=BOX_WIDTH))
+        logger.debug(box("ARTIST", artist_text, width=BOX_WIDTH))
 
     return intro_text_loc, detail_text, artist_text
 
@@ -337,20 +345,20 @@ def narration_keys_for(*, lang: str, track, artist):
 # Narration playback (PATCHED)
 # ─────────────────────────────────────────────
 async def play_narrations(
-    *,
-    play_intro: bool,
-    play_detail: bool,
-    play_artist: bool,
-    intro_jobs,
-    detail_bucket,
-    detail_key,
-    artist_bucket,
-    artist_key,
-    lang: str = "en",
-    mode: str = "decade_genre",
-    rank: Optional[int] = None,
-    track_name: Optional[str] = None,
-    artist_name: Optional[str] = None,
+        *,
+        play_intro: bool,
+        play_detail: bool,
+        play_artist: bool,
+        intro_jobs,
+        detail_bucket,
+        detail_key,
+        artist_bucket,
+        artist_key,
+        lang: str = "en",
+        mode: str = "decade_genre",
+        rank: Optional[int] = None,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
 ):
     """
     Play narration audio segments (intro, detail, artist).
@@ -389,12 +397,24 @@ async def play_narrations(
                         return
 
                     await _respect_user_controls()
-                    logger.info("🎙️ Playing intro narration with bed: %s", key)
-                    await play_intro_then_bed(
-                        intro_label="Intro",
-                        bucket=bkt,
-                        key=key,
-                    )
+                    logger.info("🎙️ Playing intro narration with reliability patch: %s", key)
+
+                    # Import inside function to avoid circular dependency
+                    from backend.services.playback_helpers import robust_play_intro
+
+                    # Try robust intro playback (3 retries)
+                    played = await robust_play_intro("Intro", bkt, key)
+
+                    # If intro played, bring in the bed track
+                    if played:
+                        await asyncio.sleep(0.35)  # buffer before bed
+                        logger.info("🎧 Fading in bed track...")
+                        play_spotify_track(SPOTIFY_BED_TRACK_ID)
+
+                        # Allow bed to run softly while intro finishes
+                        await asyncio.sleep(0.25)
+                    else:
+                        logger.warning("⚠️ Intro MP3 failed all retries — skipping bed intro.")
 
             # DETAIL
             if play_detail and detail_bucket and detail_key:
@@ -453,14 +473,14 @@ async def play_narrations(
 # Track playback (PATCHED & unified signature)
 # ─────────────────────────────────────────────
 async def play_track_with_skip(
-    track,
-    *,
-    lang: str = "en",
-    mode: str = "decade_genre",
-    rank: Optional[int] = None,
-    track_name: Optional[str] = None,
-    artist_name: Optional[str] = None,
-    full_flag: bool = True,
+        track,
+        *,
+        lang: str = "en",
+        mode: str = "decade_genre",
+        rank: Optional[int] = None,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
+        full_flag: bool = True,
 ) -> bool:
     """
     Play Spotify track and wait cooperatively for skip.

@@ -30,14 +30,19 @@ def _compile_sql(stmt, db: Session) -> str:
         # Placeholders-only SQL as a fallback
         return str(stmt)
 
-
 def get_decade_genre(db: Session, decade: str, genre: str) -> Optional[DecadeGenre]:
+    """
+    Resolve a decade/genre combination using slug matches, not name matches.
+    This guarantees compatibility with URLs like:
+        decade=1950s
+        genre=folk_acoustic
+    """
     stmt = (
         select(DecadeGenre)
         .join(Decade, DecadeGenre.decade_id == Decade.id)
         .join(Genre, DecadeGenre.genre_id == Genre.id)
-        .where(Decade.decade_name == decade)
-        .where(Genre.genre_name == genre)
+        .where(func.lower(Decade.slug) == decade.lower())
+        .where(func.lower(Genre.slug) == genre.lower())
     )
 
     if logger.isEnabledFor(logging.DEBUG):

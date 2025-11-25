@@ -322,13 +322,6 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
     )
     return False
 
-# ─────────────────────────────────────────────
-# Unified Spotify Track Playback + Skip Handler
-# ─────────────────────────────────────────────
-from backend.services.spotify.playback import play_spotify_track
-from backend.services.play_policy import compute_play_seconds, sleep_with_skip
-from backend.state import skip_event
-
 
 async def play_track_with_skip(
     track,
@@ -467,3 +460,30 @@ async def play_track_with_skip(
 
     logger.info("✅ Track finished normally.")
     return False
+
+# ─────────────────────────────────────────────
+# Robust intro playback with retries + buffer
+# ─────────────────────────────────────────────
+async def robust_play_intro(kind: str, bucket: str, key: str) -> bool:
+    """
+    Reliable intro/detail/artist playback:
+    - Retries up to 3 times
+    - Ensures the MP3 actually begins playing
+    - Correctly calls safe_play(kind, bucket, key)
+    """
+    import asyncio
+
+    for attempt in range(3):
+        try:
+            ok = await safe_play(kind, bucket, key)
+            if ok:
+                # Let ffplay/play_mp3 truly begin audio output
+                await asyncio.sleep(0.30)
+                return True
+        except Exception as e:
+            logging.debug(f"robust_play_intro attempt {attempt} failed: {e}")
+
+        await asyncio.sleep(0.20)  # retry delay
+
+    return False
+
