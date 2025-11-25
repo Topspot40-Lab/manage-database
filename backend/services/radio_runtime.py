@@ -171,8 +171,10 @@ async def play_intro_then_bed(
             except Exception as e:
                 logger.error(f"❌ Failed to restore device volume: {e}")
 
-            logger.info("🎧 Fading in bed track...")
-            play_spotify_track(bed_track_id)
+            # --- Start bed track immediately ---
+            logger.info("🎧 Starting bed track BEFORE intro narration...")
+            play_spotify_track(SPOTIFY_BED_TRACK_ID)
+            await asyncio.sleep(0.25)
 
         while not intro_task.done():
             await _respect_user_controls()
@@ -344,40 +346,44 @@ def narration_keys_for(*, lang: str, track, artist):
 # ─────────────────────────────────────────────
 # Narration playback (PATCHED)
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# Narration playback (FIXED FOR PROPER BED TIMING)
+# ─────────────────────────────────────────────
 async def play_narrations(
-        *,
-        play_intro: bool,
-        play_detail: bool,
-        play_artist: bool,
-        intro_jobs,
-        detail_bucket,
-        detail_key,
-        artist_bucket,
-        artist_key,
-        lang: str = "en",
-        mode: str = "decade_genre",
-        rank: Optional[int] = None,
-        track_name: Optional[str] = None,
-        artist_name: Optional[str] = None,
+    *,
+    play_intro: bool,
+    play_detail: bool,
+    play_artist: bool,
+    intro_jobs,
+    detail_bucket,
+    detail_key,
+    artist_bucket,
+    artist_key,
+    lang: str = "en",
+    mode: str = "decade_genre",
+    rank: Optional[int] = None,
+    track_name: Optional[str] = None,
+    artist_name: Optional[str] = None,
 ):
-    """
-    Play narration audio segments (intro, detail, artist).
-    PATCH:
-      - fades out Spotify before each voice segment
-      - prevents overlap with a global narration lock
-      - honors skip between segments (bails early)
+    """Play narration — with CORRECT bed timing:
+       1) Start bed track FIRST
+       2) Play intro narration OVER the bed
+       3) Stop bed when intro is done
+       4) Then play detail / artist narration normally
     """
     async with _narration_lock:
         try:
             await _respect_user_controls()
 
-            # If skip is already pressed, clear it and skip narration entirely.
+            # If skip already pressed, skip narration phase
             if skip_event.is_set():
                 skip_event.clear()
-                logger.info("⏭️ Skip already set — skipping narration phase.")
+                logger.info("⏭️ Skip already set — skipping narration.")
                 return
 
-            # INTRO(S)
+            # ─────────────────────────────────────────────
+            # 1️⃣ INTRO — bed plays underneath
+            # ─────────────────────────────────────────────
             if play_intro and intro_jobs:
                 _update_flags(
                     phase="intro",
@@ -388,39 +394,39 @@ async def play_narrations(
                     artist_name=artist_name,
                 )
                 await _respect_user_controls()
-                await _fade_out_spotify_before_voice("intro")
 
+                # --- Start bed track immediately ---
+                logger.info("🎧 Starting bed track BEFORE intro narration...")
+                play_spotify_track(SPOTIFY_BED_TRACK_ID)
+                await asyncio.sleep(0.25)
+
+                # --- Play intro narration on top of bed ---
                 for bkt, key, *_ in intro_jobs:
                     if skip_event.is_set():
                         skip_event.clear()
-                        logger.info("⏭️ Skip hit — stopping remaining intros.")
-                        return
+                        logger.info("⏭️ Skip hit — skipping intro narration.")
+                        break
 
+                    logger.info("🎙️ Intro narration: %s", key)
                     await _respect_user_controls()
-                    logger.info("🎙️ Playing intro narration with reliability patch: %s", key)
 
-                    # Import inside function to avoid circular dependency
-                    from backend.services.playback_helpers import robust_play_intro
+                    # Play narration and wait
+                    skipped = await _run_voice_clip_with_skip("Intro", bkt, key)
+                    if skipped:
+                        break
 
-                    # Try robust intro playback (3 retries)
-                    played = await robust_play_intro("Intro", bkt, key)
+                # --- Stop bed track after intro completes ---
+                logger.info("🔉 Stopping bed track after intro.")
+                with contextlib.suppress(Exception):
+                    await stop_spotify_playback(fade_out_seconds=1.2)
 
-                    # If intro played, bring in the bed track
-                    if played:
-                        await asyncio.sleep(0.35)  # buffer before bed
-                        logger.info("🎧 Fading in bed track...")
-                        play_spotify_track(SPOTIFY_BED_TRACK_ID)
-
-                        # Allow bed to run softly while intro finishes
-                        await asyncio.sleep(0.25)
-                    else:
-                        logger.warning("⚠️ Intro MP3 failed all retries — skipping bed intro.")
-
-            # DETAIL
+            # ─────────────────────────────────────────────
+            # 2️⃣ DETAIL narration (no bed)
+            # ─────────────────────────────────────────────
             if play_detail and detail_bucket and detail_key:
                 if skip_event.is_set():
                     skip_event.clear()
-                    logger.info("⏭️ Skip hit — skipping detail narration.")
+                    logger.info("⏭️ Skip hit — skipping DETAIL narration.")
                     return
 
                 _update_flags(
@@ -432,18 +438,20 @@ async def play_narrations(
                     artist_name=artist_name,
                 )
                 await _respect_user_controls()
-                await _fade_out_spotify_before_voice("detail")
 
-                logger.info("🎙️ Playing detail narration: %s", detail_key)
+                logger.info("🎙️ Detail narration: %s", detail_key)
+                await _fade_out_spotify_before_voice("detail")
                 skipped = await _run_voice_clip_with_skip("Detail", detail_bucket, detail_key)
                 if skipped:
                     return
 
-            # ARTIST DESCRIPTION
+            # ─────────────────────────────────────────────
+            # 3️⃣ ARTIST DESCRIPTION narration (no bed)
+            # ─────────────────────────────────────────────
             if play_artist and artist_bucket and artist_key:
                 if skip_event.is_set():
                     skip_event.clear()
-                    logger.info("⏭️ Skip hit — skipping artist narration.")
+                    logger.info("⏭️ Skip hit — skipping ARTIST narration.")
                     return
 
                 _update_flags(
@@ -455,15 +463,18 @@ async def play_narrations(
                     artist_name=artist_name,
                 )
                 await _respect_user_controls()
-                await _fade_out_spotify_before_voice("artist")
 
-                logger.info("🎙️ Playing artist narration: %s", artist_key)
+                logger.info("🎙️ Artist narration: %s", artist_key)
+                await _fade_out_spotify_before_voice("artist")
                 skipped = await _run_voice_clip_with_skip("Artist", artist_bucket, artist_key)
                 if skipped:
                     return
 
         except asyncio.CancelledError:
-            logger.info("⏹ Narration aborted by stop/cancel.")
+            logger.info("⏹ Narration aborted.")
+            # Always shut bed down on cancel
+            with contextlib.suppress(Exception):
+                await stop_spotify_playback(fade_out_seconds=1.0)
             raise
         except Exception as e:
             logger.warning("⚠️ play_narrations error: %s", e)

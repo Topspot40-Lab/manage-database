@@ -41,6 +41,8 @@ def _artist_display_name(track: Track, artist: Artist | None) -> str:
 from backend.models.dbmodels import Decade, Genre, DecadeGenre, TrackRanking
 
 def load_decade_genre(db: Session, decade: str, genre: str, tts_language: str):
+    logger.warning(f"🔎 DEBUG incoming: decade='{decade}'  genre='{genre}'  lang='{tts_language}'")
+
     lang = normalize_language_code_canon(tts_language)
 
     # 1. Resolve decade

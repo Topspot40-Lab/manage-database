@@ -4,6 +4,9 @@ from __future__ import annotations
 import asyncio
 import time
 import logging
+# 🔒 Global playback sequence lock — prevents overlapping launches
+sequence_lock = asyncio.Lock()
+
 from dataclasses import dataclass, asdict
 from fastapi import APIRouter
 from typing import Literal, Optional
@@ -49,9 +52,10 @@ current_task: asyncio.Task | None = None
 # ─────────────────────────────────────────────
 # CANCEL ANY EXISTING TASK
 # ─────────────────────────────────────────────
-def cancel_current_sequence():
+async def cancel_current_sequence():
     """
     Cancels an in-flight playback coroutine (intros, details, track, bed, etc.).
+    Ensures proper async cleanup before a new sequence can begin.
     """
     global current_task
 
@@ -67,26 +71,32 @@ def cancel_current_sequence():
     _flags.is_playing = False
     _flags.stopped = True
     _flags.is_paused = False
+
+    # 🔥 brief delay gives radio_runtime time to unwind Spotify + narration
+    await asyncio.sleep(0.15)
+
     _flags.cancel_requested = False
 
 
 # ─────────────────────────────────────────────
 # START NEW BACKGROUND TASK SAFELY
 # ─────────────────────────────────────────────
-def start_new_sequence(coro):
+async def start_new_sequence(coro):
     """
-    Cancels any running playback task, then schedules a new one.
+    Ensures exclusive playback launch by protecting the entire
+    cancel → start sequence with a global asyncio.Lock.
     """
-    cancel_current_sequence()
+    async with sequence_lock:
+        await cancel_current_sequence()
 
-    global current_task
-    _flags.stopped = False
-    _flags.is_playing = True
-    _flags.cancel_requested = False
+        global current_task
+        _flags.stopped = False
+        _flags.is_playing = True
+        _flags.cancel_requested = False
 
-    logger.info("🎬 Launching new playback background task…")
-    current_task = asyncio.create_task(coro)
-    return current_task
+        logger.info("🎬 Launching new playback background task…")
+        current_task = asyncio.create_task(coro)
+        return current_task
 
 
 # ─────────────────────────────────────────────
