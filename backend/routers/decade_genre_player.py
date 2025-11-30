@@ -19,14 +19,12 @@ from backend.models.dbmodels import (
     Genre,
 )
 
-# playback control manager
 from backend.routers.playback_control import (
     start_new_sequence,
     cancel_current_sequence,
     _flags,
 )
 
-# narration + runtime playback
 from backend.services.radio_runtime import (
     log_header_and_texts,
     build_intro_jobs,
@@ -34,8 +32,10 @@ from backend.services.radio_runtime import (
     play_narrations,
     _update_flags,
     _respect_user_controls,
-    play_track_with_skip,     # Unified track player
+    play_track_with_skip,
 )
+
+from backend.config.volume import PLAY_FULL_TRACK
 
 
 router = APIRouter(prefix="/supabase", tags=["Supabase: Play by Decade/Genre"])
@@ -63,7 +63,6 @@ async def _run_play_sequence_decade_genre(
 ):
     logger.info(f"🎧 Starting sequence: {decade}/{genre} {start_rank}-{end_rank} mode={mode}")
 
-    # 1️⃣ Load tracks inside background task
     with get_db_session() as db:
         q = (
             select(Track, Artist, TrackRanking, Decade, Genre)
@@ -87,7 +86,7 @@ async def _run_play_sequence_decade_genre(
         await cancel_current_sequence()
         return
 
-    # Sorting & randomization
+    # ordering
     if mode == "count_up":
         rows.sort(key=lambda r: r[2].ranking)
     elif mode == "count_down":
@@ -95,11 +94,12 @@ async def _run_play_sequence_decade_genre(
     else:
         random.shuffle(rows)
 
-    # Update global playback state
     _flags.mode = "decade_genre"
     _flags.context = {"decade": decade, "genre": genre}
 
-    # 2️⃣ Main playback loop
+    # ─────────────────────────────────────────────
+    # MAIN LOOP
+    # ─────────────────────────────────────────────
     for track, artist, tr_rank, decade_obj, genre_obj in rows:
         rank = tr_rank.ranking
 
@@ -107,10 +107,9 @@ async def _run_play_sequence_decade_genre(
             logger.info("🛑 Cancel requested — stopping sequence.")
             break
 
-        logger.info("──────────────────────────────────────")
         logger.info(f"▶ Rank #{rank:02d}: {track.track_name} — {artist.artist_name}")
 
-        # UI update
+        # UI → update state
         _update_flags(
             phase="prelude",
             lang=tts_language,
@@ -120,6 +119,29 @@ async def _run_play_sequence_decade_genre(
             artist_name=artist.artist_name,
         )
         await _respect_user_controls()
+
+        # ─────────────────────────────────────────────
+        # 🌟 SINGLE-PLAY SHORTCUT
+        # ─────────────────────────────────────────────
+        is_single_play = (start_rank == end_rank)
+
+        if is_single_play:
+            logger.info("🎯 Single-play shortcut engaged for rank %s", rank)
+
+            from backend.services.playback_orchestrator import play_one_server_side
+
+            await play_one_server_side(
+                lang=tts_language,
+                track=track,
+                artist=artist,
+                play_intro=play_intro,
+                play_detail=play_detail,
+                play_artist_description=play_artist_description,
+                play_track=play_track,
+            )
+
+            await _respect_user_controls()
+            continue
 
         # ─────────── Narration Phase ───────────
         intro_text, detail_text, artist_text = log_header_and_texts(
@@ -159,24 +181,24 @@ async def _run_play_sequence_decade_genre(
         # ─────────── Track Playback ───────────
         if play_track:
             await play_track_with_skip(
-                track,
+                track=track,
                 lang=tts_language,
                 mode="decade_genre",
                 rank=rank,
                 track_name=track.track_name,
                 artist_name=artist.artist_name,
+                full_flag=PLAY_FULL_TRACK,
             )
 
         await _respect_user_controls()
         await asyncio.sleep(0.5)
 
-    # Cleanup
     await cancel_current_sequence()
     logger.info("✅ Sequence finished cleanly.")
 
 
 # ─────────────────────────────────────────────
-# PUBLIC: START NEW PLAY SEQUENCE
+# START NEW SEQUENCE
 # ─────────────────────────────────────────────
 @router.get("/play-sequence")
 async def play_sequence_decade_genre(
@@ -226,7 +248,7 @@ async def play_sequence_decade_genre(
 
 
 # ─────────────────────────────────────────────
-# PUBLIC: GET METADATA FOR FRONTEND
+# FRONTEND METADATA
 # ─────────────────────────────────────────────
 @router.get("/get-sequence")
 async def get_sequence_decade_genre(
@@ -249,7 +271,6 @@ async def get_sequence_decade_genre(
             TrackRanking.ranking >= start_rank,
             TrackRanking.ranking <= end_rank,
         )
-
         .order_by(TrackRanking.ranking)
     )
 
