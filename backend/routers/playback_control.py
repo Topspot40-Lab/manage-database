@@ -75,6 +75,16 @@ async def cancel_current_sequence():
     # 🔥 brief delay gives radio_runtime time to unwind Spotify + narration
     await asyncio.sleep(0.15)
 
+    # ─────────────────────────────────────────────
+    # Restore Spotify volume after cancellation
+    # ─────────────────────────────────────────────
+    try:
+        from backend.services.spotify.playback import set_device_volume
+        await set_device_volume(100)   # fallback to 100%
+        logger.info("🔊 Restored Spotify volume to 100% after cancel")
+    except Exception as exc:
+        logger.warning(f"⚠️ Failed to restore volume after cancel: {exc}")
+
     _flags.cancel_requested = False
 
 

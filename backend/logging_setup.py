@@ -124,7 +124,7 @@ def setup_logging() -> None:
         loggers[module_name] = {
             "handlers": handler_list,
             "level": level_name,
-            "propagate": False,  # prevents duplicate lines via root
+            "propagate": True,  # prevents duplicate lines via root
         }
 
     # Pin common framework/library loggers

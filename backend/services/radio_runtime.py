@@ -32,6 +32,22 @@ logger = logging.getLogger(__name__)
 # ✅ Prevent narration overlaps across intros/details/artists
 _narration_lock = asyncio.Lock()
 
+# ─────────────────────────────────────────────
+# Safety guard: ensure Spotify volume is sane
+# ─────────────────────────────────────────────
+async def _ensure_volume_ok():
+    """
+    Guarantees Spotify device volume is restored after cancels or fade-outs.
+    Prevents muted Spotify playback when the user hits NEXT mid-fade.
+    """
+    try:
+        from backend.services.spotify.playback import set_device_volume
+
+        # If you ever add user-configurable volume, plug it in here.
+        await set_device_volume(100)
+    except Exception:
+        # Stay silent — this should never break the pipeline
+        pass
 
 # ─────────────────────────────────────────────
 # Playback control integration
@@ -275,9 +291,7 @@ def narration_keys_for(*, lang: str, track, artist):
 # ─────────────────────────────────────────────
 # Narration playback (PATCHED)
 # ─────────────────────────────────────────────
-# ─────────────────────────────────────────────
-# Narration playback (FIXED FOR PROPER BED TIMING)
-# ─────────────────────────────────────────────
+
 async def play_narrations(
     *,
     play_intro: bool,
@@ -293,26 +307,141 @@ async def play_narrations(
     rank: Optional[int] = None,
     track_name: Optional[str] = None,
     artist_name: Optional[str] = None,
+    voice_style: str = "before",   # "before" | "over"
 ):
-    """Play narration — with CORRECT bed timing:
-       1) Start bed track FIRST
-       2) Play intro narration OVER the bed
-       3) Stop bed when intro is done
-       4) Then play detail / artist narration normally
+    """
+    Play narration with 2 styles:
+
+    voice_style = "before"
+      1) Start bed track for intros
+      2) Intro plays over bed
+      3) Bed stops
+      4) Detail / artist play DRY (no bed)
+
+    voice_style = "over"
+      - Assumes the MAIN Spotify track is already playing
+      - We just "duck" the volume under all narration
+      - No bed track is started or stopped here
     """
     async with _narration_lock:
         try:
             await _respect_user_controls()
 
-            # If skip already pressed, skip narration phase
+            # If skip already pressed, skip narration phase entirely
             if skip_event.is_set():
                 skip_event.clear()
                 logger.info("⏭️ Skip already set — skipping narration.")
                 return
 
             # ─────────────────────────────────────────────
-            # 1️⃣ INTRO — bed plays underneath
+            # MODE: VOICE OVER MAIN TRACK
             # ─────────────────────────────────────────────
+            if voice_style == "over":
+                ducked = False
+                try:
+                    # Only bother ducking if we actually have something to say
+                    if (play_intro and intro_jobs) or \
+                       (play_detail and detail_bucket and detail_key) or \
+                       (play_artist and artist_bucket and artist_key):
+                        try:
+                            await set_device_volume(40)
+                            ducked = True
+                            logger.info("🔉 Ducking Spotify volume for voice-over narration.")
+                        except Exception as e:
+                            logger.warning("⚠️ Failed to duck volume for voice-over: %s", e)
+
+                    # 1️⃣ INTRO over track
+                    if play_intro and intro_jobs:
+                        _update_flags(
+                            phase="intro",
+                            lang=lang,
+                            mode=mode,
+                            rank=rank,
+                            track_name=track_name,
+                            artist_name=artist_name,
+                        )
+                        await _respect_user_controls()
+
+                        for bkt, key, *_ in intro_jobs:
+                            if skip_event.is_set():
+                                skip_event.clear()
+                                logger.info("⏭️ Skip hit — skipping intro narration.")
+                                break
+
+                            logger.info("🎙️ Intro narration (over track): %s", key)
+                            await _respect_user_controls()
+                            skipped = await _run_voice_clip_with_skip("Intro", bkt, key)
+                            if skipped:
+                                # Skip means: abandon remaining narration here
+                                logger.info("⏭️ Skip during intro; aborting remaining narration.")
+                                return
+
+                    # 2️⃣ DETAIL over track
+                    if play_detail and detail_bucket and detail_key:
+                        if skip_event.is_set():
+                            skip_event.clear()
+                            logger.info("⏭️ Skip hit — skipping DETAIL narration (over track).")
+                            return
+
+                        _update_flags(
+                            phase="detail",
+                            lang=lang,
+                            mode=mode,
+                            rank=rank,
+                            track_name=track_name,
+                            artist_name=artist_name,
+                        )
+                        await _respect_user_controls()
+
+                        logger.info("🎙️ Detail narration (over track): %s", detail_key)
+                        # No fade-out here — we KEEP the track playing under the voice
+                        skipped = await _run_voice_clip_with_skip(
+                            "Detail", detail_bucket, detail_key
+                        )
+                        if skipped:
+                            logger.info("⏭️ Skip during detail narration; aborting remaining narration.")
+                            return
+
+                    # 3️⃣ ARTIST DESCRIPTION over track
+                    if play_artist and artist_bucket and artist_key:
+                        if skip_event.is_set():
+                            skip_event.clear()
+                            logger.info("⏭️ Skip hit — skipping ARTIST narration (over track).")
+                            return
+
+                        _update_flags(
+                            phase="artist",
+                            lang=lang,
+                            mode=mode,
+                            rank=rank,
+                            track_name=track_name,
+                            artist_name=artist_name,
+                        )
+                        await _respect_user_controls()
+
+                        logger.info("🎙️ Artist narration (over track): %s", artist_key)
+                        # Again: no fade-out, just ducked music under voice
+                        skipped = await _run_voice_clip_with_skip(
+                            "Artist", artist_bucket, artist_key
+                        )
+                        if skipped:
+                            logger.info("⏭️ Skip during artist narration; aborting remaining narration.")
+                            return
+
+                finally:
+                    if ducked:
+                        try:
+                            await set_device_volume(100)
+                            logger.info("🔊 Restored Spotify volume after voice-over narration.")
+                        except Exception as e:
+                            logger.warning("⚠️ Failed to restore volume after voice-over: %s", e)
+
+                return  # done in voice-over mode
+
+            # ─────────────────────────────────────────────
+            # MODE: VOICE BEFORE TRACK (CURRENT DEFAULT)
+            # ─────────────────────────────────────────────
+            # 1️⃣ INTRO — bed plays underneath
             if play_intro and intro_jobs:
                 _update_flags(
                     phase="intro",
@@ -349,9 +478,7 @@ async def play_narrations(
                 with contextlib.suppress(Exception):
                     await stop_spotify_playback(fade_out_seconds=1.2)
 
-            # ─────────────────────────────────────────────
             # 2️⃣ DETAIL narration (no bed)
-            # ─────────────────────────────────────────────
             if play_detail and detail_bucket and detail_key:
                 if skip_event.is_set():
                     skip_event.clear()
@@ -374,9 +501,7 @@ async def play_narrations(
                 if skipped:
                     return
 
-            # ─────────────────────────────────────────────
             # 3️⃣ ARTIST DESCRIPTION narration (no bed)
-            # ─────────────────────────────────────────────
             if play_artist and artist_bucket and artist_key:
                 if skip_event.is_set():
                     skip_event.clear()
@@ -413,14 +538,15 @@ async def play_narrations(
 # Track playback (PATCHED & unified signature)
 # ─────────────────────────────────────────────
 async def play_track_with_skip(
-        track,
-        *,
-        lang: str = "en",
-        mode: str = "decade_genre",
-        rank: Optional[int] = None,
-        track_name: Optional[str] = None,
-        artist_name: Optional[str] = None,
-        full_flag: bool = True,
+    track,
+    *,
+    lang: str = "en",
+    mode: str = "decade_genre",
+    rank: Optional[int] = None,
+    track_name: Optional[str] = None,
+    artist_name: Optional[str] = None,
+    full_flag: bool = True,
+    already_playing: bool = False,   # NEW: for "over-track" mode
 ) -> bool:
     """
     Play Spotify track and wait cooperatively for skip.
@@ -429,6 +555,9 @@ async def play_track_with_skip(
     Unified signature:
       - New callers: play_track_with_skip(track, lang=..., mode=..., rank=...)
       - Old callers: play_track_with_skip(track=..., full_flag=True)
+      - Over-track callers:
+            play_spotify_track(...) first, then
+            play_track_with_skip(..., already_playing=True)
     """
     try:
         _update_flags(
@@ -443,15 +572,22 @@ async def play_track_with_skip(
 
         play_secs = compute_play_seconds(track)
         logger.info(
-            "🎵 Now playing track: %s (%s) for %ss (full=%s)",
+            "🎵 Now playing track: %s (%s) for %ss (full=%s, already_playing=%s)",
             getattr(track, "track_name", "Unknown Track"),
             getattr(track, "spotify_track_id", None),
             play_secs,
             full_flag,
+            already_playing,
         )
 
         if getattr(track, "spotify_track_id", None):
-            play_spotify_track(track.spotify_track_id)
+            if not already_playing:
+                # --- Ensure Spotify device isn't stuck at volume 0 ---
+                await _ensure_volume_ok()
+
+                # Normal mode: we start the track now
+                play_spotify_track(track.spotify_track_id)
+
         else:
             logger.warning("⚠️ No spotify_track_id — skipping track playback.")
             return True

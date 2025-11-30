@@ -17,14 +17,14 @@ from backend.models.dbmodels import (
     CollectionTrackRanking,
 )
 
-# Playback controller
 from backend.routers.playback_control import (
     start_new_sequence,
     cancel_current_sequence,
     _flags,
 )
 
-# Narration + runtime
+from backend.services.spotify.playback import play_spotify_track
+
 from backend.services.radio_runtime import (
     log_header_and_texts,
     collection_intro_jobs,
@@ -33,6 +33,7 @@ from backend.services.radio_runtime import (
     _update_flags,
     _respect_user_controls,
     play_track_with_skip,
+    _ensure_volume_ok,   # ✅ ADDED
 )
 
 from backend.config.volume import PLAY_FULL_TRACK
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
-# INTERNAL BACKGROUND TASK (FULL COLLECTION RUN)
+# INTERNAL BACKGROUND TASK — COLLECTION PLAYBACK
 # ─────────────────────────────────────────────
 async def _run_play_sequence_collection(
     *,
@@ -59,12 +60,14 @@ async def _run_play_sequence_collection(
     text_intro: bool,
     text_detail: bool,
     text_artist_description: bool,
+    voice_style: Literal["before", "over"] = "before",
 ):
     logger.info(
-        f"🎧 COLLECTION START: {collection_slug} {start_rank}-{end_rank} mode={mode}"
+        f"🎧 COLLECTION START: {collection_slug} "
+        f"{start_rank}-{end_rank} mode={mode} voice_style={voice_style}"
     )
 
-    # Load rows
+    # Fetch rows
     with get_db_session() as db:
         q = (
             select(Track, Artist, CollectionTrackRanking, Collection)
@@ -77,7 +80,6 @@ async def _run_play_sequence_collection(
                 CollectionTrackRanking.ranking <= end_rank,
             )
         )
-
         rows = db.exec(q).all()
 
     if not rows:
@@ -85,7 +87,7 @@ async def _run_play_sequence_collection(
         await cancel_current_sequence()
         return
 
-    # Sorting mode
+    # Sorting
     if mode == "count_up":
         rows.sort(key=lambda r: r[2].ranking)
     elif mode == "count_down":
@@ -97,19 +99,19 @@ async def _run_play_sequence_collection(
     _flags.context = {"collection_slug": collection_slug}
 
     # ─────────────────────────────────────────────
-    # MAIN PLAYBACK LOOP
+    # MAIN LOOP
     # ─────────────────────────────────────────────
     for track, artist, ctr_rank, coll in rows:
         rank = ctr_rank.ranking
 
+        # Handle cancel/skip
         if _flags.cancel_requested:
-            logger.info("🛑 Cancel requested — stopping collection playback.")
+            logger.info("⏭️ Skip/Next detected — aborting collection sequence.")
             break
 
         logger.info("──────────────────────────────────────────────")
         logger.info(f"▶ Rank #{rank:02d}: {track.track_name} — {artist.artist_name}")
 
-        # UI flag updates
         _update_flags(
             phase="prelude",
             lang=tts_language,
@@ -120,32 +122,7 @@ async def _run_play_sequence_collection(
         )
         await _respect_user_controls()
 
-        # ─────────────────────────────────────────────
-        # ⭐ SINGLE-PLAY SHORTCUT
-        # ─────────────────────────────────────────────
-        is_single_play = (start_rank == end_rank)
-
-        if is_single_play:
-            logger.info("🎯 Single-play shortcut engaged")
-
-            from backend.services.playback_orchestrator import play_one_server_side
-
-            await play_one_server_side(
-                lang=tts_language,
-                track=track,
-                artist=artist,
-                play_intro=play_intro,
-                play_detail=play_detail,
-                play_artist_description=play_artist_description,
-                play_track=play_track,
-            )
-
-            await _respect_user_controls()
-            continue
-
-        # ─────────────────────────────────────────────
-        # NARRATION PHASE
-        # ─────────────────────────────────────────────
+        # Header logging
         log_header_and_texts(
             lang=tts_language,
             track=track,
@@ -157,10 +134,9 @@ async def _run_play_sequence_collection(
             collection_intro_jobs(
                 lang=tts_language,
                 collection_slug=collection_slug,
-                rank=rank,
+                rank=rank
             )
-            if play_intro
-            else []
+            if play_intro else []
         )
 
         detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(
@@ -169,26 +145,38 @@ async def _run_play_sequence_collection(
             artist=artist,
         )
 
-        await play_narrations(
-            play_intro=play_intro,
-            play_detail=play_detail,
-            play_artist=play_artist_description,
-            intro_jobs=intro_jobs,
-            detail_bucket=detail_bucket,
-            detail_key=detail_key,
-            artist_bucket=artist_bucket,
-            artist_key=artist_key,
-            lang=tts_language,
-            mode="collection",
-            rank=rank,
-            track_name=track.track_name,
-            artist_name=artist.artist_name,
-        )
 
         # ─────────────────────────────────────────────
-        # SPOTIFY TRACK PLAYBACK
+        # 1️⃣ VOICE BEFORE vs OVER THE TRACK (DJ MODE)
         # ─────────────────────────────────────────────
-        if play_track:
+        if voice_style == "over" and play_track and track.spotify_track_id:
+            logger.info("🎧 OVER-TRACK MODE: Starting main track early.")
+
+            # NEW: ensure device volume is correct
+            await _ensure_volume_ok()
+
+            # Start track
+            play_spotify_track(track.spotify_track_id)
+            await asyncio.sleep(0.4)
+
+            # Narration on top
+            await play_narrations(
+                play_intro=play_intro,
+                play_detail=play_detail,
+                play_artist=play_artist_description,
+                intro_jobs=intro_jobs,
+                detail_bucket=detail_bucket,
+                detail_key=detail_key,
+                artist_bucket=artist_bucket,
+                artist_key=artist_key,
+                lang=tts_language,
+                mode="collection",
+                rank=rank,
+                track_name=track.track_name,
+                artist_name=artist.artist_name,
+                voice_style="over",
+            )
+
             await play_track_with_skip(
                 track=track,
                 lang=tts_language,
@@ -196,11 +184,93 @@ async def _run_play_sequence_collection(
                 rank=rank,
                 track_name=track.track_name,
                 artist_name=artist.artist_name,
-                full_flag=PLAY_FULL_TRACK,   # 🔥 now consistent
+                full_flag=PLAY_FULL_TRACK,
+                already_playing=True,   # Important!
             )
+
+        else:
+            # BEFORE mode
+            await play_narrations(
+                play_intro=play_intro,
+                play_detail=play_detail,
+                play_artist=play_artist_description,
+                intro_jobs=intro_jobs,
+                detail_bucket=detail_bucket,
+                detail_key=detail_key,
+                artist_bucket=artist_bucket,
+                artist_key=artist_key,
+                lang=tts_language,
+                mode="collection",
+                rank=rank,
+                track_name=track.track_name,
+                artist_name=artist.artist_name,
+                voice_style="before",
+            )
+
+            if play_track:
+                await play_track_with_skip(
+                    track=track,
+                    lang=tts_language,
+                    mode="collection",
+                    rank=rank,
+                    track_name=track.track_name,
+                    artist_name=artist.artist_name,
+                    full_flag=PLAY_FULL_TRACK,
+                )
 
         await _respect_user_controls()
         await asyncio.sleep(0.5)
 
     await cancel_current_sequence()
     logger.info("✅ Collection playback finished cleanly.")
+
+
+# ─────────────────────────────────────────────
+# PUBLIC — START PLAYBACK
+# ─────────────────────────────────────────────
+@router.get("/play-collection-sequence")
+async def play_collection_sequence(
+    collection_slug: str = Query(...),
+    start_rank: int = Query(1),
+    end_rank: int = Query(40),
+    mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+    play_intro: bool = Query(True),
+    play_detail: bool = Query(True),
+    play_artist_description: bool = Query(True),
+    play_track: bool = Query(False),
+    text_intro: bool = Query(True),
+    text_detail: bool = Query(False),
+    text_artist_description: bool = Query(False),
+    voice_style: Literal["before", "over"] = Query("before"),
+):
+    logger.info(
+        f"▶ COLLECTION REQUEST: {collection_slug} "
+        f"{start_rank}-{end_rank} mode={mode} voice_style={voice_style}"
+    )
+
+    coro = _run_play_sequence_collection(
+        collection_slug=collection_slug,
+        start_rank=start_rank,
+        end_rank=end_rank,
+        mode=mode,
+        tts_language=tts_language,
+        play_intro=play_intro,
+        play_detail=play_detail,
+        play_artist_description=play_artist_description,
+        play_track=play_track,
+        text_intro=text_intro,
+        text_detail=text_detail,
+        text_artist_description=text_artist_description,
+        voice_style=voice_style,
+    )
+
+    await start_new_sequence(coro)
+
+    return {
+        "status": "started",
+        "collection": collection_slug,
+        "mode": mode,
+        "range": [start_rank, end_rank],
+        "voice_style": voice_style,
+    }

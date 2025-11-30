@@ -8,19 +8,26 @@ import os
 from .helpers import env_bool  # used for the toggles below
 
 # ── Global default (root) ────────────────────────────────────────────────
-# Set in .env (e.g., LOG_LEVEL=INFO). All modules inherit this unless overridden.
-LOG_LEVEL = (os.getenv("LOG_LEVEL") or "INFO").upper()
+# During development, DEBUG gives full visibility.
+LOG_LEVEL = (os.getenv("LOG_LEVEL") or "DEBUG").upper()
 
 # Optional: show logging configuration summary at startup
-# If true: summary prints at INFO. If false: summary prints only at DEBUG.
 LOG_SHOW_CONFIG = env_bool("LOG_SHOW_CONFIG", False)
 
 
-
 # ── Per-module overrides (this is the ONE place you control modules) ──────
-# Keep entries at "INFO" so you can see what exists.
-# Flip any line to "DEBUG" when you want it chatty, then restart the app.
 LOG_LEVELS_BY_MODULE = {
+    # ----------------------------------------------------------------------
+    # CORE PLAYBACK PIPELINE — CRITICAL FOR DIAGNOSTICS
+    # ----------------------------------------------------------------------
+    "backend.services.radio_runtime": "DEBUG",
+    "backend.services.playback_helpers": "DEBUG",
+    "backend.services.spotify.playback": "DEBUG",
+    "backend.routers.playback_control": "DEBUG",
+    "backend.state": "DEBUG",
+    "backend.routers.decade_genre_player": "INFO",
+    "backend.routers.collections_player": "INFO",
+
     # --- Your modules (baseline = INFO) -----------------------------------
     "backend.meta.log_demo": "INFO",
     "backend.services.curate": "INFO",
@@ -30,7 +37,6 @@ LOG_LEVELS_BY_MODULE = {
     "backend.services.xai_api_client": "INFO",
     "backend.services.utils": "INFO",
     "backend.services.supabase_playback": "INFO",
-
 
     "backend.routers.collections_generate": "INFO",
     "backend.routers.generate_json": "INFO",
@@ -43,23 +49,18 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.tts_detail": "INFO",
     "backend.routers.llm_client": "INFO",
     "backend.routers.collections": "INFO",
-    "track_detail_locales": "INFO",  # legacy/bare logger name if used
-    "backend.startup": "WARNING",  # hides INFO, only WARNING+ will show
 
+    "track_detail_locales": "INFO",  # legacy/bare logger names
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
     "backend.utils.tts_diagnostics": "INFO",
     "backend.logging.track_logging": "INFO",
-    "tts_logger": "INFO",            # legacy/bare logger name if used
-    "supabase_summary": "INFO",      # legacy/bare logger name if used
-    "tts_diagnostics": "INFO",       # legacy/bare logger name if used
+    "tts_logger": "INFO",
+    "supabase_summary": "INFO",
+    "tts_diagnostics": "INFO",
 
-    # === DEBUG OVERRIDES (flip these when needed) =========================
-    # "backend.meta.log_demo": "DEBUG",
-    # "backend.services.db_queries": "DEBUG",
-    # "backend.routers.collections_generate": "DEBUG",
-    # "backend.routers.collections": "DEBUG",
-    # =====================================================================
+    # Startup noise — bump to INFO during dev
+    "backend.startup": "INFO",
 
     # --- Third-party noise control ---------------------------------------
     "spotipy": "WARNING",
@@ -68,11 +69,11 @@ LOG_LEVELS_BY_MODULE = {
     "httpx": "WARNING",
 
     # Framework noise (tune as needed)
-    "uvicorn": "WARNING",
-    "uvicorn.error": "WARNING",   # hides startup INFO lines
-    "uvicorn.access": "WARNING",  # access logs already reduced; set to "INFO" if you want request lines
-
+    "uvicorn": "INFO",
+    "uvicorn.error": "INFO",    # show startup info
+    "uvicorn.access": "INFO",   # show request lines
 }
+
 
 # ── Optional: file/color output toggles (used by logging_setup.py if wired) ─
 LOG_FILE_ENABLED = env_bool("LOG_FILE_ENABLED", True)
