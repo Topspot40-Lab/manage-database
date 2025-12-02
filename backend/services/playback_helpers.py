@@ -1,25 +1,29 @@
 # backend/services/playback_helpers.py
 from __future__ import annotations
 
-from typing import Literal, Optional
-import logging
 import asyncio
+import logging
 import httpx
 import os
 import time
 import inspect
+from typing import Literal, Optional
 
 from backend.config import BUCKETS, AUDIO_PREFIXES, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 from backend.utils.tts_diagnostics import normalize_for_filename
 from backend.services.supabase_playback import play_mp3
 
+# Playback flags
+from backend.routers.playback_control import _flags
+from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
+from backend.services.play_policy import compute_play_seconds, sleep_with_skip
+from backend.state import skip_event
+
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
-# Playback control integration
+# Playback User-Control Helpers
 # ─────────────────────────────────────────────
-from backend.routers.playback_control import _flags  # global playback state
-
 
 async def _respect_user_controls() -> None:
     """Pause or stop check (cooperative)."""
@@ -29,16 +33,14 @@ async def _respect_user_controls() -> None:
         logger.info("🛑 Playback stopped by user.")
         raise asyncio.CancelledError("Playback stopped")
 
-
 def _update_flags_for_play(kind: str, bucket: str, key: str) -> None:
     """Helper to mark which MP3 is currently playing."""
     try:
         _flags.is_playing = True
         _flags.is_paused = False
         _flags.stopped = False
-        phase = kind.lower()
         _flags.context = {
-            "phase": phase,
+            "phase": kind.lower(),
             "bucket": bucket,
             "key": key,
         }
@@ -46,10 +48,11 @@ def _update_flags_for_play(kind: str, bucket: str, key: str) -> None:
         logger.debug("⚠️ Failed to update playback flags for %s", kind)
 
 
-# 🔁 Canonical language codes (pt-BR)
-Lang = Literal["en", "es", "pt-BR"]
+# ─────────────────────────────────────────────
+# Speech + Language Helpers
+# ─────────────────────────────────────────────
 
-# ➕ include collections_intro as a 4th kind (plural to match narration_bundle + config)
+Lang = Literal["en", "es", "pt-BR"]
 Kind = Literal["intro", "detail", "artist", "collections_intro"]
 
 _LANG_MAP: dict[str, str] = {
@@ -61,14 +64,21 @@ _LANG_MAP: dict[str, str] = {
     "pt": "pt-BR",
 }
 
-# Tunables (env overrides)
+def canon_lang(code: str | None) -> str:
+    c = (code or "en").strip().lower()
+    return _LANG_MAP.get(c, "en")
+
+
+# ─────────────────────────────────────────────
+# Tunables & Gain
+# ─────────────────────────────────────────────
+
 _SUPA_FETCH_TIMEOUT = float(os.getenv("SUPA_MP3_TIMEOUT", "60"))
 _SUPA_FETCH_RETRIES = int(os.getenv("SUPA_MP3_RETRIES", "3"))
 _SUPA_BACKOFF = float(os.getenv("SUPA_MP3_BACKOFF", "1.8"))
 
-# 🔊 Per-kind gain (dB). Prefer config, else fall back to env with sane defaults
 try:
-    from backend.config import INTRO_GAIN_DB, DETAIL_GAIN_DB, ARTIST_GAIN_DB  # type: ignore
+    from backend.config import INTRO_GAIN_DB, DETAIL_GAIN_DB, ARTIST_GAIN_DB
 except Exception:
     INTRO_GAIN_DB = float(os.getenv("INTRO_GAIN_DB", "-4.0"))
     DETAIL_GAIN_DB = float(os.getenv("DETAIL_GAIN_DB", "0.0"))
@@ -77,39 +87,23 @@ except Exception:
 _play_lock = asyncio.Lock()
 
 
-def _looks_like_mp3(b: bytes) -> bool:
-    return b.startswith(b"ID3") or (len(b) > 2 and b[0] == 0xFF and (b[1] & 0xE0) == 0xE0)
-
-
-def canon_lang(code: str | None) -> str:
-    c = (code or "en").strip().lower()
-    return _LANG_MAP.get(c, "en")
-
+# ─────────────────────────────────────────────
+# Bucket / Key Builders
+# ─────────────────────────────────────────────
 
 def bucket_for(language: str, kind: Kind) -> str:
-    """
-    Return the Supabase bucket name for a given language/kind.
-    Falls back to the 'intro' bucket if 'collections_intro' is not explicitly configured.
-    """
     lang = canon_lang(language)
     lang_map = BUCKETS.get(lang, BUCKETS["en"])
 
     if kind in lang_map:
         return lang_map[kind]
 
-    # graceful fallback for new kind without config change
     if kind == "collections_intro":
         return lang_map.get("intro")
 
-    # final fallback (shouldn't really happen)
     return lang_map.get("intro")
 
-
 def key_for(kind: Kind, filename: str | None) -> Optional[str]:
-    """
-    Build the storage key (folder + filename) for a given kind.
-    If AUDIO_PREFIXES lacks 'collections_intro', default to 'collections-intro'.
-    """
     if not filename:
         return None
 
@@ -123,35 +117,24 @@ def key_for(kind: Kind, filename: str | None) -> Optional[str]:
 
     return f"{prefix}/{filename}"
 
-
 def build_intro_filename(decade: str, genre: str, rank: int) -> str:
-    """
-    Decade/Genre intro filename, zero-padded 2 digits.
-    e.g., '1980s_pop_01.mp3'
-    """
     return f"{normalize_for_filename(decade)}_{normalize_for_filename(genre)}_{rank:02d}.mp3"
 
-
 def build_collection_intro_filename(slug: str, rank: int) -> str:
-    """
-    Collection intro filename, two-digit padding (will naturally grow to 100, 101…).
-    e.g., slug='power-ballads' -> 'power-ballads_01.mp3'
-    """
     return f"{normalize_for_filename(slug)}_{rank:02d}.mp3"
-
 
 def build_detail_filename(spotify_track_id: str | None) -> Optional[str]:
     return f"{spotify_track_id}.mp3" if spotify_track_id else None
-
 
 def build_artist_filename(spotify_artist_id: str | None) -> Optional[str]:
     return f"{spotify_artist_id}.mp3" if spotify_artist_id else None
 
 
+# ─────────────────────────────────────────────
+# Gain Mapping
+# ─────────────────────────────────────────────
+
 def _gain_for_kind(kind_label: str) -> float:
-    """
-    Map kind label to gain. Treat 'collections_intro' the same as 'intro'.
-    """
     k = (kind_label or "").strip().lower()
     if k in ("intro", "collections_intro"):
         return INTRO_GAIN_DB
@@ -159,22 +142,19 @@ def _gain_for_kind(kind_label: str) -> float:
         return DETAIL_GAIN_DB
     if k == "artist":
         return ARTIST_GAIN_DB
-
-    # tolerate Title-case callers
-    if kind_label in ("Intro", "CollectionsIntro"):
-        return INTRO_GAIN_DB
-    if kind_label == "Detail":
-        return DETAIL_GAIN_DB
-    if kind_label == "Artist":
-        return ARTIST_GAIN_DB
-
     return 0.0
 
 
+# ─────────────────────────────────────────────
+# MP3 Playback (Local ffplay)
+# ─────────────────────────────────────────────
+
+def _looks_like_mp3(b: bytes) -> bool:
+    return b.startswith(b"ID3") or (len(b) > 2 and b[0] == 0xFF and (b[1] & 0xE0) == 0xE0)
+
 async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
     """
-    Play MP3 bytes using ffplay with a simple volume filter, blocking until done.
-    Returns ffplay's exit code (0 on success).
+    Play MP3 bytes using ffplay with a simple volume filter.
     """
     import tempfile
     import subprocess
@@ -183,6 +163,7 @@ async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
     with tempfile.TemporaryDirectory() as td:
         src = Path(td) / "clip.mp3"
         src.write_bytes(b)
+
         cmd = [
             "ffplay",
             "-nodisp",
@@ -197,17 +178,15 @@ async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
         try:
             return subprocess.call(cmd)
         except Exception as e:
-            logger.warning("ffplay with volume filter failed: %s", e)
+            logger.warning("ffplay volume-filter failed: %s", e)
             return 1
 
 
-async def safe_play(kind: str, bucket: str, key: str) -> bool:
-    """
-    Robust MP3 playback from Supabase with HEAD probe, GET retries, and
-    sequential playback (locked). Returns True on success.
+# ─────────────────────────────────────────────
+# safe_play — robust MP3 playback from Supabase
+# ─────────────────────────────────────────────
 
-    kind: "Intro" | "Detail" | "Artist" | "CollectionsIntro"
-    """
+async def safe_play(kind: str, bucket: str, key: str) -> bool:
     if not (bucket and key):
         logger.warning("🚫 %s MP3 not attempted (empty bucket/key)", kind)
         return False
@@ -215,179 +194,82 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
     url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{key}"
     headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"}
 
-    # Quick existence probe (non-fatal if it fails)
+    # HEAD probe
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             head = await client.head(url, headers=headers)
         if head.status_code != 200:
-            logger.warning(
-                "❌ %s MP3 missing: %s/%s (status=%s)",
-                kind,
-                bucket,
-                key,
-                head.status_code,
-            )
+            logger.warning("❌ %s MP3 missing: %s/%s (status=%s)", kind, bucket, key, head.status_code)
             return False
-    except Exception as e:
-        logger.debug(
-            "HEAD failed for %s %s/%s: %s (will try GET)",
-            kind,
-            bucket,
-            key,
-            e,
-        )
+    except Exception:
+        pass
 
-    last_err: object | None = None
+    last_err = None
     gain_db = _gain_for_kind(kind)
 
     async with _play_lock:
         for attempt in range(1, _SUPA_FETCH_RETRIES + 1):
             try:
-                # Respect pause/stop between retries
                 await _respect_user_controls()
-
                 _update_flags_for_play(kind, bucket, key)
-                t0 = time.perf_counter()
 
                 async with httpx.AsyncClient(timeout=_SUPA_FETCH_TIMEOUT) as client:
                     resp = await client.get(url, headers=headers)
                     resp.raise_for_status()
                     b = await resp.aread()
 
-                size = len(b or b"")
-                if size < 1024:
-                    raise RuntimeError(f"Downloaded size too small: {size} bytes")
-                if not _looks_like_mp3(b):
-                    raise RuntimeError("Not an MP3 (bad header)")
+                if len(b) < 1024 or not _looks_like_mp3(b):
+                    raise RuntimeError("Bad MP3 download")
 
-                # Respect pause/stop before playing
                 await _respect_user_controls()
 
-                # Apply gain if configured; else fast path
                 if abs(gain_db) > 0.05:
                     rc = await _play_bytes_with_gain(b, gain_db)
                 else:
                     res = play_mp3(b, block=True, diagnostics=False)
                     rc = await res if inspect.iscoroutine(res) else res
 
-                dt = time.perf_counter() - t0
                 if rc == 0:
-                    logger.debug(
-                        "✅ %s MP3 played in %.2fs (%s/%s) [bytes=%d, rc=%d]",
-                        kind,
-                        dt,
-                        bucket,
-                        key,
-                        size,
-                        rc,
-                    )
                     return True
 
                 last_err = f"ffplay rc={rc}"
-                logger.warning(
-                    "⚠️ %s play failed (attempt %d/%d) rc=%s %s/%s",
-                    kind,
-                    attempt,
-                    _SUPA_FETCH_RETRIES,
-                    rc,
-                    bucket,
-                    key,
-                )
+                logger.warning("⚠️ %s play failed (attempt %d/%d)", kind, attempt, _SUPA_FETCH_RETRIES)
 
             except asyncio.CancelledError:
                 logger.info("🛑 %s playback cancelled by user", kind)
                 return False
             except Exception as e:
                 last_err = e
-                logger.warning(
-                    "⚠️ %s MP3 exception (attempt %d/%d) %s/%s: %s",
-                    kind,
-                    attempt,
-                    _SUPA_FETCH_RETRIES,
-                    bucket,
-                    key,
-                    e,
-                )
+                logger.warning("⚠️ %s exception attempt %d/%d: %s", kind, attempt, _SUPA_FETCH_RETRIES, e)
 
             if attempt < _SUPA_FETCH_RETRIES:
                 await asyncio.sleep(_SUPA_BACKOFF ** attempt)
 
-    logger.error(
-        "❌ %s MP3 gave up after %d attempts: %s/%s :: %s",
-        kind,
-        _SUPA_FETCH_RETRIES,
-        bucket,
-        key,
-        last_err,
-    )
+    logger.error("❌ %s MP3 gave up after %d attempts: %s/%s :: %s",
+                 kind, _SUPA_FETCH_RETRIES, bucket, key, last_err)
     return False
 
 
-async def play_track_with_skip(
-    track,
-    *,
-    lang: str,
-    mode: str,
-    rank: int,
-    track_name: str,
-    artist_name: str,
-) -> bool:
-    """
-    Unified Spotify playback handler for both:
-      • decade/genre runner
-      • collection runner
+# ─────────────────────────────────────────────
+# robust_play_intro — retries + buffer
+# ─────────────────────────────────────────────
 
-    Handles:
-      - update playback flags
-      - wait for pause/stop
-      - trigger Spotify track playback
-      - run skip-event wait
-      - returns True if user skipped
-    """
+async def robust_play_intro(kind: str, bucket: str, key: str) -> bool:
+    for attempt in range(3):
+        try:
+            ok = await safe_play(kind, bucket, key)
+            if ok:
+                await asyncio.sleep(0.30)
+                return True
+        except Exception:
+            pass
+        await asyncio.sleep(0.20)
+    return False
 
-    # Update flags so UI shows "playing track"
-    try:
-        _flags.is_playing = True
-        _flags.is_paused = False
-        _flags.stopped = False
-        _flags.context = {
-            "phase": "track",
-            "lang": lang,
-            "mode": mode,
-            "rank": rank,
-            "track_name": track_name,
-            "artist_name": artist_name,
-        }
-    except Exception:
-        logger.debug("⚠️ Failed to update flags for Spotify track start")
-
-    # Respect pause/stop prior to playing
-    await _respect_user_controls()
-
-    if not track.spotify_track_id:
-        logger.warning(f"🚫 Missing spotify_track_id for {track_name}")
-        return False
-
-    logger.info(f"🎵 PLAY: {track_name} — rank {rank}")
-    play_spotify_track(track.spotify_track_id)
-
-    play_secs = compute_play_seconds(track)
-    skipped = await sleep_with_skip(skip_event, play_secs)
-
-    if skipped:
-        logger.info("⏭️ User skipped track.")
-    else:
-        logger.info("🎶 Track finished normally.")
-
-    return skipped
 
 # ─────────────────────────────────────────────
-# Unified Spotify Track Playback w/ Skip + UI Flags
+# 🎵 Spotify Track Playback (Final, Cleaned Version)
 # ─────────────────────────────────────────────
-from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
-from backend.services.play_policy import compute_play_seconds, sleep_with_skip
-from backend.state import skip_event
-
 
 async def play_track_with_skip(
     track,
@@ -400,59 +282,52 @@ async def play_track_with_skip(
 ) -> bool:
     """
     Plays a Spotify track with:
-      • UI state updates
-      • Pause support
-      • Stop support
-      • Skip support
-      • Graceful fade-out between tracks
-    Returns:
-      True  -> skip pressed
-      False -> track finished normally
+      - fade-out of previous audio
+      - UI flag updates
+      - pause/stop handling
+      - skip handling
+      - fade-out on completion
     """
 
-    # Nothing to play?
     spotify_id = getattr(track, "spotify_track_id", None)
     if not spotify_id:
-        logger.warning("🚫 No spotify_track_id — skipping track playback.")
+        logger.warning("🚫 No spotify_track_id for %s — skipping.", track_name)
         return False
 
-    # First: fade out any currently playing Spotify audio
+    # Fade out anything currently playing
     try:
         await stop_spotify_playback(fade_out_seconds=0.8)
-    except Exception as e:
-        logger.debug(f"Fade-out failed (safe to ignore): {e}")
+    except Exception:
+        pass
 
-    # Update UI flags BEFORE playback starts
-    _update_flags_for_play(kind="track", bucket="spotify", key=spotify_id)
+    # Update UI flags
+    _update_flags_for_play("track", "spotify", spotify_id)
 
-    # Respect pause/stop before launching track
     await _respect_user_controls()
 
-    logger.info(f"🎵 Playing Spotify track {track_name} — rank {rank}")
-
-    # Launch the track (non-blocking Spotify API call)
+    logger.info(f"🎵 Playing Spotify track: {track_name} — rank {rank}")
     ok = play_spotify_track(spotify_id)
+
     if not ok:
-        logger.warning("❌ Spotify refused to start playback — skipping this track.")
+        logger.warning("❌ Spotify refused playback.")
         return False
 
-    # Compute play duration
+    # Determine how long to play
     play_secs = compute_play_seconds(track)
-    logger.debug(f"⏱ play_track_with_skip: duration={play_secs:.2f}s")
+    logger.debug(f"⏱ Track duration = {play_secs:.2f}s")
 
-    # Wait for completion or skip
+    # Wait until completion or skip
     skipped = await sleep_with_skip(skip_event, play_secs)
 
-    # Skip button pressed?
     if skipped:
-        logger.info("⏭ Skip detected — fading out now.")
+        logger.info("⏭ Skip detected — fading out.")
         try:
             await stop_spotify_playback(fade_out_seconds=0.5)
         except Exception:
             pass
         return True
 
-    # Finished normally — fade out
+    # Finished normally → fade out
     try:
         await stop_spotify_playback(fade_out_seconds=1.0)
     except Exception:
@@ -460,30 +335,3 @@ async def play_track_with_skip(
 
     logger.info("✅ Track finished normally.")
     return False
-
-# ─────────────────────────────────────────────
-# Robust intro playback with retries + buffer
-# ─────────────────────────────────────────────
-async def robust_play_intro(kind: str, bucket: str, key: str) -> bool:
-    """
-    Reliable intro/detail/artist playback:
-    - Retries up to 3 times
-    - Ensures the MP3 actually begins playing
-    - Correctly calls safe_play(kind, bucket, key)
-    """
-    import asyncio
-
-    for attempt in range(3):
-        try:
-            ok = await safe_play(kind, bucket, key)
-            if ok:
-                # Let ffplay/play_mp3 truly begin audio output
-                await asyncio.sleep(0.30)
-                return True
-        except Exception as e:
-            logging.debug(f"robust_play_intro attempt {attempt} failed: {e}")
-
-        await asyncio.sleep(0.20)  # retry delay
-
-    return False
-
