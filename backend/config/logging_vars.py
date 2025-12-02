@@ -20,11 +20,13 @@ LOG_LEVELS_BY_MODULE = {
     # ----------------------------------------------------------------------
     # CORE PLAYBACK PIPELINE — CRITICAL FOR DIAGNOSTICS
     # ----------------------------------------------------------------------
-    "backend.services.radio_runtime": "DEBUG",
-    "backend.services.playback_helpers": "DEBUG",
     "backend.services.spotify.playback": "DEBUG",
-    "backend.routers.playback_control": "DEBUG",
-    "backend.state": "DEBUG",
+    # Everything else quiet:
+    "backend.services.radio_runtime": "INFO",
+    "backend.services.playback_helpers": "INFO",
+    "backend.routers.playback_control": "INFO",
+    "backend.state": "INFO",
+
     "backend.routers.decade_genre_player": "INFO",
     "backend.routers.collections_player": "INFO",
 

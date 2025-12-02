@@ -150,10 +150,11 @@ def resume():
 
 
 @router.post("/stop", summary="Stop playback")
-def stop():
-    cancel_current_sequence()
+async def stop():
+    await cancel_current_sequence()
     _touch()
     return {"ok": True, "status": asdict(_flags)}
+
 
 
 @router.post("/skip", summary="Skip to next track")

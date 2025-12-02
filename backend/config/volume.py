@@ -5,24 +5,25 @@ from __future__ import annotations
 # MASTER PLAYBACK CONTROLS  (edit these values directly)
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Per-narration gain in decibels (negative = quieter)
-INTRO_GAIN_DB:  float = -6.0
-DETAIL_GAIN_DB: float = 0.0
-ARTIST_GAIN_DB: float = 0.0
+# ───────────────────────────────────────────────────────────────
+# NARRATION LOUDNESS (recommended)
+# ───────────────────────────────────────────────────────────────
 
-# Spotify/device volumes (percent 0..100)
-# MAIN controls the primary output (e.g., music).
-MAIN_VOLUME_PERCENT: int = 40
+# Strong narration boost (radio DJ clarity)
+INTRO_GAIN_DB:  float = +3.0
+DETAIL_GAIN_DB: float = +3.0
+ARTIST_GAIN_DB: float = +2.0
 
-# BED (background/bed track) volume:
-# Option A) fixed percentage below (uncomment & set BED_FACTOR=None)
-BED_VOLUME_PERCENT: int = 20
+# Main track volume (normal music playback)
+MAIN_VOLUME_PERCENT: int = 80
 
-# Option B) compute from MAIN via factor (set to a number like 0.3; else None)
-BED_FACTOR: float | None = None  # e.g., 0.3 → 30% of MAIN
+# Music volume during voice-over (ducking)
+BED_VOLUME_PERCENT: int = 10      # voice stands out clearly
+BED_FACTOR: float | None = None
 
-# Bed crossfade time in milliseconds
+# Cross-fade for bed track
 BED_FADE_MS: int = 1200
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TRACK PLAY LENGTH CONTROLS

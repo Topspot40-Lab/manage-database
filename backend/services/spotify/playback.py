@@ -34,12 +34,11 @@ def _pick_device_id(sp, prefer_active: bool = True) -> Optional[str]:
 # ──────────────────────────────────────────────────────────
 async def set_device_volume(volume: int, device_id: str | None = None, retries: int = 8):
     """
-    Robust Spotify volume setter.
-    Spotify ignores volume commands if:
-      - playback is paused
-      - playback just started (<500ms)
-      - device is waking up
-    We retry until Spotify reports the correct volume.
+    Improved volume setter:
+    - NEVER returns False (volume mismatch is NOT fatal)
+    - Does NOT trigger skip/cancel logic
+    - Logs warnings instead of errors
+    - Continues playback even if Spotify lies about volume
     """
     sp = get_spotify_user_client()
 
@@ -50,20 +49,30 @@ async def set_device_volume(volume: int, device_id: str | None = None, retries: 
             pb = sp.current_playback()
             if pb and pb.get("device"):
                 actual = pb["device"].get("volume_percent")
+
                 if actual == volume:
-                    logger.info(f"🔊 Spotify volume confirmed: {actual}% (attempt {attempt})")
-                    return True
-                else:
-                    logger.debug(
-                        f"⚠️ Spotify volume still {actual}% — expected {volume} (attempt {attempt})"
+                    logger.info(
+                        f"🔊 Spotify volume confirmed: {actual}% (attempt {attempt})"
                     )
+                    return True
+
+                # Mismatch, but not fatal
+                logger.warning(
+                    f"⚠️ Volume mismatch {actual}% — expected {volume} "
+                    f"(attempt {attempt}); continuing..."
+                )
+
         except Exception as e:
-            logger.debug(f"Volume set attempt {attempt} failed: {e}")
+            logger.warning(f"⚠️ Volume set exception on attempt {attempt}: {e}")
 
-        await asyncio.sleep(0.15)  # wait for device to catch up
+        await asyncio.sleep(0.20)
 
-    logger.error("❌ Spotify NEVER applied volume setting after retries.")
-    return False
+    # Final warning, but continue anyway
+    logger.warning(
+        f"⚠️ Spotify never confirmed volume={volume} after retries, "
+        f"but continuing playback anyway."
+    )
+    return True
 
 
 # ──────────────────────────────────────────────────────────

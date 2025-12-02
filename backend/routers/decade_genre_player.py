@@ -115,6 +115,8 @@ async def _run_play_sequence_decade_genre(
     # MAIN LOOP
     # ─────────────────────────────────────────────
     for track, artist, tr_rank, decade_obj, genre_obj in rows:
+        _flags.cancel_requested = False
+
         rank = tr_rank.ranking
 
         # ─────────────────────────────────────────────
@@ -267,8 +269,10 @@ async def _run_play_sequence_decade_genre(
         await _respect_user_controls()
         await asyncio.sleep(0.5)
 
-    await cancel_current_sequence()
-    logger.info("✅ Sequence finished cleanly.")
+    _flags.is_playing = False
+    _flags.cancel_requested = False
+    logger.info("🎉 Sequence completed normally (no cancel).")
+
 
 # ─────────────────────────────────────────────
 # SINGLE-PLAY HELPER (WRAPS SEQUENCE RUNNER)
