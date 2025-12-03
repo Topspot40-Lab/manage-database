@@ -7,7 +7,8 @@ from typing import List, Dict, Any, Optional, Callable
 import logging
 
 from backend.services.tts.elevenlabs_tts import generate_tts_mp3
-from backend.routers.tts_shared import add_metadata_to_mp3, log_tts_action
+from backend.services.tts.tts_shared import add_metadata_to_mp3, log_tts_action
+
 from backend.utils.tts_normalize import normalize_tts_text  # keep
 
 logger = logging.getLogger("tts_logger")

@@ -22,6 +22,13 @@ from backend.config import (
     DEFAULT_TTS_LANGUAGE,
 )
 
+# ✅ Correct shared TTS utils
+from backend.services.tts.tts_shared import (
+    add_metadata_to_mp3,
+    log_tts_action,
+)
+
+
 logger = logging.getLogger("tts_logger")
 
 

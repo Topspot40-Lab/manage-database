@@ -7,7 +7,10 @@ import logging
 from backend.services.track_cache import get_all_rank_entries
 from backend.services.tts.elevenlabs_tts import generate_tts_mp3
 from backend.config import VOICE_ID_INTRO, VOICE_ID_TRACK
-from backend.routers.tts_shared import add_metadata_to_mp3, log_tts_action
+
+# ✅ FIXED IMPORT:
+from backend.services.tts.tts_shared import add_metadata_to_mp3, log_tts_action
+
 
 logger = logging.getLogger("tts_logger")
 
@@ -15,6 +18,7 @@ router = APIRouter(
     prefix="/tts/track",
     tags=["TTS"]
 )
+
 
 @router.post("/intro/by-rank")
 def generate_intro_tts_by_rank(

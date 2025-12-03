@@ -1,6 +1,7 @@
 # backend/routers/tts_intro.py
 from __future__ import annotations
 
+
 import logging
 import time
 import requests
@@ -34,6 +35,13 @@ from backend.utils.tts_diagnostics import (
 )
 from backend.services.tts_prep import prepare_for_tts_es, prepare_for_tts_pt_br
 from backend.services.tts.generate_tts_batch import generate_tts_batch
+
+# ✅ Correct shared TTS utils
+from backend.services.tts.tts_shared import (
+    add_metadata_to_mp3,
+    log_tts_action,
+)
+
 
 logger = logging.getLogger(__name__)  # resolves to "backend.routers.tts_intro"
 
