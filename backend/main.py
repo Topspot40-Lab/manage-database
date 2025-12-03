@@ -81,21 +81,29 @@ def create_app() -> FastAPI:
         pass
 
     # ─────────────────────────────────────────────
-    # 📚 Tags for OpenAPI docs
+    # 📚 Clean, Normalized Tags for OpenAPI Docs
     # ─────────────────────────────────────────────
     TAGS = [
-        {"name": "Meta", "description": "Health, version, and meta endpoints."},
-        {"name": "JSON & Files", "description": "JSON loaders and saved file access."},
-        {"name": "Playback", "description": "Spotify/local playback and control."},
-        {"name": "TTS", "description": "Intro, detail, artist narration synthesis."},
-        {"name": "Generators", "description": "Build track lists using xAI/Spotify."},
-        {"name": "Locales", "description": "Language utilities and MP3s."},
-        {"name": "Collections", "description": "Collections: read, generate, play."},
-        {"name": "Supabase/DB", "description": "Database diagnostics and summaries."},
-        {"name": "Supabase", "description": "DB playback + loaders."},
-        {"name": "Upsert/Import", "description": "Import JSON → DB."},
-        {"name": "Narration", "description": "Mobile narration player."},
+        {"name": "Meta", "description": "Health, version, status, and logging utilities."},
+        {"name": "Spotify Auth", "description": "Spotify OAuth login and token utilities."},
+
+        {"name": "Playback", "description": "Playback control, sequences, narration/track flow."},
+        {"name": "Narration", "description": "TTS playback, mobile narration player, voice-over utilities."},
+
+        {"name": "Supabase", "description": "Supabase data loaders, summaries, and core utilities."},
+        {"name": "Supabase: Collections", "description": "Collection loaders, generators, and players."},
+        {"name": "Supabase: Decade/Genre", "description": "Decade/Genre loaders and sequence playback."},
+
+        {"name": "JSON & Files", "description": "Generate, validate, insert, and save JSON tracklists."},
+        {"name": "Upsert/Import", "description": "JSON import into Supabase database."},
+
+        {"name": "Generators", "description": "Track list generators using xAI + Spotify."},
+
+        {"name": "Locales", "description": "Localized intros, details, artists, and language files."},
+
+        {"name": "Catalog", "description": "Decade/Genre/Collection metadata for frontend."},
     ]
+
 
     # ─────────────────────────────────────────────
     # 🌐 Create FastAPI App
@@ -157,7 +165,10 @@ def create_app() -> FastAPI:
     # 📦 ROUTER IMPORTS
     # ─────────────────────────────────────────────
     from backend.routers.spotify_auth import router as spotify_auth_router
-    from backend.routers import router as json_router
+    from backend.routers.generate_json import router as generate_json_router
+    from backend.routers.validate_json import router as validate_json_router
+    from backend.routers.insert_json import router as insert_json_router
+
     from backend.router_saved_files import router as save_router
     from backend.routers.play_json_track_by_rank import router as json_play_router
 
@@ -195,8 +206,13 @@ def create_app() -> FastAPI:
     # ─────────────────────────────────────────────
     # 📎 REGISTER ROUTERS
     # ─────────────────────────────────────────────
-    app.include_router(json_router, tags=["JSON & Files"])
+    # JSON & Files
+    app.include_router(generate_json_router, tags=["JSON & Files"])
+    app.include_router(validate_json_router, tags=["JSON & Files"])
+    app.include_router(insert_json_router, tags=["JSON & Files"])
     app.include_router(save_router, tags=["JSON & Files"])
+
+    # Playback of JSON-sourced tracks
     app.include_router(json_play_router, tags=["Playback"])
 
     # TTS

@@ -34,7 +34,7 @@ from backend.config import (
 
 logger = logging.getLogger("tts_logger")
 
-folk_router = APIRouter(tags=["Generators"], prefix="/generate/folk-acoustic")
+folk_router = APIRouter(prefix="/generate/folk-acoustic")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Path helpers + JSON emitter

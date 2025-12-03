@@ -1,9 +1,21 @@
-from fastapi import APIRouter
-from .generate_json import router as gen_router
-from .validate_json import router as val_router
-from .insert_json import router as ins_router
+# backend/routers/__init__.py
+"""
+Router package.
 
-router = APIRouter()
-router.include_router(gen_router)
-router.include_router(val_router)
-router.include_router(ins_router)
+We intentionally DO NOT create a top-level APIRouter here to avoid
+accidentally double-registering routers in main.py.
+
+Routers should be imported explicitly, e.g.:
+
+    from backend.routers.generate_json import router as generate_json_router
+"""
+
+from .generate_json import router as generate_json_router
+from .validate_json import router as validate_json_router
+from .insert_json import router as insert_json_router
+
+__all__ = [
+    "generate_json_router",
+    "validate_json_router",
+    "insert_json_router",
+]
