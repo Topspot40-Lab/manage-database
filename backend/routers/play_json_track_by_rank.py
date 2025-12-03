@@ -5,7 +5,8 @@ from backend.services.spotify.playback import play_spotify_track
 from backend.config import BASE_DIR
 
 
-router = APIRouter(tags=["Playback"], )
+router = APIRouter(prefix="/playback", tags=["Playback"])
+
 
 
 @router.get("/load-json-track-file")

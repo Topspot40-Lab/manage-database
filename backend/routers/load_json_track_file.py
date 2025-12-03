@@ -10,7 +10,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-router = APIRouter()
+router = APIRouter(prefix="/json", tags=["JSON & Files"])
+
 
 class FileLoadRequest(BaseModel):
     genre: str

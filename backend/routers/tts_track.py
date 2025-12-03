@@ -13,7 +13,7 @@ logger = logging.getLogger("tts_logger")
 
 router = APIRouter(
     prefix="/tts/track",
-    tags=["TTS - Track Intros & Details"]
+    tags=["TTS"]
 )
 
 @router.post("/intro/by-rank")

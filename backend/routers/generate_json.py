@@ -32,7 +32,8 @@ from backend.utils.log_helpers import log_generate_json_summary
 logger = logging.getLogger(__name__)
 logger.debug("📦 Final step message...")
 
-router = APIRouter(tags=["JSON & Files"], )
+router = APIRouter(prefix="/json", tags=["JSON & Files"])
+
 
 
 
