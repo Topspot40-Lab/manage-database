@@ -20,7 +20,7 @@ try:
 except Exception:
     HAS_XAI_TRACK = False
 
-router = APIRouter(prefix="/locales/track-detail", tags=["track-detail-locales"])
+router = APIRouter(prefix="/locales/track-detail", tags=["Locales"])
 SUPPORTED_LANGS = ["es", "pt-BR"]
 
 import unicodedata

@@ -11,7 +11,10 @@ from backend.models.dbmodels import Artist, Track, Genre, Decade, DecadeGenre, T
 from backend.utils.tts_diagnostics import get_missing_tts_info, get_decade_genre_ranking_summary
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/supabase", tags=["Supabase Summary"])
+router = APIRouter(
+    prefix="/supabase",
+    tags=["Supabase"],  # summary is a supabase diagnostic utility
+)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def _canon_lang(code: str) -> str:

@@ -8,7 +8,7 @@ from backend.database import get_db
 import logging
 
 log = logging.getLogger(__name__)
-router = APIRouter(tags=["Supabase: Collections"], prefix="/collections-read")
+router = APIRouter(tags=["Supabase: Collections"], prefix="/supabase/collections")
 
 def _is_postgres(db: Session) -> bool:
     try:

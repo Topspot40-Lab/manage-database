@@ -34,7 +34,7 @@ import requests
 
 logger = logging.getLogger("tts_logger")
 
-detail_router = APIRouter(prefix="/tts/detail")
+detail_router = APIRouter(tags=["Narration"], prefix="/tts/detail")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

@@ -25,7 +25,7 @@ from backend.config import (
 logger = logging.getLogger("tts_logger")
 
 
-artist_router = APIRouter(tags=["Narration"], prefix="/tts/artist")
+artist_router = APIRouter(tags=["Narration"], prefix="/narration")
 
 
 # Central output directory for all artist MP3s

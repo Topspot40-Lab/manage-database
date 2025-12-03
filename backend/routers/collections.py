@@ -10,7 +10,7 @@ from backend.schemas.collection_schemas import CollectionImportPayload, ImportRe
 from backend.services.collection_import.importer import import_from_file, import_payload
 
 
-router = APIRouter(tags=["Supabase: Collections"], prefix="/collections")
+router = APIRouter(tags=["Supabase: Collections"], prefix="/supabase/collections")
 
 @router.post("/import-json", response_model=ImportResult)
 def import_collection(payload: CollectionImportPayload, db: Session = Depends(get_db)):

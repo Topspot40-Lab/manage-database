@@ -38,7 +38,7 @@ from backend.services.radio_runtime import (
 
 from backend.config.volume import PLAY_FULL_TRACK
 
-router = APIRouter(prefix="/supabase", tags=["Supabase: Decade/Genre"])
+router = APIRouter(prefix="/supabase/decade-genre", tags=["Supabase: Decade/Genre"])
 logger = logging.getLogger(__name__)
 
 

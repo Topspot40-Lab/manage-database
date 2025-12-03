@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from backend.database import get_db
 from backend.models.collection_models import Collection
 
-router = APIRouter(tags=["Supabase: List Collections"])
+router = APIRouter(tags=["Supabase: Collections"])
 
 @router.get("/list-collections")
 def list_collections(db: Session = Depends(get_db)):

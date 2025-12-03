@@ -21,7 +21,11 @@ from backend.config import ELEVENLABS_API_KEY
 import logging
 log = logging.getLogger("locales")
 
-router = APIRouter(prefix="/locales")
+router = APIRouter(
+    prefix="/locales",
+    tags=["Locales"],
+)
+
 
 
 def _get_decade_genre_id(db: Session, decade_name: str, genre_name: str) -> int:

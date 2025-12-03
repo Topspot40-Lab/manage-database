@@ -31,7 +31,7 @@ from backend.services.tts.generate_tts_batch import generate_tts_batch
 logger = logging.getLogger(__name__)  # resolves to "backend.routers.tts_collection_intro"
 
 collection_intro_router = APIRouter(
-    prefix="/narration",
+    prefix="/tts/collection-intro",
     tags=["Narration"],
 )
 

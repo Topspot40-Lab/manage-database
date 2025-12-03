@@ -11,7 +11,7 @@ from backend.services.supabase_storage import delete_intro_mp3_files_for_combo
 from backend.utils.datetime_utils import parse_dt_utc
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="", tags=["JSON & Files"])
+router = APIRouter(prefix="/json", tags=["JSON & Files"])
 
 def _norm(s: str | None) -> str:
     return (s or "").strip()

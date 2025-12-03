@@ -30,7 +30,7 @@ from backend.services.supabase_loader_service import current_decade_genre_tracks
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["Supabase: Play Random"])
+router = APIRouter(tags=["Supabase: Collections"])
 
 
 # ─────────────────────────────────────────────

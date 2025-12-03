@@ -20,7 +20,7 @@ except Exception:
     skip_event = None
 
 router = APIRouter(
-    prefix="/playback",
+    prefix="/supabase",
     tags=["Playback"],  # normalized to global category
 )
 

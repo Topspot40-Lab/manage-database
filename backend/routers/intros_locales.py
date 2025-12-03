@@ -23,7 +23,7 @@ from backend.services.qafix_es import ensure_artist_after_title
 TR  = TrackRanking.__table__
 TRL = TrackRankingLocale.__table__
 log = logging.getLogger("intros_locales")
-router = APIRouter(tags=["Locales"], prefix="/intros")
+router = APIRouter(tags=["Locales"], prefix="/locales")
 
 # ── XAI client (unchanged behavior) ──────────────────────────────────────────
 def call_llm(system: str, user: str) -> str:

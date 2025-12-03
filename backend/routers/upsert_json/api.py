@@ -19,7 +19,7 @@ from backend.utils.datetime_utils import parse_dt_utc
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter
-router = APIRouter(prefix="", tags=["json-upsert"])
+router = APIRouter(prefix="", tags=["Upsert/Import"])
 
 @router.get("/upsert-json/ping")
 def ping():

@@ -1,294 +1,113 @@
 # backend/main.py
 from __future__ import annotations
 
-import sys
-import io
-import re
+import os
 import logging
 from pathlib import Path
-from fastapi import FastAPI, Query, Request
-from fastapi.routing import APIRoute
+from importlib import import_module
+from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 
-# ─────────────────────────────────────────────
-# 📌 Project Bootstrap
-# ─────────────────────────────────────────────
-project_root = Path(__file__).resolve().parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
-
-# Ensure console supports UTF-8 logs
+# Load .env
 try:
-    sys.stdout.reconfigure(encoding="utf-8")
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(), override=False)
 except Exception:
-    try:
-        sys.stdout = io.TextIOWrapper(
-            getattr(sys.stdout, "buffer", sys.stdout), encoding="utf-8"
-        )
-    except Exception:
-        pass
+    pass
 
-# Prevent duplicate logging handlers under reload
-LOGGING_INITIALIZED = False
+# Logging
+from backend.logging_setup import setup_logging
+setup_logging()
 
+logger = logging.getLogger("backend.startup")
 
-# ─────────────────────────────────────────────
-# 🔖 Custom OpenAPI Unique ID Formatting
-# ─────────────────────────────────────────────
-def custom_generate_unique_id(route: APIRoute) -> str:
-    methods = "-".join(sorted(m.lower() for m in (route.methods or [])))
-    path = re.sub(r"[{}\/]", "_", route.path_format).strip("_")
-    tag = (route.tags[0] if route.tags else "default").lower()
-    func = getattr(route.endpoint, "__name__", "handler")
-    return f"{tag}__{methods}__{path}__{func}"
+BASE_DIR = Path(__file__).resolve().parent
+ROUTER_DIR = BASE_DIR / "routers"
 
 
 # ─────────────────────────────────────────────
-# 🚀 FastAPI App Factory
+# FLEXIBLE ROUTER DISCOVERY
+# ─────────────────────────────────────────────
+def load_all_routers(app: FastAPI):
+    """
+    Load ANY APIRouter object found in router modules.
+    This catches:
+        - router
+        - x_router
+        - router_x
+        - api_router
+        - supabase_router
+        - tts_router
+        - routes
+        - ANY unnamed APIRouter instance
+    """
+
+    for file in ROUTER_DIR.glob("*.py"):
+        if file.name.startswith("__"):
+            continue
+
+        module_name = f"backend.routers.{file.stem}"
+
+        try:
+            module = import_module(module_name)
+        except Exception as e:
+            logger.error(f"❌ Failed importing {module_name}: {e}")
+            continue
+
+        found = []
+
+        # Inspect all attributes in module
+        for attr_name in dir(module):
+            obj = getattr(module, attr_name)
+            if isinstance(obj, APIRouter):
+                found.append((attr_name, obj))
+
+        if not found:
+            logger.debug(f"⏭ No APIRouter found in {file.name}")
+            continue
+
+        # Mount all routers (usually 1)
+        for attr_name, router_obj in found:
+            try:
+                app.include_router(router_obj)
+                logger.info(
+                    f"🔌 Mounted {file.name:<25} "
+                    f"router={attr_name:<15} "
+                    f"prefix={router_obj.prefix:<20} "
+                    f"tags={router_obj.tags}"
+                )
+
+            except Exception as e:
+                logger.error(f"❌ Failed mounting router in {file.name}: {e}")
+
+
+# ─────────────────────────────────────────────
+# APP FACTORY
 # ─────────────────────────────────────────────
 def create_app() -> FastAPI:
-    import os
-    from dotenv import load_dotenv
-
-    # Load environment variables
-    try:
-        load_dotenv(project_root / ".env")
-    except Exception:
-        pass
-
-    # Initialize logging once
-    global LOGGING_INITIALIZED
-    if not LOGGING_INITIALIZED:
-        from backend.logging_setup import setup_logging
-        setup_logging()
-        LOGGING_INITIALIZED = True
-
-    logger = logging.getLogger(__name__)
-
-    # Show environment debug info if needed
-    if os.getenv("LOG_SHOW_ENV", "").lower() in ("1", "true", "yes", "on"):
-        logger.debug(
-            "ENV check: spotify=%s, xai=%s, supabase=%s",
-            "set" if os.getenv("SPOTIFY_CLIENT_ID") else "missing",
-            "set" if os.getenv("XAI_API_KEY") else "missing",
-            "set" if os.getenv("SUPABASE_URL") else "missing",
-        )
-
-    # Load metadata
-    from backend.config.app_cfg import APP_VERSION, LAST_UPDATED, validate_app_metadata
-    try:
-        validate_app_metadata()
-    except Exception:
-        pass
-
-    # ─────────────────────────────────────────────
-    # 📚 Clean, Normalized Tags for OpenAPI Docs
-    # ─────────────────────────────────────────────
-    TAGS = [
-        {"name": "Meta", "description": "Health, version, status, and logging utilities."},
-        {"name": "Spotify Auth", "description": "Spotify OAuth login and token utilities."},
-
-        {"name": "Playback", "description": "Playback control, sequences, narration/track flow."},
-        {"name": "Narration", "description": "TTS playback, mobile narration player, voice-over utilities."},
-
-        {"name": "Supabase", "description": "Supabase data loaders, summaries, and core utilities."},
-        {"name": "Supabase: Collections", "description": "Collection loaders, generators, and players."},
-        {"name": "Supabase: Decade/Genre", "description": "Decade/Genre loaders and sequence playback."},
-
-        {"name": "JSON & Files", "description": "Generate, validate, insert, and save JSON tracklists."},
-        {"name": "Upsert/Import", "description": "JSON import into Supabase database."},
-
-        {"name": "Generators", "description": "Track list generators using xAI + Spotify."},
-
-        {"name": "Locales", "description": "Localized intros, details, artists, and language files."},
-
-        {"name": "Catalog", "description": "Decade/Genre/Collection metadata for frontend."},
-    ]
-
-
-    # ─────────────────────────────────────────────
-    # 🌐 Create FastAPI App
-    # ─────────────────────────────────────────────
     app = FastAPI(
-        title="TopSpot API",
-        version=APP_VERSION,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_tags=TAGS,
-        swagger_ui_parameters={
-            "defaultModelsExpandDepth": 0,
-            "defaultModelExpandDepth": 0,
-            "displayRequestDuration": True,
-            "persistAuthorization": True,
-            "docExpansion": "none",
-        },
-        generate_unique_id_function=custom_generate_unique_id,
+        title="TopSpot JSON Creator",
+        version=os.getenv("APP_VERSION", "dev"),
     )
 
-    # ─────────────────────────────────────────────
-    # 🌍 CORS
-    # ─────────────────────────────────────────────
-    from fastapi.middleware.cors import CORSMiddleware
-
+    # CORS Middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:5174",
-        ],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # ─────────────────────────────────────────────
-    # 🏷️ Utility Meta Routes
-    # ─────────────────────────────────────────────
-    @app.get("/", tags=["Meta"])
-    def root():
-        return {"message": "TopSpot is up and running, partner Mr. Ed 🐴"}
-
-    @app.get("/health", tags=["Meta"], include_in_schema=False)
-    def health():
-        return {"status": "ok"}
-
-    @app.get("/version", tags=["Meta"])
-    def version():
-        return {"version": APP_VERSION, "last_updated": LAST_UPDATED}
-
-    @app.get("/__routes", include_in_schema=False)
-    def list_routes(request: Request):
-        return sorted(r.path for r in request.app.routes)
-
-    # ─────────────────────────────────────────────
-    # 📦 ROUTER IMPORTS
-    # ─────────────────────────────────────────────
-    from backend.routers.spotify_auth import router as spotify_auth_router
-    from backend.routers.generate_json import router as generate_json_router
-    from backend.routers.validate_json import router as validate_json_router
-    from backend.routers.insert_json import router as insert_json_router
-
-    from backend.router_saved_files import router as save_router
-    from backend.routers.play_json_track_by_rank import router as json_play_router
-
-    from backend.routers.tts_intro import intro_router
-    from backend.routers.tts_detail import detail_router
-    from backend.routers.tts_artist import artist_router
-    from backend.routers.tts_regenerator import router as tts_regen_router
-
-    from backend.routers.generate_poprock import router as poprock_router
-    from backend.routers.generate_folk_acoustic import folk_router
-    from backend.routers.enrich_tv_themes import router as enrich_tv_router
-    from backend.routers.expand_tv_themes import router as expand_tv_router
-
-    from backend.routers import locales as locales_router
-    from backend.routers import artist_locales, track_detail_locales, intros_locales
-
-    from backend.routers.collections import router as collections_router
-    from backend.routers.collections_read import router as collections_read_router
-    from backend.routers.collections_generate import router as collections_generate_router
-    from backend.routers.collections_player import router as collections_player_router
-    from backend.routers.tts_collection_intro import collection_intro_router
-
-    from backend.routers import supabase_summary, supabase_loader
-    from backend.routers.upsert_json import router as upsert_router
-
-    from backend.routers.ads_scripts import router as ads_router
-    from backend.routers.meta_logging import router as meta_logging_router
-
-    from backend.routers.narration import router as narration_router
-
-    from backend.routers import catalog
-    from backend.routers.decade_genre_player import router as decade_genre_router
-    from backend.routers import playback_control
-
-    # ─────────────────────────────────────────────
-    # 📎 REGISTER ROUTERS
-    # ─────────────────────────────────────────────
-    # JSON & Files
-    app.include_router(generate_json_router, tags=["JSON & Files"])
-    app.include_router(validate_json_router, tags=["JSON & Files"])
-    app.include_router(insert_json_router, tags=["JSON & Files"])
-    app.include_router(save_router, tags=["JSON & Files"])
-
-    # Playback of JSON-sourced tracks
-    app.include_router(json_play_router, tags=["Playback"])
-
-    # TTS
-    app.include_router(intro_router, tags=["TTS"])
-    app.include_router(detail_router, tags=["TTS"])
-    app.include_router(artist_router, tags=["TTS"])
-    app.include_router(tts_regen_router, tags=["TTS"])
-
-    # Generators
-    app.include_router(poprock_router, tags=["Generators"])
-    app.include_router(folk_router, tags=["Generators"])
-    app.include_router(enrich_tv_router, tags=["Generators"])
-    app.include_router(expand_tv_router, tags=["Generators"])
-
-    # Locales
-    app.include_router(locales_router.router, tags=["Locales"])
-    app.include_router(artist_locales.router, tags=["Locales"])
-    app.include_router(track_detail_locales.router, tags=["Locales"])
-    app.include_router(intros_locales.router, tags=["Locales"])
-
-    # Collections
-    app.include_router(collections_router, tags=["Collections"])
-    app.include_router(collections_read_router, tags=["Collections"])
-    app.include_router(collections_generate_router, tags=["Collections"])
-    app.include_router(collections_player_router)
-    app.include_router(collection_intro_router)
-
-    # Supabase
-    app.include_router(supabase_summary.router, tags=["Supabase/DB"])
-    app.include_router(supabase_loader.router, tags=["Supabase"])
-
-    # Import / Upsert
-    app.include_router(upsert_router, tags=["Upsert/Import"])
-
-    # Meta
-    app.include_router(ads_router, tags=["Meta"])
-    app.include_router(meta_logging_router, tags=["Meta"])
-
-    # Narration
-    app.include_router(narration_router, tags=["Narration"])
-
-    # Catalog + Decade/Genre
-    app.include_router(catalog.router)
-    app.include_router(decade_genre_router)
-
-    # Playback Control
-    app.include_router(playback_control.router, tags=["Playback"])
-
-    # Spotify Auth
-    app.include_router(spotify_auth_router, tags=["Meta"])
-
-    # ─────────────────────────────────────────────
-    # 🧹 Tag Validation at Startup
-    # ─────────────────────────────────────────────
-    ALLOWED = {x["name"] for x in TAGS}
+    # Load routers
+    load_all_routers(app)
 
     @app.on_event("startup")
-    async def verify_tags():
-        seen = {tag for r in app.routes if isinstance(r, APIRoute) for tag in (r.tags or [])}
-        unknown = sorted(seen - ALLOWED)
-        if unknown:
-            logging.getLogger("backend.tags").warning(
-                "⚠️ Unknown/stray tags in routes: %s", ", ".join(unknown)
-            )
-
-    @app.on_event("startup")
-    async def startup_banner():
-        logging.getLogger("backend.startup").info(
-            "✅ Startup complete; routes registered: %d",
-            len(app.routes)
-        )
+    async def _startup():
+        logger.info("🔄 FastAPI starting… main.py loaded")
 
     return app
 
 
-# ─────────────────────────────────────────────
-# 📌 Export App for Uvicorn
-# ─────────────────────────────────────────────
+# ASGI app
 app = create_app()

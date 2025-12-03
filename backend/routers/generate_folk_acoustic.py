@@ -34,7 +34,12 @@ from backend.config import (
 
 logger = logging.getLogger("tts_logger")
 
-folk_router = APIRouter(tags=["Generators"], prefix="/generate/folk-acoustic")
+# Unified router name for FastAPI (required)
+router = APIRouter(
+    prefix="/generate",
+    tags=["Generators"]
+)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Path helpers + JSON emitter
@@ -525,7 +530,7 @@ def _search_decade(
 # ─────────────────────────────────────────────────────────────────────────────
 # Endpoint (Supabase-only dedupe; decade-scoped by default)
 # ─────────────────────────────────────────────────────────────────────────────
-@folk_router.post("/build")
+@router.post("/build")
 def build_folk_acoustic_catalog(
     per_decade: int = Query(45, ge=10, le=100),
     max_overlap_pct: float = Query(5.0, ge=0.0, le=20.0),

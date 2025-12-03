@@ -12,7 +12,7 @@ from backend.config import ELEVENLABS_API_KEY
 from backend.services.elevenlabs_tts import synth_to_mp3_bytes
 from backend.services.xai_artist_detail import get_artist_descriptions_from_xai
 
-router = APIRouter(prefix="/locales/artist")
+router = APIRouter(tags=["Locales"], prefix="/locales/artist")
 
 SUPPORTED_LANGS = ["es", "pt-BR"]
 

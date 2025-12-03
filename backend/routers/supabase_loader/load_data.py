@@ -7,7 +7,7 @@ from backend.services.supabase_loader_service import load_decade_genre, load_col
 from backend.state import current_decade_genre, current_collection
 from backend.models.collection_models import Collection
 
-router = APIRouter(tags=["Supabase: Load Data & Context"])
+router = APIRouter(tags=["Supabase"])
 
 # ─────────────────────────────────────────────
 # Load Decade + Genre

@@ -16,7 +16,7 @@ from backend.config import (
 )
 
 logger = logging.getLogger("enrich_tv_themes")
-router = APIRouter(tags=["Generators"], prefix="/enrich/tv-themes")
+router = APIRouter(tags=["Generators"], prefix="/generate")
 
 # ---------- Core text utils ----------
 _WORDS = re.compile(r"[^\w]+", re.UNICODE)

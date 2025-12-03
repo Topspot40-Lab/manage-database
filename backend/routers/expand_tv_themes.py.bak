@@ -1,4 +1,4 @@
-# backend/routers/expand_tv_themes.py
+# "Supabase"/expand_tv_themes.py
 from __future__ import annotations
 
 import json
@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from backend.config import BASE_DIR
 
 logger = logging.getLogger("expand_tv_themes")
-router = APIRouter(prefix="/tv-themes/expand")
+router = APIRouter(tags=["Generators"], prefix="/tv-themes/expand")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Seed helpers

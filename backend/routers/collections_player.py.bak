@@ -39,7 +39,7 @@ from backend.services.radio_runtime import (
 from backend.config.volume import PLAY_FULL_TRACK
 
 
-router = APIRouter(prefix="/supabase/collections", tags=["Supabase: Collections"])
+router = APIRouter(prefix="/supabase", tags=["Supabase: Collections"])
 logger = logging.getLogger(__name__)
 
 
