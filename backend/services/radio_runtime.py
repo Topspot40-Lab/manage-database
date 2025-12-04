@@ -66,7 +66,9 @@ def _update_flags(
     rank: Optional[int] = None,
     track_name: Optional[str] = None,
     artist_name: Optional[str] = None,
+    duration_ms: Optional[int] = None,     # ✅ NEW
 ) -> None:
+
     """
     Keep backend.routers.playback_control._flags in sync with the current phase.
     This drives the UI state (car mode, debug panels, etc.).
@@ -88,7 +90,9 @@ def _update_flags(
             "rank": rank,
             "track_name": track_name,
             "artist_name": artist_name,
+            "durationMs": duration_ms,  # ✅ NEW FIELD
         }
+
     except Exception:
         logger.debug("⚠️ Failed to update _flags (phase=%s)", phase)
 
@@ -641,6 +645,7 @@ async def play_track_with_skip(
         track_label = track_name or getattr(track, "track_name", None)
         artist_label = artist_name or getattr(track, "artist_name", None)
         spotify_id = getattr(track, "spotify_track_id", None)
+        duration_ms = getattr(track, "duration_ms", None)
 
         if not spotify_id:
             logger.warning("⚠️ No spotify_track_id — skipping track playback.")
@@ -654,7 +659,9 @@ async def play_track_with_skip(
             rank=rank_val,
             track_name=track_label,
             artist_name=artist_label,
+            duration_ms=duration_ms,  # ✅ ADD THIS
         )
+
         await _respect_user_controls()
 
         play_secs = compute_play_seconds(track)
