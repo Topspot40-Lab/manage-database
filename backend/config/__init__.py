@@ -17,6 +17,10 @@ from __future__ import annotations
 import os, re, json
 from typing import Any, Dict, List
 
+from dotenv import load_dotenv
+load_dotenv()  # ensure .env loads even in python shell
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Single source of truth for volumes & play length
 # (edit values in backend/config/volume.py, not here)

@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import logging
 from typing import List, Tuple, Optional
+import time
 
 from sqlmodel import Session as SQLSession
 
@@ -66,9 +67,8 @@ def _update_flags(
     rank: Optional[int] = None,
     track_name: Optional[str] = None,
     artist_name: Optional[str] = None,
-    duration_ms: Optional[int] = None,     # ✅ NEW
+    duration_ms: Optional[int] = None,     # ✅ NEWish
 ) -> None:
-
     """
     Keep backend.routers.playback_control._flags in sync with the current phase.
     This drives the UI state (car mode, debug panels, etc.).
@@ -90,8 +90,11 @@ def _update_flags(
             "rank": rank,
             "track_name": track_name,
             "artist_name": artist_name,
-            "durationMs": duration_ms,  # ✅ NEW FIELD
+            "durationMs": duration_ms,
         }
+
+        # ✅ Mark the *moment* this phase became active
+        _flags.last_action_ts = time.time()
 
     except Exception:
         logger.debug("⚠️ Failed to update _flags (phase=%s)", phase)

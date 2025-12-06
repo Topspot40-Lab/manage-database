@@ -8,25 +8,37 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 🌱 Env + logger
+# 🌱 Load .env from REAL project root (works for PyCharm, Uvicorn, scripts, tests)
 # ─────────────────────────────────────────────────────────────────────────────
-load_dotenv()
+# config.py → backend → project root = parents[1]
+ROOT_DIR = Path(__file__).resolve().parents[1]
+ENV_PATH = ROOT_DIR / ".env"
+
+if ENV_PATH.exists():
+    load_dotenv(ENV_PATH)
+else:
+    print(f"⚠️ WARNING: .env not found at {ENV_PATH}")
+
 log = logging.getLogger("config")
 
-# Spotify creds (client-credentials flow; USER_ID not needed)
+# ─────────────────────────────────────────────────────────────────────────────
+# 🎵 Spotify credentials
+# ─────────────────────────────────────────────────────────────────────────────
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID") or os.getenv("SPOTIPY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET") or os.getenv("SPOTIPY_CLIENT_SECRET")
-SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI") or os.getenv("SPOTIPY_REDIRECT_URI") or "http://127.0.0.1:8888/callback"
-
-# Optional: default market for searches
+SPOTIFY_REDIRECT_URI = (
+    os.getenv("SPOTIFY_REDIRECT_URI")
+    or os.getenv("SPOTIPY_REDIRECT_URI")
+    or "http://127.0.0.1:8888/callback"
+)
 SPOTIFY_MARKET = os.getenv("SPOTIFY_MARKET", "US")
 
 def spotify_creds_ok() -> bool:
     return bool(SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET)
 
-
-
-# Small helpers
+# ─────────────────────────────────────────────────────────────────────────────
+# Small env helpers
+# ─────────────────────────────────────────────────────────────────────────────
 def env_bool(name: str, default: bool = False) -> bool:
     val = os.getenv(name)
     if val is None:
@@ -43,7 +55,6 @@ def _clamp(v: int, lo=0, hi=100) -> int:
     return max(lo, min(hi, v))
 
 def _extract_spotify_track_id(value: str | None) -> str | None:
-    """Accepts raw 22-char ID, spotify:track:ID, or https://open.spotify.com/track/ID?..."""
     if not value:
         return None
     v = value.strip()
@@ -58,75 +69,70 @@ def _extract_spotify_track_id(value: str | None) -> str | None:
         return v_no_q
     return None
 
-
-# Allow turning DB query logs up/down from .env (DEBUG/INFO/WARNING/ERROR)
+# ─────────────────────────────────────────────────────────────────────────────
+# DB log level
+# ─────────────────────────────────────────────────────────────────────────────
 DB_QUERIES_LOG_LEVEL = os.getenv("DB_QUERIES_LOG_LEVEL", "DEBUG").upper()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 📦 App metadata
+# App metadata
 # ─────────────────────────────────────────────────────────────────────────────
 APP_VERSION = "1.0.8"
 LAST_UPDATED = "2025-08-10: 11:00 am"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 📁 Paths
+# Paths
 # ─────────────────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent.parent  # project root (above /backend)
+BASE_DIR = ROOT_DIR
 TEST_JSON_DIR = BASE_DIR / "backend" / "tests" / "json_tests" / "xai"
 SCHEMA_PATH = BASE_DIR / "backend" / "schemas" / "track_schema.json"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 🤖 LLM: xAI only (single source of truth)
+# 🤖 xAI LLM settings
 # ─────────────────────────────────────────────────────────────────────────────
-LLM_PROVIDER = "xai"  # locked to xAI
+LLM_PROVIDER = "xai"
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 XAI_API_BASE = "https://api.x.ai/v1"
 XAI_API_URL = f"{XAI_API_BASE}/chat/completions"
 DEFAULT_XAI_MODEL = os.getenv("XAI_MODEL", "grok-3-latest")
-XAI_MODEL = DEFAULT_XAI_MODEL           # ← add this export
-TEMPERATURE_DEFAULT = 0.3
+XAI_MODEL = DEFAULT_XAI_MODEL
 
-# HTTP behavior
+TEMPERATURE_DEFAULT = 0.3
 XAI_CONNECT_TIMEOUT = env_int("XAI_CONNECT_TIMEOUT", 10)
 XAI_READ_TIMEOUT    = env_int("XAI_READ_TIMEOUT", 120)
 XAI_MAX_RETRIES     = env_int("XAI_MAX_RETRIES", 3)
 XAI_BACKOFF_FACTOR  = float(os.getenv("XAI_BACKOFF_FACTOR", "1.5"))
-# Back-compat: some modules import a single timeout value
 XAI_TIMEOUT_SECONDS = env_int("XAI_TIMEOUT_SECONDS", XAI_READ_TIMEOUT)
 
-# Fallback/testing (used by dev utilities)
 FALLBACK_TO_TEST_ON_XAI_ERROR = True
-FALLBACK_TEST_FILE_NUMBER     = 1
+FALLBACK_TEST_FILE_NUMBER = 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 🔑 Supabase
+# 🔑 Supabase credentials
 # ─────────────────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# Buckets: language-scoped, kinds are prefixes within a single bucket
-#   audio-en/intro/*.mp3,  audio-en/detail/*.mp3,  audio-en/artist/*.mp3
-#   audio-es/intro/*.mp3,  audio-es/detail/*.mp3,  audio-es/artist/*.mp3
-#   audio-ptbr/intro/*.mp3, audio-ptbr/detail/*.mp3, audio-ptbr/artist/*.mp3
+# ─────────────────────────────────────────────────────────────────────────────
+# Audio bucket definitions
+# ─────────────────────────────────────────────────────────────────────────────
 LANGUAGE_BUCKETS = {
-    "en":    "audio-en",
-    "es":    "audio-es",
+    "en": "audio-en",
+    "es": "audio-es",
     "pt-BR": "audio-ptbr",
 }
 BUCKETS = {lang: {"intro": b, "detail": b, "artist": b} for lang, b in LANGUAGE_BUCKETS.items()}
 AUDIO_PREFIXES = {"intro": "intro", "detail": "detail", "artist": "artist"}
 
-# ⚠️ Legacy single-purpose buckets (kept for back-compat; new code should use BUCKETS + AUDIO_PREFIXES)
 BUCKET_TRACK_INTRO   = "track-intro-mp3-files"
 BUCKET_TRACK_DETAIL  = "track-detail-mp3-files"
 BUCKET_ARTIST        = "artist-mp3-files"
 BUCKET_SPOTIFY_TRACK = "spotify-track-mp3-files"
 
-# Back-compat shim used in a few modules (avoid drift)
-SUPABASE_BUCKET_ARTIST_MP3 = BUCKETS["en"]["artist"]   # "audio-en"
+SUPABASE_BUCKET_ARTIST_MP3 = BUCKETS["en"]["artist"]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 🧪 Generation behavior
+# JSON Generation settings
 # ─────────────────────────────────────────────────────────────────────────────
 BATCH_SIZE = 10
 TEMPERATURE_MAIN = 0.3
@@ -139,7 +145,10 @@ ENABLE_ARTIST_DETAIL = True
 GENERATE_JSON_LOGGING_ENABLED = False
 GENERATE_JSON_LOG_PATH = "backend/logs/new_json_all_decades.log"
 
-SPOTIFY_BLACKLIST = {"garth brooks", "chris gaines", "bob seger", "king crimson", "joanna newsom"}
+SPOTIFY_BLACKLIST = {
+    "garth brooks", "chris gaines", "bob seger",
+    "king crimson", "joanna newsom"
+}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🎚 Playback “bed” mix
@@ -152,10 +161,10 @@ BED_DEVICE_ID       = os.getenv("BED_DEVICE_ID") or None
 _bed_id_raw = (
     os.getenv("BED_SPOTIFY_TRACK_ID")
     or os.getenv("SPOTIFY_BED_TRACK_ID")
-    or "2ggZjjqszgPpFUMyCwPrrj"  # default
+    or "2ggZjjqszgPpFUMyCwPrrj"
 )
 BED_SPOTIFY_TRACK_ID = _extract_spotify_track_id(_bed_id_raw)
-SPOTIFY_BED_TRACK_ID = BED_SPOTIFY_TRACK_ID  # alias for older code
+SPOTIFY_BED_TRACK_ID = BED_SPOTIFY_TRACK_ID
 
 _bed_factor_env = (os.getenv("BED_FACTOR") or "").strip()
 BED_FACTOR: float | None = None
@@ -167,11 +176,10 @@ if _bed_factor_env:
 
 if BED_FACTOR is not None:
     BED_VOLUME_PERCENT = _clamp(int(round(MAIN_VOLUME_PERCENT * BED_FACTOR)))
-    log.info("🎚 BED via factor: MAIN=%s%% * %s => BED=%s%%",
-             MAIN_VOLUME_PERCENT, BED_FACTOR, BED_VOLUME_PERCENT)
+    log.info(f"🎚 BED via factor: MAIN={MAIN_VOLUME_PERCENT}% * {BED_FACTOR} => BED={BED_VOLUME_PERCENT}%")
 else:
     BED_VOLUME_PERCENT = _clamp(env_int("BED_VOLUME_PERCENT", 20))
-    log.info("🎚 BED fixed volume: %s%%", BED_VOLUME_PERCENT)
+    log.info(f"🎚 BED fixed volume: {BED_VOLUME_PERCENT}%")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🔊 ElevenLabs TTS
@@ -179,35 +187,28 @@ else:
 ELEVENLABS_ENABLE   = env_bool("ELEVENLABS_ENABLE", False)
 ELEVENLABS_API_KEY  = os.getenv("ELEVENLABS_API_KEY")
 
-# Back-compat single voice IDs (still exported)
 VOICE_ID_INTRO  = os.getenv("VOICE_ID_INTRO",  "EXAVITQu4vr4xnSDxMaL")
 VOICE_ID_ARTIST = os.getenv("VOICE_ID_ARTIST", "Vr6EZfGAz5W6T1wn6b4p")
 VOICE_ID_TRACK  = os.getenv("VOICE_ID_TRACK",  "oWAxZDx7w5VEj9dCyTzz")
 
-# Default tuning if a profile omits settings
 VOICE_STABILITY   = float(os.getenv("VOICE_STABILITY",  "0.5"))
 VOICE_SIMILARITY  = float(os.getenv("VOICE_SIMILARITY", "0.75"))
-# ── Model selection
-# Use Turbo/Flash v2.5 so we can enforce `language` (UI parity).
-_ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
-ELEVENLABS_MODEL = _ELEVEN_MODEL_ID_DEFAULT      # back-compat alias
-ELEVEN_MODEL_ID  = _ELEVEN_MODEL_ID_DEFAULT      # back-compat alias used elsewhere
 
-# Per-language overrides via env (optional)
+_ELEVEN_MODEL_ID_DEFAULT = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
+ELEVENLABS_MODEL = _ELEVEN_MODEL_ID_DEFAULT
+ELEVEN_MODEL_ID  = _ELEVEN_MODEL_ID_DEFAULT
+
 ELEVEN_MODEL_ID_ES    = os.getenv("ELEVENLABS_MODEL_ES",    "eleven_turbo_v2_5")
 ELEVEN_MODEL_ID_PT_BR = os.getenv("ELEVENLABS_MODEL_PT_BR", "eleven_turbo_v2_5")
 
-# Models that support the 'language' parameter explicitly
 ELEVEN_MODELS_SUPPORT_LANGUAGE = {"eleven_turbo_v2_5", "eleven_flash_v2_5"}
 
-# Map our app languages to ElevenLabs ISO codes (pt-BR → pt)
 ELEVEN_LANGUAGE_CODE_MAP = {
     "en": "en",
     "es": "es",
     "pt-BR": "pt",
 }
 
-# Canonical per-language map used by services
 MODEL_BY_LANG = {
     "en":    _ELEVEN_MODEL_ID_DEFAULT,
     "es":    ELEVEN_MODEL_ID_ES,
@@ -216,57 +217,24 @@ MODEL_BY_LANG = {
 
 SUPPORTED_LANGS  = ["en", "es", "pt-BR"]
 DEFAULT_LANGUAGE = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
-DEFAULT_TTS_LANGUAGE = DEFAULT_LANGUAGE  # back-compat
+DEFAULT_TTS_LANGUAGE = DEFAULT_LANGUAGE
 
-# Feature toggles
 SKIP_TTS_IF_EXISTS    = env_bool("SKIP_TTS_IF_EXISTS", True)
 VOICE_PREVIEW_ENABLED = env_bool("VOICE_PREVIEW_ENABLED", False)
 
-TTS_PROFILES = {
-    "en": {
-        # "intro":  {"voice_id": "XrExE9yKIg1WjnnlVkGX",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
-        "intro":  {"voice_id": "PrwKJdvtTbJVdosRhS1O",  "settings": {"stability": 0.5,  "similarity_boost": 0.8, "style": 0.4,  "use_speaker_boost": True}},
-        "detail": {"voice_id": "pqHfZKP75CvOlQylNhV4", "settings": {"stability": 0.6,  "similarity_boost": 0.6, "style": 0.2,  "use_speaker_boost": False}},
-        "artist": {"voice_id": "94zOad0g7T7K4oa7zhDq", "settings": {"stability": 0.55, "similarity_boost": 0.7, "style": 0.35, "use_speaker_boost": True}},
-    },
-    "es": {
-        "intro": {"voice_id": "PrwKJdvtTbJVdosRhS1O",
-                  "settings": {"stability": 0.5, "similarity_boost": 0.85, "style": 0.5, "use_speaker_boost": True}},
-        "detail": {"voice_id": "94zOad0g7T7K4oa7zhDq",
-                   "settings": {"stability": 0.65, "similarity_boost": 0.7, "style": 0.25, "use_speaker_boost": False}},
-        "artist": {"voice_id": "bIHbv24MWmeRgasZH58o",
-                   "settings": {"stability": 0.6, "similarity_boost": 0.8, "style": 0.4, "use_speaker_boost": True}},
-    },
-
-    "pt-BR": {
-        "intro":  {"voice_id": "5dF3gH7abcXYZ1234567", "settings": {"stability": 0.5,  "similarity_boost": 0.85, "style": 0.5,  "use_speaker_boost": True}},
-        "detail": {"voice_id": "cyD08lEy76q03ER1jZ7y", "settings": {"stability": 0.65, "similarity_boost": 0.7,  "style": 0.25, "use_speaker_boost": False}},
-        "artist": {"voice_id": "CstacWqMhJQlnfLPxRG4", "settings": {"stability": 0.6,  "similarity_boost": 0.8,  "style": 0.4,  "use_speaker_boost": True}},
-    },
-}
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 🪵 Logging configuration (module-only)
+# 🪵 Logging config
 # ─────────────────────────────────────────────────────────────────────────────
-# Root log level for modules not explicitly listed below (INFO/DEBUG/WARNING/ERROR)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
-# Optional: force specific loggers to DEBUG via comma-separated env
-#   e.g., DEBUG_LOGGERS="backend.services.xai_descriptions,backend.routers.collections_generate"
 DEBUG_LOGGERS = [s.strip() for s in (os.getenv("DEBUG_LOGGERS") or "").split(",") if s.strip()]
 
-# Per-module level overrides
-# You can still drive some via env: e.g. DB_QUERIES_LOG_LEVEL in your file above
 LOG_LEVELS_BY_MODULE = {
-    # Core services
     "backend.services.spotify_service": "INFO",
     "backend.services.track_generator": "INFO",
     "backend.services.utils": "INFO",
     "backend.services.xai_service": "INFO",
     "backend.services.xai_api_client": "INFO",
     "backend.services.supabase_playback": "INFO",
-
-    # Routers
     "backend.routers.generate_json": "INFO",
     "backend.routers.insert_json": "INFO",
     "backend.routers.load_json_track_file": "INFO",
@@ -279,11 +247,7 @@ LOG_LEVELS_BY_MODULE = {
     "backend.routers.generate_poprock": "INFO",
     "backend.routers.llm_client": "INFO",
     "backend.routers.collections_generate": os.getenv("LOG_LEVEL_COLLECTIONS_GENERATE", LOG_LEVEL),
-
-    # Services driven by env
     "backend.services.db_queries": DB_QUERIES_LOG_LEVEL,
-
-    # Utilities / custom
     "backend.utils.normalize": "INFO",
     "backend.utils.track_builder": "INFO",
     "backend.utils.tts_diagnostics": "INFO",
@@ -291,24 +255,20 @@ LOG_LEVELS_BY_MODULE = {
     "tts_logger": "INFO",
     "supabase_summary": "INFO",
     "tts_diagnostics": "INFO",
-
-    # Third-party noise control
     "spotipy": "WARNING",
     "urllib3": "WARNING",
     "requests": "WARNING",
     "httpx": "WARNING",
 }
 
-# Handlers/format adornments (used by logging_setup)
 LOG_FILE_ENABLED = env_bool("LOG_FILE_ENABLED", True)
 LOG_COLOR_ENABLED = env_bool("LOG_COLOR_ENABLED", True)
 LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", "backend/logs/topspot.log")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 🔎 Optional: tiny introspection for troubleshooting
+# 🔍 Diagnostics helper
 # ─────────────────────────────────────────────────────────────────────────────
 def get_active_llm_info() -> dict:
-    """Return active LLM provider/model for quick diagnostics."""
     return {
         "provider": LLM_PROVIDER,
         "xai_model": DEFAULT_XAI_MODEL,
