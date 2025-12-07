@@ -356,6 +356,82 @@ async def play_one_server_side(
 
 
 # ─────────────────────────────────────────────
+# FAST PLAY-FIRST (INSTANT START)
+# ─────────────────────────────────────────────
+@router.get("/play-first")
+async def play_first_decade_genre(
+    decade: str = Query(...),
+    genre: str = Query(...),
+    mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+    play_intro: bool = Query(True),
+    play_detail: bool = Query(True),
+    play_artist_description: bool = Query(True),
+    play_track: bool = Query(True),
+    text_intro: bool = Query(True),
+    text_detail: bool = Query(False),
+    text_artist_description: bool = Query(False),
+    voice_style: Literal["before", "over"] = Query("before"),
+):
+    logger.info(
+        "⚡ FAST PLAY-FIRST (SERIALIZED): %s/%s lang=%s voice_style=%s",
+        decade,
+        genre,
+        tts_language,
+        voice_style,
+    )
+
+    async def _run_serial_fast_then_full():
+        # ✅ First: rank #1 only
+        await _run_play_sequence_decade_genre(
+            decade=decade,
+            genre=genre,
+            start_rank=1,
+            end_rank=1,
+            mode=mode,
+            tts_language=tts_language,
+            play_intro=play_intro,
+            play_detail=play_detail,
+            play_artist_description=play_artist_description,
+            play_track=play_track,
+            text_intro=text_intro,
+            text_detail=text_detail,
+            text_artist_description=text_artist_description,
+            voice_style=voice_style,
+        )
+
+        # ✅ THEN continue with 2–40 (no overlap possible)
+        await _run_play_sequence_decade_genre(
+            decade=decade,
+            genre=genre,
+            start_rank=2,
+            end_rank=40,
+            mode=mode,
+            tts_language=tts_language,
+            play_intro=play_intro,
+            play_detail=play_detail,
+            play_artist_description=play_artist_description,
+            play_track=play_track,
+            text_intro=text_intro,
+            text_detail=text_detail,
+            text_artist_description=text_artist_description,
+            voice_style=voice_style,
+        )
+
+    # ✅ Only ONE task exists now
+    await start_new_sequence(_run_serial_fast_then_full())
+
+    return {
+        "status": "started-fast-serialized",
+        "decade": decade,
+        "genre": genre,
+        "mode": mode,
+        "voice_style": voice_style,
+    }
+
+
+
+# ─────────────────────────────────────────────
 # START NEW SEQUENCE (ROUTER)
 # ─────────────────────────────────────────────
 @router.get("/play-sequence")
@@ -462,3 +538,5 @@ async def get_sequence_decade_genre(
     ]
 
     return {"status": "ok", "total": len(tracks), "tracks": tracks}
+
+

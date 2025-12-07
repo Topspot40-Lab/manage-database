@@ -45,9 +45,9 @@ def _normalize_level(name, fallback="INFO"):
 
 def _console_formatter():
     base_fmt = (
-        "%(asctime)s %(levelname)s [%(name)s] "
-        "%(module)s.%(funcName)s:%(lineno)d — %(message)s"
-    )
+        "% (asctime)s %(levelname)s [%(name)s] "
+        "% (module)s.%(funcName)s:%(lineno)d — %(message)s"
+    ).replace("% ", "%")
     date_fmt = "%Y-%m-%dT%H:%M:%S"
 
     if getattr(lv, "LOG_COLOR_ENABLED", False):
@@ -161,8 +161,8 @@ def setup_logging() -> None:
         "formatters": {
             "console": {"()": _console_formatter},
             "standard": {
-                "format": "%(asctime)s %(levelname)s [%(name)s] "
-                          "%(module)s.%(funcName)s:%(lineno)d — %(message)s",
+                "format": "% (asctime)s %(levelname)s [%(name)s] "
+                          "% (module)s.%(funcName)s:%(lineno)d — %(message)s".replace("% ", "%"),
                 "datefmt": "%Y-%m-%dT%H:%M:%S",
             },
         },
@@ -175,6 +175,14 @@ def setup_logging() -> None:
     }
 
     logging.config.dictConfig(LOGGING)
+
+    # 🔇 HARD‑KILL noisy Uvicorn access logs (_/playback/status spam)
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    uvicorn_access.disabled = True
+
+    # Optional: quiet normal uvicorn logs too
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 
     # One-time boot message
     log = logging.getLogger(__name__)
