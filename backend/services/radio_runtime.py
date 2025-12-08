@@ -83,7 +83,8 @@ def _update_flags(
         if mode:
             _flags.mode = mode
         if rank is not None:
-            _flags.current_rank = rank
+            _flags.current_rank = rank      # for UI
+            _flags.rank = rank              # for backend controls (NEXT, etc.)
 
         _flags.context = {
             "phase": phase,
@@ -92,6 +93,7 @@ def _update_flags(
             "artist_name": artist_name,
             "durationMs": duration_ms,
         }
+
 
         # ✅ Mark the *moment* this phase became active
         _flags.last_action_ts = time.time()

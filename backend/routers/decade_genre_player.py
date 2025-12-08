@@ -136,8 +136,21 @@ async def _run_play_sequence_decade_genre(
     # Reset high-level flags for this sequence
     _flags.cancel_requested = False
     _flags.is_playing = True
-    _flags.mode = "decade_genre"
-    _flags.context = {"decade": decade, "genre": genre}
+
+    # Context: what kind of playback, and for what slice
+    _flags.mode = "decade_genre"       # context type (decade/genre vs collections, etc.)
+    _flags.playback_order = mode       # 🚦 count_up / count_down / random
+    _flags.decade = decade
+    _flags.genre = genre
+    _flags.language = tts_language
+
+    _flags.context = {
+        "decade": decade,
+        "genre": genre,
+        "start_rank": start_rank,
+        "end_rank": end_rank,
+    }
+
 
     try:
         # ─────────────────────────────────────────
@@ -489,6 +502,101 @@ async def play_sequence_decade_genre(
         "range": [start_rank, end_rank],
         "voice_style": voice_style,
     }
+
+# ─────────────────────────────────────────────
+# NEXT TRACK (RESPECTS UP / DOWN / RANDOM)
+# ─────────────────────────────────────────────
+@router.post("/next")
+async def play_next_decade_genre():
+    """
+    Advances playback to the NEXT logical track based on:
+    - current rank
+    - current mode (count_up, count_down, random)
+    - current decade/genre
+    """
+
+    # ✅ Safety checks
+    if not _flags.context:
+        return {"status": "error", "message": "No active decade/genre context."}
+
+    decade = _flags.context.get("decade")
+    genre = _flags.context.get("genre")
+    mode = getattr(_flags, "mode", "count_up")
+    current_rank = getattr(_flags, "rank", None)
+
+    if not decade or not genre or current_rank is None:
+        return {"status": "error", "message": "Missing playback state."}
+
+    # ✅ Get full ranked list for this decade/genre
+    rows = _load_decade_genre_rows(
+        decade=decade,
+        genre=genre,
+        start_rank=1,
+        end_rank=40,
+    )
+
+    if not rows:
+        return {"status": "error", "message": "No tracks found."}
+
+    rows = _order_rows_for_mode(rows, mode)
+    ranks = [r[2].ranking for r in rows]
+
+    if current_rank not in ranks:
+        return {"status": "error", "message": "Current rank not in sequence."}
+
+    idx = ranks.index(current_rank)
+
+    # ✅ Determine NEXT rank by mode
+    if mode == "count_up":
+        next_idx = idx + 1
+    elif mode == "count_down":
+        next_idx = idx - 1
+    else:  # random
+        remaining = [r for r in ranks if r != current_rank]
+        if not remaining:
+            return {"status": "done", "message": "No more tracks."}
+        next_rank = random.choice(remaining)
+        next_idx = ranks.index(next_rank)
+
+    # ✅ Bounds check
+    if next_idx < 0 or next_idx >= len(ranks):
+        return {"status": "done", "message": "End of sequence reached."}
+
+    next_rank = ranks[next_idx]
+
+    logger.info(
+        "⏭ NEXT pressed → %s/%s advancing from #%d → #%d (mode=%s)",
+        decade,
+        genre,
+        current_rank,
+        next_rank,
+        mode,
+    )
+
+    # ✅ Start next track cleanly (SINGLE TRACK PLAY)
+    await start_new_sequence(
+        play_one_server_side(
+            decade=decade,
+            genre=genre,
+            rank=next_rank,
+            tts_language=getattr(_flags, "lang", "en"),
+            mode=mode,
+            play_intro=True,
+            play_detail=True,
+            play_artist_description=True,
+            play_track=True,
+            voice_style=getattr(_flags, "voice_style", "before"),
+        )
+    )
+
+    return {
+        "status": "playing-next",
+        "from": current_rank,
+        "to": next_rank,
+        "mode": mode,
+    }
+
+
 
 
 # ─────────────────────────────────────────────

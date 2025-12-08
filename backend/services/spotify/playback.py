@@ -32,48 +32,25 @@ def _pick_device_id(sp, prefer_active: bool = True) -> Optional[str]:
 # ──────────────────────────────────────────────────────────
 # Robust Spotify volume setter (ASYNC, but uses SYNC client)
 # ──────────────────────────────────────────────────────────
-async def set_device_volume(volume: int, device_id: str | None = None, retries: int = 8):
-    """
-    Improved volume setter:
-    - NEVER returns False (volume mismatch is NOT fatal)
-    - Does NOT trigger skip/cancel logic
-    - Logs warnings instead of errors
-    - Continues playback even if Spotify lies about volume
-    """
+async def set_device_volume(volume: int, device_id: str | None = None):
     sp = get_spotify_user_client()
 
-    for attempt in range(1, retries + 1):
-        try:
-            sp.volume(volume, device_id=device_id)
+    try:
+        current = sp.current_playback()
+        current_volume = current["device"]["volume_percent"] if current and current.get("device") else None
 
-            pb = sp.current_playback()
-            if pb and pb.get("device"):
-                actual = pb["device"].get("volume_percent")
+        # ✅ If already at target, do nothing
+        if current_volume == volume:
+            logger.info(f"🔊 Spotify volume already at {volume}%, no change needed.")
+            return
 
-                if actual == volume:
-                    logger.info(
-                        f"🔊 Spotify volume confirmed: {actual}% (attempt {attempt})"
-                    )
-                    return True
+        sp.volume(volume, device_id=device_id)
+        await asyncio.sleep(0.25)
 
-                # Mismatch, but not fatal
-                logger.warning(
-                    f"⚠️ Volume mismatch {actual}% — expected {volume} "
-                    f"(attempt {attempt}); continuing..."
-                )
+        logger.info(f"🔊 Spotify volume set to {volume}%")
 
-        except Exception as e:
-            logger.warning(f"⚠️ Volume set exception on attempt {attempt}: {e}")
-
-        await asyncio.sleep(0.20)
-
-    # Final warning, but continue anyway
-    logger.warning(
-        f"⚠️ Spotify never confirmed volume={volume} after retries, "
-        f"but continuing playback anyway."
-    )
-    return True
-
+    except SpotifyException as e:
+        logger.warning(f"⚠️ Spotify volume set failed: {e}")
 
 # ──────────────────────────────────────────────────────────
 # INTERNAL async implementation
