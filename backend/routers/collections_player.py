@@ -33,11 +33,11 @@ from backend.services.radio_runtime import (
     _update_flags,
     _respect_user_controls,
     play_track_with_skip,
-    _ensure_volume_ok,   # ✅ ADDED
+    _ensure_volume_ok,  # ✅ ADDED
 )
 
 from backend.config.volume import PLAY_FULL_TRACK
-
+from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/supabase/collections", tags=["Supabase: Collections"])
 logger = logging.getLogger(__name__)
@@ -47,20 +47,20 @@ logger = logging.getLogger(__name__)
 # INTERNAL BACKGROUND TASK — COLLECTION PLAYBACK
 # ─────────────────────────────────────────────
 async def _run_play_sequence_collection(
-    *,
-    collection_slug: str,
-    start_rank: int,
-    end_rank: int,
-    mode: Literal["count_up", "count_down", "random"],
-    tts_language: str,
-    play_intro: bool,
-    play_detail: bool,
-    play_artist_description: bool,
-    play_track: bool,
-    text_intro: bool,
-    text_detail: bool,
-    text_artist_description: bool,
-    voice_style: Literal["before", "over"] = "before",
+        *,
+        collection_slug: str,
+        start_rank: int,
+        end_rank: int,
+        mode: Literal["count_up", "count_down", "random"],
+        tts_language: str,
+        play_intro: bool,
+        play_detail: bool,
+        play_artist_description: bool,
+        play_track: bool,
+        text_intro: bool,
+        text_detail: bool,
+        text_artist_description: bool,
+        voice_style: Literal["before", "over"] = "before",
 ):
     logger.info(
         f"🎧 COLLECTION START: {collection_slug} "
@@ -97,6 +97,11 @@ async def _run_play_sequence_collection(
 
     _flags.mode = "collection"
     _flags.context = {"collection_slug": collection_slug}
+
+    # ✅ CRITICAL: hard reset cancel + playback state for brand-new sequence
+    _flags.cancel_requested = False
+    _flags.is_playing = True
+    _flags.stopped = False
 
     # ─────────────────────────────────────────────
     # MAIN LOOP
@@ -145,7 +150,6 @@ async def _run_play_sequence_collection(
             artist=artist,
         )
 
-
         # ─────────────────────────────────────────────
         # 1️⃣ VOICE BEFORE vs OVER THE TRACK (DJ MODE)
         # ─────────────────────────────────────────────
@@ -185,7 +189,7 @@ async def _run_play_sequence_collection(
                 track_name=track.track_name,
                 artist_name=artist.artist_name,
                 full_flag=PLAY_FULL_TRACK,
-                already_playing=True,   # Important!
+                already_playing=True,  # Important!
             )
 
         else:
@@ -230,42 +234,63 @@ async def _run_play_sequence_collection(
 # ─────────────────────────────────────────────
 @router.get("/play-collection-sequence")
 async def play_collection_sequence(
-    collection_slug: str = Query(...),
-    start_rank: int = Query(1),
-    end_rank: int = Query(40),
-    mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
-    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
-    play_intro: bool = Query(True),
-    play_detail: bool = Query(True),
-    play_artist_description: bool = Query(True),
-    play_track: bool = Query(False),
-    text_intro: bool = Query(True),
-    text_detail: bool = Query(False),
-    text_artist_description: bool = Query(False),
-    voice_style: Literal["before", "over"] = Query("before"),
+        collection_slug: str = Query(...),
+        start_rank: int = Query(1),
+        end_rank: int = Query(40),
+        mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
+        tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+        play_intro: bool = Query(True),
+        play_detail: bool = Query(True),
+        play_artist_description: bool = Query(True),
+        play_track: bool = Query(True),
+        text_intro: bool = Query(True),
+        text_detail: bool = Query(False),
+        text_artist_description: bool = Query(False),
+        voice_style: Literal["before", "over"] = Query("before"),
 ):
     logger.info(
-        f"▶ COLLECTION REQUEST: {collection_slug} "
-        f"{start_rank}-{end_rank} mode={mode} voice_style={voice_style}"
+        "▶ COLLECTION REQUEST: slug=%s %s-%s mode=%s lang=%s "
+        "play_intro=%s play_detail=%s play_artist=%s play_track=%s voice_style=%s",
+        collection_slug,
+        start_rank,
+        end_rank,
+        mode,
+        tts_language,
+        play_intro,
+        play_detail,
+        play_artist_description,
+        play_track,
+        voice_style,
     )
 
-    coro = _run_play_sequence_collection(
-        collection_slug=collection_slug,
-        start_rank=start_rank,
-        end_rank=end_rank,
-        mode=mode,
-        tts_language=tts_language,
-        play_intro=play_intro,
-        play_detail=play_detail,
-        play_artist_description=play_artist_description,
-        play_track=play_track,
-        text_intro=text_intro,
-        text_detail=text_detail,
-        text_artist_description=text_artist_description,
-        voice_style=voice_style,
-    )
+    try:
+        coro = _run_play_sequence_collection(
+            collection_slug=collection_slug,
+            start_rank=start_rank,
+            end_rank=end_rank,
+            mode=mode,
+            tts_language=tts_language,
+            play_intro=play_intro,
+            play_detail=play_detail,
+            play_artist_description=play_artist_description,
+            play_track=play_track,
+            text_intro=text_intro,
+            text_detail=text_detail,
+            text_artist_description=text_artist_description,
+            voice_style=voice_style,
+        )
 
-    await start_new_sequence(coro)
+        await start_new_sequence(coro)
+
+    except Exception as exc:
+        logger.exception("❌ Failed to start collection sequence: %s", exc)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "collection_start_failed",
+                "detail": str(exc),
+            },
+        )
 
     return {
         "status": "started",

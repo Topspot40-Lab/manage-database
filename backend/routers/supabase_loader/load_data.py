@@ -62,7 +62,7 @@ async def load_collection_data(
         raise HTTPException(404, f"Collection not found for slug '{slug}'")
 
     # ⭐ FIX: load_collection is async → MUST await
-    result = await load_collection(db, slug, tts_language)
+    result = load_collection(db, slug, tts_language)
 
     current_collection.update({
         "collection": slug,
