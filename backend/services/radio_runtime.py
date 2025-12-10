@@ -60,14 +60,14 @@ async def _ensure_volume_ok() -> None:
 # Playback control integration helpers
 # ─────────────────────────────────────────────
 def _update_flags(
-    *,
-    phase: str,
-    lang: str | None = None,
-    mode: str | None = None,
-    rank: Optional[int] = None,
-    track_name: Optional[str] = None,
-    artist_name: Optional[str] = None,
-    duration_ms: Optional[int] = None,     # ✅ NEWish
+        *,
+        phase: str,
+        lang: str | None = None,
+        mode: str | None = None,
+        rank: Optional[int] = None,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
+        duration_ms: Optional[int] = None,  # ✅ NEWish
 ) -> None:
     """
     Keep backend.routers.playback_control._flags in sync with the current phase.
@@ -83,8 +83,8 @@ def _update_flags(
         if mode:
             _flags.mode = mode
         if rank is not None:
-            _flags.current_rank = rank      # for UI
-            _flags.rank = rank              # for backend controls (NEXT, etc.)
+            _flags.current_rank = rank  # for UI
+            _flags.rank = rank  # for backend controls (NEXT, etc.)
 
         _flags.context = {
             "phase": phase,
@@ -93,7 +93,6 @@ def _update_flags(
             "artist_name": artist_name,
             "durationMs": duration_ms,
         }
-
 
         # ✅ Mark the *moment* this phase became active
         _flags.last_action_ts = time.time()
@@ -182,14 +181,14 @@ async def _run_voice_clip_with_skip(kind: str, bucket: str, key: str) -> bool:
 # Collection logging helpers
 # ─────────────────────────────────────────────
 def log_collection_header_and_texts(
-    *,
-    lang: str,
-    collection,
-    ctr,
-    track,
-    artist,
-    intro: str | None = None,
-    detail_text: str | None = None,
+        *,
+        lang: str,
+        collection,
+        ctr,
+        track,
+        artist,
+        intro: str | None = None,
+        detail_text: str | None = None,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Pretty logging for a collection track:
@@ -251,11 +250,11 @@ def collection_intro_jobs(*, lang: str, collection_slug: str, rank: int):
 # Decade/Genre header logging
 # ─────────────────────────────────────────────
 def log_header_and_texts(
-    *,
-    lang: str,
-    track,
-    artist,
-    tr_rows,
+        *,
+        lang: str,
+        track,
+        artist,
+        tr_rows,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Log header + localized texts for decade/genre playback and return:
@@ -264,7 +263,7 @@ def log_header_and_texts(
     header_text = render_header(
         track_name=track.track_name,
         artist_name=getattr(artist, "artist_name", None)
-        or getattr(artist, "artist_name", "Unknown Artist"),
+                    or getattr(artist, "artist_name", "Unknown Artist"),
         track_id=track.spotify_track_id,
         lang=lang,
         tr_rows=tr_rows or [],
@@ -351,21 +350,21 @@ def narration_keys_for(*, lang: str, track, artist):
 # Narration playback
 # ─────────────────────────────────────────────
 async def play_narrations(
-    *,
-    play_intro: bool,
-    play_detail: bool,
-    play_artist: bool,
-    intro_jobs,
-    detail_bucket,
-    detail_key,
-    artist_bucket,
-    artist_key,
-    lang: str = "en",
-    mode: str = "decade_genre",
-    rank: Optional[int] = None,
-    track_name: Optional[str] = None,
-    artist_name: Optional[str] = None,
-    voice_style: str = "before",  # "before" | "over"
+        *,
+        play_intro: bool,
+        play_detail: bool,
+        play_artist: bool,
+        intro_jobs,
+        detail_bucket,
+        detail_key,
+        artist_bucket,
+        artist_key,
+        lang: str = "en",
+        mode: str = "decade_genre",
+        rank: Optional[int] = None,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
+        voice_style: str = "before",  # "before" | "over"
 ) -> None:
     """
     Play narration in two styles:
@@ -399,7 +398,7 @@ async def play_narrations(
                 try:
                     # Only duck if we actually have something to say
                     if (play_intro and intro_jobs) or (
-                        play_detail and detail_bucket and detail_key
+                            play_detail and detail_bucket and detail_key
                     ) or (play_artist and artist_bucket and artist_key):
                         try:
                             await set_device_volume(40)
@@ -539,23 +538,38 @@ async def play_narrations(
                 )
                 await _respect_user_controls()
 
-                # Start bed track immediately
-                logger.info("🎧 Starting bed track BEFORE intro narration…")
-                play_spotify_track(SPOTIFY_BED_TRACK_ID)
-                await asyncio.sleep(0.25)
-
-                # Intro narration over bed
-                for bkt, key, *_ in intro_jobs:
-                    if skip_event.is_set():
-                        skip_event.clear()
-                        logger.info("⏭️ Skip hit — skipping remaining intro.")
-                        break
-
-                    logger.info("🎙️ Intro narration: %s/%s", bkt, key)
+                # 1️⃣ INTRO — bed plays underneath
+                if play_intro and intro_jobs:
+                    _update_flags(
+                        phase="intro",
+                        lang=lang,
+                        mode=mode,
+                        rank=rank,
+                        track_name=track_name,
+                        artist_name=artist_name,
+                    )
                     await _respect_user_controls()
-                    skipped = await _run_voice_clip_with_skip("Intro", bkt, key)
-                    if skipped:
-                        break
+
+                    # Start bed track immediately, but no need for extra delay
+                    logger.info("🎧 Starting bed track BEFORE intro narration…")
+                    play_spotify_track(SPOTIFY_BED_TRACK_ID)
+
+                    # Intro narration over bed
+                    for bkt, key, *_ in intro_jobs:
+                        if skip_event.is_set():
+                            skip_event.clear()
+                            logger.info("⏭️ Skip hit — skipping remaining intro.")
+                            break
+
+                        logger.info("🎙️ Intro narration: %s/%s", bkt, key)
+                        await _respect_user_controls()
+                        skipped = await _run_voice_clip_with_skip("Intro", bkt, key)
+                        if skipped:
+                            break
+
+                    logger.info("🔉 Stopping bed track after intro.")
+                    with contextlib.suppress(Exception):
+                        await stop_spotify_playback(fade_out_seconds=1.2)
 
                 # Stop bed after intro completes
                 logger.info("🔉 Stopping bed track after intro.")
@@ -627,15 +641,15 @@ async def play_narrations(
 # (used by decade_genre_player & collections_player)
 # ─────────────────────────────────────────────
 async def play_track_with_skip(
-    track,
-    *,
-    lang: str = "en",
-    mode: str = "decade_genre",
-    rank: Optional[int] = None,
-    track_name: Optional[str] = None,
-    artist_name: Optional[str] = None,
-    full_flag: bool = True,
-    already_playing: bool = False,
+        track,
+        *,
+        lang: str = "en",
+        mode: str = "decade_genre",
+        rank: Optional[int] = None,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
+        full_flag: bool = True,
+        already_playing: bool = False,
 ) -> bool:
     """
     Play a Spotify track and wait cooperatively for skip / stop / cancel.

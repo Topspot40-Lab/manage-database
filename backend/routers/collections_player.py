@@ -6,10 +6,10 @@ import logging
 import random
 from typing import Literal
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query
 from sqlmodel import select
 
-from backend.database import get_db_session, get_db
+from backend.database import get_db_session
 from backend.models.dbmodels import (
     Track,
     Artist,
@@ -70,7 +70,11 @@ async def _run_play_sequence_collection(
     # Fetch rows
     with get_db_session() as db:
         q = (
-            select(Track, Artist, CollectionTrackRanking, Collection)
+            select(
+                Track,
+                Artist,
+                CollectionTrackRanking.ranking,
+            )
             .join(Artist, Artist.id == Track.artist_id)
             .join(CollectionTrackRanking, CollectionTrackRanking.track_id == Track.id)
             .join(Collection, Collection.id == CollectionTrackRanking.collection_id)
@@ -80,6 +84,7 @@ async def _run_play_sequence_collection(
                 CollectionTrackRanking.ranking <= end_rank,
             )
         )
+
         rows = db.exec(q).all()
 
     if not rows:
@@ -89,9 +94,9 @@ async def _run_play_sequence_collection(
 
     # Sorting
     if mode == "count_up":
-        rows.sort(key=lambda r: r[2].ranking)
+        rows.sort(key=lambda r: r[2])
     elif mode == "count_down":
-        rows.sort(key=lambda r: r[2].ranking, reverse=True)
+        rows.sort(key=lambda r: r[2], reverse=True)
     else:
         random.shuffle(rows)
 
@@ -106,8 +111,7 @@ async def _run_play_sequence_collection(
     # ─────────────────────────────────────────────
     # MAIN LOOP
     # ─────────────────────────────────────────────
-    for track, artist, ctr_rank, coll in rows:
-        rank = ctr_rank.ranking
+    for track, artist, rank in rows:
 
         # Handle cancel/skip
         if _flags.cancel_requested:
