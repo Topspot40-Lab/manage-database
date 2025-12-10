@@ -8,6 +8,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Query
 from sqlmodel import select
+from fastapi.responses import JSONResponse
 
 from backend.database import get_db_session
 from backend.models.dbmodels import (
@@ -33,11 +34,10 @@ from backend.services.radio_runtime import (
     _update_flags,
     _respect_user_controls,
     play_track_with_skip,
-    _ensure_volume_ok,  # ✅ ADDED
+    _ensure_volume_ok,
 )
 
 from backend.config.volume import PLAY_FULL_TRACK
-from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/supabase/collections", tags=["Supabase: Collections"])
 logger = logging.getLogger(__name__)
@@ -47,20 +47,20 @@ logger = logging.getLogger(__name__)
 # INTERNAL BACKGROUND TASK — COLLECTION PLAYBACK
 # ─────────────────────────────────────────────
 async def _run_play_sequence_collection(
-        *,
-        collection_slug: str,
-        start_rank: int,
-        end_rank: int,
-        mode: Literal["count_up", "count_down", "random"],
-        tts_language: str,
-        play_intro: bool,
-        play_detail: bool,
-        play_artist_description: bool,
-        play_track: bool,
-        text_intro: bool,
-        text_detail: bool,
-        text_artist_description: bool,
-        voice_style: Literal["before", "over"] = "before",
+    *,
+    collection_slug: str,
+    start_rank: int,
+    end_rank: int,
+    mode: Literal["count_up", "count_down", "random"],
+    tts_language: str,
+    play_intro: bool,
+    play_detail: bool,
+    play_artist_description: bool,
+    play_track: bool,
+    text_intro: bool,
+    text_detail: bool,
+    text_artist_description: bool,
+    voice_style: Literal["before", "over"] = "before",
 ):
     logger.info(
         f"🎧 COLLECTION START: {collection_slug} "
@@ -83,6 +83,7 @@ async def _run_play_sequence_collection(
                 CollectionTrackRanking.ranking >= start_rank,
                 CollectionTrackRanking.ranking <= end_rank,
             )
+            .order_by(CollectionTrackRanking.ranking)  # ✅ THIS IS THE SPEED KEY
         )
 
         rows = db.exec(q).all()
@@ -93,17 +94,14 @@ async def _run_play_sequence_collection(
         return
 
     # Sorting
-    if mode == "count_up":
-        rows.sort(key=lambda r: r[2])
-    elif mode == "count_down":
-        rows.sort(key=lambda r: r[2], reverse=True)
-    else:
+    if mode == "count_down":
+        rows.reverse()
+    elif mode == "random":
         random.shuffle(rows)
+    # count_up already correct from SQL order
 
     _flags.mode = "collection"
     _flags.context = {"collection_slug": collection_slug}
-
-    # ✅ CRITICAL: hard reset cancel + playback state for brand-new sequence
     _flags.cancel_requested = False
     _flags.is_playing = True
     _flags.stopped = False
@@ -113,7 +111,6 @@ async def _run_play_sequence_collection(
     # ─────────────────────────────────────────────
     for track, artist, rank in rows:
 
-        # Handle cancel/skip
         if _flags.cancel_requested:
             logger.info("⏭️ Skip/Next detected — aborting collection sequence.")
             break
@@ -129,9 +126,9 @@ async def _run_play_sequence_collection(
             track_name=track.track_name,
             artist_name=artist.artist_name,
         )
+
         await _respect_user_controls()
 
-        # Header logging
         log_header_and_texts(
             lang=tts_language,
             track=track,
@@ -155,34 +152,34 @@ async def _run_play_sequence_collection(
         )
 
         # ─────────────────────────────────────────────
-        # 1️⃣ VOICE BEFORE vs OVER THE TRACK (DJ MODE)
+        # OVER MODE
         # ─────────────────────────────────────────────
         if voice_style == "over" and play_track and track.spotify_track_id:
-            logger.info("🎧 OVER-TRACK MODE: Starting main track early.")
 
-            # NEW: ensure device volume is correct
-            await _ensure_volume_ok()
+            # ✅ Non-blocking volume safety
+            asyncio.create_task(_ensure_volume_ok())
 
-            # Start track
+            # ✅ Start track immediately
             play_spotify_track(track.spotify_track_id)
-            await asyncio.sleep(0.4)
 
-            # Narration on top
-            await play_narrations(
-                play_intro=play_intro,
-                play_detail=play_detail,
-                play_artist=play_artist_description,
-                intro_jobs=intro_jobs,
-                detail_bucket=detail_bucket,
-                detail_key=detail_key,
-                artist_bucket=artist_bucket,
-                artist_key=artist_key,
-                lang=tts_language,
-                mode="collection",
-                rank=rank,
-                track_name=track.track_name,
-                artist_name=artist.artist_name,
-                voice_style="over",
+            # ✅ Narration runs in background
+            asyncio.create_task(
+                play_narrations(
+                    play_intro=play_intro,
+                    play_detail=play_detail,
+                    play_artist=play_artist_description,
+                    intro_jobs=intro_jobs,
+                    detail_bucket=detail_bucket,
+                    detail_key=detail_key,
+                    artist_bucket=artist_bucket,
+                    artist_key=artist_key,
+                    lang=tts_language,
+                    mode="collection",
+                    rank=rank,
+                    track_name=track.track_name,
+                    artist_name=artist.artist_name,
+                    voice_style="over",
+                )
             )
 
             await play_track_with_skip(
@@ -193,11 +190,14 @@ async def _run_play_sequence_collection(
                 track_name=track.track_name,
                 artist_name=artist.artist_name,
                 full_flag=PLAY_FULL_TRACK,
-                already_playing=True,  # Important!
+                already_playing=True,
             )
 
+        # ─────────────────────────────────────────────
+        # BEFORE MODE
+        # ─────────────────────────────────────────────
         else:
-            # BEFORE mode
+            # ✅ CORRECT SEQUENTIAL FLOW (no background tasks)
             await play_narrations(
                 play_intro=play_intro,
                 play_detail=play_detail,
@@ -229,8 +229,8 @@ async def _run_play_sequence_collection(
         await _respect_user_controls()
         await asyncio.sleep(0.5)
 
-    await cancel_current_sequence()
     logger.info("✅ Collection playback finished cleanly.")
+    await cancel_current_sequence()
 
 
 # ─────────────────────────────────────────────
@@ -238,19 +238,19 @@ async def _run_play_sequence_collection(
 # ─────────────────────────────────────────────
 @router.get("/play-collection-sequence")
 async def play_collection_sequence(
-        collection_slug: str = Query(...),
-        start_rank: int = Query(1),
-        end_rank: int = Query(40),
-        mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
-        tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
-        play_intro: bool = Query(True),
-        play_detail: bool = Query(True),
-        play_artist_description: bool = Query(True),
-        play_track: bool = Query(True),
-        text_intro: bool = Query(True),
-        text_detail: bool = Query(False),
-        text_artist_description: bool = Query(False),
-        voice_style: Literal["before", "over"] = Query("before"),
+    collection_slug: str = Query(...),
+    start_rank: int = Query(1),
+    end_rank: int = Query(40),
+    mode: Literal["count_up", "count_down", "random"] = Query("count_up"),
+    tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
+    play_intro: bool = Query(True),
+    play_detail: bool = Query(True),
+    play_artist_description: bool = Query(True),
+    play_track: bool = Query(True),
+    text_intro: bool = Query(True),
+    text_detail: bool = Query(False),
+    text_artist_description: bool = Query(False),
+    voice_style: Literal["before", "over"] = Query("before"),
 ):
     logger.info(
         "▶ COLLECTION REQUEST: slug=%s %s-%s mode=%s lang=%s "
