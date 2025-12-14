@@ -30,16 +30,30 @@ router = APIRouter(
 # ─────────────────────────────────────────────
 @dataclass
 class _PlayFlags:
+    # Core playback state
     is_playing: bool = False
     is_paused: bool = False
     stopped: bool = True
     cancel_requested: bool = False
 
+    # Context & metadata
     language: Literal["en", "es", "ptbr", "pt-BR"] = "en"
     mode: Optional[str] = None          # "decade_genre" or "collection"
-    context: Optional[dict] = None      # {decade,genre} or {collection_slug}
+    context: Optional[dict] = None      # {decade, genre} or {collection_slug}
     current_rank: Optional[int] = None
     last_action_ts: float = 0.0
+
+    # 🔴 NEW: timing & progress for Car Mode UI
+    elapsed_seconds: float = 0.0        # how long current pipeline has been running
+    duration_seconds: float = 0.0       # total expected duration of current pipeline
+    percent_complete: float = 0.0       # 0.0–1.0
+
+    # 🔴 NEW: current phase + labels (handy for debugging in UI)
+    current_phase: str = "idle"         # e.g. "prelude", "intro", "detail", "artist", "track"
+    track_name: str = ""
+    artist_name: str = ""
+
+
 
 _flags = _PlayFlags()
 
