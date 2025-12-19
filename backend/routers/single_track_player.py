@@ -12,7 +12,6 @@ from backend.models.dbmodels import Track, Artist
 from backend.routers.playback_control import (
     start_new_sequence,
     cancel_current_sequence,
-    _flags,
 )
 
 from backend.services.radio_runtime import (
@@ -20,16 +19,14 @@ from backend.services.radio_runtime import (
     build_intro_jobs,
     narration_keys_for,
     play_narrations,
-    _update_flags,
-    _respect_user_controls,
     play_track_with_skip,
 )
 
 from backend.services.spotify.playback import play_spotify_track
 from backend.config.volume import PLAY_FULL_TRACK
 
-
 router = APIRouter(prefix="/supabase", tags=["Supabase: Single Track"])
+logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
@@ -45,9 +42,9 @@ async def _run_single_track(
     play_track: bool,
     voice_style: Literal["before", "over"] = "before",
 ):
-    logger = logging.getLogger(__name__)
-    logger.info(f"🎧 SINGLE-PLAY: track_id={track_id}, voice_style={voice_style}")
+    logger.info("🎧 SINGLE-PLAY: track_id=%s voice_style=%s", track_id, voice_style)
 
+    # ─────────── DB LOOKUP ───────────
     with get_db_session() as db:
         q = (
             select(Track, Artist)
@@ -57,27 +54,23 @@ async def _run_single_track(
         row = db.exec(q).first()
 
     if not row:
-        logger.error(f"❌ Track id {track_id} not found.")
+        logger.error("❌ Track id %s not found.", track_id)
         await cancel_current_sequence()
         return
 
     track, artist = row
 
-    # UI sync
-    _update_flags(
-        phase="prelude",
+    log_header_and_texts(
         lang=tts_language,
-        mode="single",
-        rank=track.rank if hasattr(track, "rank") else None,
-        track_name=track.track_name,
-        artist_name=artist.artist_name,
+        track=track,
+        artist=artist,
+        tr_rows=[],
     )
-    await _respect_user_controls()
 
-    # Narration metadata
+    # ─────────── NARRATION METADATA ───────────
     intro_jobs = build_intro_jobs(
         lang=tts_language,
-        tr_rows=[(None, None, None)]
+        tr_rows=[(None, None, None)],
     )
 
     detail_bucket, detail_key, artist_bucket, artist_key = narration_keys_for(
@@ -87,10 +80,11 @@ async def _run_single_track(
     )
 
     # ─────────────────────────────────────────────
-    # 1️⃣ OVER MODE — play track first
+    # OVER MODE — track starts first
     # ─────────────────────────────────────────────
     if voice_style == "over" and play_track and track.spotify_track_id:
-        logger.info("🎧 SINGLE: OVER-TRACK mode starting track first.")
+        logger.info("🎧 SINGLE: over-track mode")
+
         play_spotify_track(track.spotify_track_id)
         await asyncio.sleep(0.4)
 
@@ -111,7 +105,6 @@ async def _run_single_track(
             voice_style="over",
         )
 
-        # Wait until track finishes (skip supported)
         await play_track_with_skip(
             track=track,
             lang=tts_language,
@@ -124,10 +117,10 @@ async def _run_single_track(
         )
 
     # ─────────────────────────────────────────────
-    # 2️⃣ BEFORE MODE
+    # BEFORE MODE — narration first
     # ─────────────────────────────────────────────
     else:
-        logger.info("🎧 SINGLE: BEFORE-TRACK mode.")
+        logger.info("🎧 SINGLE: before-track mode")
 
         await play_narrations(
             play_intro=play_intro,
@@ -186,4 +179,8 @@ async def play_one_track(
 
     await start_new_sequence(coro)
 
-    return {"status": "started", "track_id": track_id, "voice_style": voice_style}
+    return {
+        "status": "started",
+        "track_id": track_id,
+        "voice_style": voice_style,
+    }

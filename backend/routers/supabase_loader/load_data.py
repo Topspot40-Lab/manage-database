@@ -8,12 +8,11 @@ from backend.database import get_db
 from backend.models.collection_models import Collection
 from backend.services.supabase_loader_service import load_collection
 from backend.routers.decade_genre_player import get_sequence_decade_genre
-from backend.state import current_decade_genre, current_collection
 
 router = APIRouter(tags=["Supabase"])
 
 # ─────────────────────────────────────────────
-# 🔥 FAST LOAD — USE get_sequence_decade_genre()
+# FAST LOAD — DECADE + GENRE
 # ─────────────────────────────────────────────
 @router.get("/load-decade-genre-data")
 async def load_decade_genre_data(
@@ -24,11 +23,10 @@ async def load_decade_genre_data(
     db: Session = Depends(get_db),
 ):
     """
-    Load ranked track metadata FAST using the /decade-genre/get-sequence logic.
-    No narration files. No slow loaders.
+    Load ranked track metadata FAST using the
+    decade-genre sequence logic.
     """
 
-    # ✅ FIX: get_sequence_decade_genre is async — MUST await
     result = await get_sequence_decade_genre(
         decade=decade,
         genre=genre,
@@ -37,51 +35,26 @@ async def load_decade_genre_data(
         db=db,
     )
 
-    current_decade_genre.update({
-        "decade": decade,
-        "genre": genre,
-        "lang": result.get("language", "en"),
-    })
-
     return result
 
 
 # ─────────────────────────────────────────────
-# Load Collection by Slug (ASYNC FIX APPLIED)
+# FAST LOAD — COLLECTION
 # ─────────────────────────────────────────────
 @router.get("/load-collection-data/{slug}")
 async def load_collection_data(
-    slug: str = Path(..., description="Collection slug, e.g. 'motown_magic'", pattern=r"^[a-z0-9_]+$"),
+    slug: str = Path(
+        ...,
+        description="Collection slug, e.g. 'motown_magic'",
+        pattern=r"^[a-z0-9_]+$",
+    ),
     tts_language: Literal["en", "es", "ptbr", "pt-BR"] = Query("en"),
     db: Session = Depends(get_db),
 ):
-    """Load ranked track metadata for a named collection (FAST)."""
-
     coll = db.exec(select(Collection).where(Collection.slug == slug)).first()
     if not coll:
         raise HTTPException(404, f"Collection not found for slug '{slug}'")
 
-    # ⭐ FIX: load_collection is async → MUST await
-    result = load_collection(db, slug, tts_language)
-
-    current_collection.update({
-        "collection": slug,
-        "lang": result.get("language", "en"),
-    })
+    result = await load_collection(db, slug, tts_language)
 
     return result
-
-
-# ─────────────────────────────────────────────
-# Current Context
-# ─────────────────────────────────────────────
-@router.get("/current-context")
-def get_current_context():
-    mode = "collection" if current_collection.get("collection") else (
-        "decade_genre" if current_decade_genre.get("decade") else None
-    )
-    return {
-        "mode": mode,
-        "decade_genre": current_decade_genre,
-        "collection": current_collection,
-    }

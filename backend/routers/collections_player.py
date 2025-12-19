@@ -31,11 +31,9 @@ from backend.services.radio_runtime import (
     collection_intro_jobs,
     narration_keys_for,
     play_narrations,
-    _update_flags,
-    _respect_user_controls,
     play_track_with_skip,
-    _ensure_volume_ok,
 )
+
 
 from backend.config.volume import PLAY_FULL_TRACK
 
@@ -118,16 +116,16 @@ async def _run_play_sequence_collection(
         logger.info("──────────────────────────────────────────────")
         logger.info(f"▶ Rank #{rank:02d}: {track.track_name} — {artist.artist_name}")
 
-        _update_flags(
-            phase="prelude",
-            lang=tts_language,
-            mode="collection",
-            rank=rank,
-            track_name=track.track_name,
-            artist_name=artist.artist_name,
-        )
+        # _update_flags(
+        #     phase="prelude",
+        #     lang=tts_language,
+        #     mode="collection",
+        #     rank=rank,
+        #     track_name=track.track_name,
+        #     artist_name=artist.artist_name,
+        # )
 
-        await _respect_user_controls()
+        # await _respect_user_controls()
 
         log_header_and_texts(
             lang=tts_language,
@@ -155,9 +153,6 @@ async def _run_play_sequence_collection(
         # OVER MODE
         # ─────────────────────────────────────────────
         if voice_style == "over" and play_track and track.spotify_track_id:
-
-            # ✅ Non-blocking volume safety
-            asyncio.create_task(_ensure_volume_ok())
 
             # ✅ Start track immediately
             play_spotify_track(track.spotify_track_id)
@@ -226,7 +221,7 @@ async def _run_play_sequence_collection(
                     full_flag=PLAY_FULL_TRACK,
                 )
 
-        await _respect_user_controls()
+
         await asyncio.sleep(0.5)
 
     logger.info("✅ Collection playback finished cleanly.")

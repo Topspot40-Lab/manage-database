@@ -1,46 +1,39 @@
+from __future__ import annotations
+
+from dataclasses import asdict
 from fastapi import APIRouter
-from backend.routers.playback_control import _flags
-import time
+
+from backend.state.playback_state import status
 
 router = APIRouter(prefix="/playback", tags=["Playback Status"])
-
-# Timestamp for last track start
-_last_start_time = None
 
 
 @router.get("/status")
 async def get_status():
     """
-    Returns:
+    Returns a single, consistent snapshot for the Car Mode poller.
+
+    Example:
       {
-        phase: "track",
-        durationMs: 182000,
-        elapsedMs: 54000,
-        track_name: "...",
-        artist_name: "...",
-        rank: 7
+        "phase": "track",
+        "elapsedMs": 54000,
+        "durationMs": 182000,
+        "percentComplete": 0.2967,
+        "track_name": "...",
+        "artist_name": "...",
+        "current_rank": 7,
+        ...
       }
     """
-    ctx = getattr(_flags, "context", {}) or {}
+    snap = asdict(status)
 
-    if not ctx:
-        return {"phase": "idle"}
-
-    duration = ctx.get("durationMs") or 0
-
-    # If track is playing, compute elapsed
-    global _last_start_time
-    if ctx.get("phase") == "track" and getattr(_flags, "is_playing", False):
-        if _last_start_time is None:
-            _last_start_time = time.time()
-
-        elapsed_ms = int((time.time() - _last_start_time) * 1000)
-    else:
-        elapsed_ms = 0
-        _last_start_time = None
+    # Keep backward-compatible keys your frontend may still expect
+    elapsed_ms = int((snap.get("elapsed_seconds") or 0.0) * 1000)
+    duration_ms = int((snap.get("duration_seconds") or 0.0) * 1000)
 
     return {
-        **ctx,
+        **snap,
         "elapsedMs": elapsed_ms,
-        "durationMs": duration,
+        "durationMs": duration_ms,
+        "percentComplete": snap.get("percent_complete", 0.0),
     }

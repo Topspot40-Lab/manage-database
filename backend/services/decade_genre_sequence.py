@@ -13,20 +13,43 @@ from backend.services.radio_runtime import (
     build_intro_jobs,
     narration_keys_for,
     play_narrations,
-    _update_flags,
-    _respect_user_controls,
     play_track_with_skip,
     _ensure_volume_ok,
 )
 
-from backend.routers.playback_control import _flags
+from backend.state.playback_state import (
+    status,
+    mark_playing,
+    mark_stopped,
+    update_phase,
+)
+
 from backend.config.volume import PLAY_FULL_TRACK
 
 logger = logging.getLogger(__name__)
 
 
+async def _wait_if_paused() -> None:
+    """Cooperative pause loop driven by playback_state.status."""
+    while getattr(status, "is_paused", False):
+        await asyncio.sleep(0.25)
+
+
+def _is_cancelled_or_stopped() -> bool:
+    """
+    Minimal cancel/stop policy:
+      - Treat 'stopped' as cancelled for sequences.
+      - If you later add status.cancel_requested, include it here too.
+    """
+    if getattr(status, "stopped", False):
+        return True
+    if getattr(status, "cancel_requested", False):
+        return True
+    return False
+
+
 # ─────────────────────────────────────────────
-# MAIN SEQUENCE ENGINE (RUNS FULL RANGE)
+# MAIN SEQUENCE ENGINE (DECADE / GENRE)
 # ─────────────────────────────────────────────
 async def run_decade_genre_sequence(
     *,
@@ -48,16 +71,14 @@ async def run_decade_genre_sequence(
     """
     Core decade/genre playback pipeline.
 
-    - Loads all tracks for (decade, genre, rank-range)
-    - Orders by mode (count_up / count_down / random)
-    - For each track:
-        * Updates playback flags
-        * Runs narration (before/over)
-        * Runs Spotify playback with skip support
+    - Loads ranked tracks
+    - Orders by playback mode
+    - Plays narration + track per entry
+    - State-driven via backend.state.playback_state (no _flags)
     """
 
     logger.info(
-        "🎧 Starting sequence: %s/%s %d-%d mode=%s lang=%s voice_style=%s",
+        "🎧 Starting sequence: %s/%s %d-%d mode=%s lang=%s voice=%s",
         decade,
         genre,
         start_rank,
@@ -67,32 +88,19 @@ async def run_decade_genre_sequence(
         voice_style,
     )
 
-    # ─────────── Reset playback flags ───────────
-    _flags.cancel_requested = False
-    _flags.is_playing = True
-    _flags.mode = "decade_genre"
-    _flags.playback_order = mode
-    _flags.decade = decade
-    _flags.genre = genre
-    _flags.language = tts_language
-
-    _flags.context = {
-        "decade": decade,
-        "genre": genre,
-        "start_rank": start_rank,
-        "end_rank": end_rank,
-    }
+    mark_playing(
+        mode="decade_genre",
+        language=tts_language,
+        context={
+            "decade": decade,
+            "genre": genre,
+            "start_rank": start_rank,
+            "end_rank": end_rank,
+            "order": mode,
+        },
+    )
 
     try:
-        # ─────────── DB QUERY ───────────
-        logger.warning(
-            "🔎 QUERY INPUT → decade=%s | genre=%s | start=%s | end=%s",
-            decade,
-            genre,
-            start_rank,
-            end_rank,
-        )
-
         rows = load_decade_genre_rows(
             decade=decade,
             genre=genre,
@@ -106,34 +114,31 @@ async def run_decade_genre_sequence(
 
         rows = order_rows_for_mode(rows, mode)
 
-        # ─────────── MAIN LOOP ───────────
         for track, artist, tr_rank, decade_obj, genre_obj in rows:
 
-            if getattr(_flags, "cancel_requested", False):
-                logger.info("🛑 Sequence cancelled before rank #%02d.", tr_rank.ranking)
+            if _is_cancelled_or_stopped():
+                logger.info("🛑 Sequence cancelled/stopped before rank #%02d", tr_rank.ranking)
                 break
 
+            await _wait_if_paused()
+
             rank = tr_rank.ranking
+            logger.info("▶ Rank #%02d: %s — %s", rank, track.track_name, artist.artist_name)
 
-            logger.info(
-                "▶ Rank #%02d: %s — %s",
-                rank,
-                track.track_name,
-                artist.artist_name,
+            update_phase(
+                "prelude",
+                is_playing=True,
+                context={
+                    "rank": rank,
+                    "track_name": track.track_name,
+                    "artist_name": artist.artist_name,
+                    "decade": decade,
+                    "genre": genre,
+                    "voice_style": voice_style,
+                },
             )
 
-            _update_flags(
-                phase="prelude",
-                lang=tts_language,
-                mode="decade_genre",
-                rank=rank,
-                track_name=track.track_name,
-                artist_name=artist.artist_name,
-            )
-
-            await _respect_user_controls()
-
-            # ─────────── Narration Prep ───────────
+            # Logging + localization
             log_header_and_texts(
                 lang=tts_language,
                 track=track,
@@ -152,9 +157,9 @@ async def run_decade_genre_sequence(
                 artist=artist,
             )
 
-            # ─────────── VOICE STYLE ───────────
+            # ─────────── VOICE STYLE: OVER TRACK ───────────
             if voice_style == "over" and play_track and track.spotify_track_id:
-                logger.info("🎧 OVER-TRACK: starting main track before narration.")
+                logger.info("🎧 OVER mode — starting track before narration")
                 await _ensure_volume_ok()
                 play_spotify_track(track.spotify_track_id)
                 await asyncio.sleep(0.4)
@@ -188,9 +193,10 @@ async def run_decade_genre_sequence(
                 )
 
                 if skipped:
-                    logger.info("⏭️ Track skipped — continuing.")
+                    logger.info("⏭️ Track skipped — continuing")
                     continue
 
+            # ─────────── VOICE STYLE: BEFORE TRACK ───────────
             else:
                 await play_narrations(
                     play_intro=play_intro,
@@ -222,23 +228,21 @@ async def run_decade_genre_sequence(
                     )
 
                     if skipped:
-                        logger.info("⏭️ Track skipped — continuing.")
+                        logger.info("⏭️ Track skipped — continuing")
                         continue
 
-            await _respect_user_controls()
-            await asyncio.sleep(0.5)
+            await _wait_if_paused()
+            await asyncio.sleep(0.4)
 
-        logger.info("🎉 Sequence finished (decade/genre %s/%s).", decade, genre)
+        logger.info("🎉 Sequence finished: %s / %s", decade, genre)
 
     except asyncio.CancelledError:
-        logger.info("⛔ Sequence task cancelled.")
+        logger.info("⛔ Sequence task cancelled")
         raise
 
-    except Exception as e:
-        logger.warning("⚠️ Sequence error for %s/%s: %s", decade, genre, e)
+    except Exception:
+        logger.exception("⚠️ Sequence error for %s/%s", decade, genre)
 
     finally:
-        _flags.is_playing = False
-        _flags.cancel_requested = False
-        _flags.context = {"decade": decade, "genre": genre}
-        logger.debug("🧹 Sequence flags reset for %s/%s", decade, genre)
+        mark_stopped()
+        logger.debug("🧹 Playback state reset for %s/%s", decade, genre)

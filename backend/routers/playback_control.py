@@ -1,5 +1,6 @@
 # backend/routers/playback_control.py
 from __future__ import annotations
+from backend.services.playback_engine import play_one_track_pipeline, TrackRef, PlaybackSelection
 
 import asyncio
 import time
@@ -130,6 +131,48 @@ async def start_new_sequence(coro):
 # ─────────────────────────────────────────────
 # PUBLIC API ROUTES
 # ─────────────────────────────────────────────
+@router.post("/play-track", summary="Play exactly one track (PASS 1 engine)")
+async def play_track(payload: dict):
+    # --- Extract track ---
+    track = TrackRef(
+        track_id=payload["track"]["track_id"],
+        spotify_track_id=payload["track"]["spotify_track_id"],
+        rank=payload["track"]["rank"],
+        track_name=payload["track"]["track_name"],
+        artist_name=payload["track"]["artist_name"],
+    )
+
+    # --- Extract selection ---
+    selection = PlaybackSelection(
+        language=payload["selection"]["language"],
+        voices=payload["selection"]["voices"],
+        voicePlayMode=payload["selection"]["voicePlayMode"],
+        pauseMode=payload["selection"]["pauseMode"],
+    )
+
+    logger.info(
+        "▶️ /playback/play-track requested: rank=%s mode=%s",
+        track.rank,
+        selection.voicePlayMode,
+    )
+
+    # 🔥 Single-track playback: cancel + fire directly
+    await cancel_current_sequence()
+
+    asyncio.create_task(
+        play_one_track_pipeline(
+            track=track,
+            selection=selection,
+        )
+    )
+
+    return {
+        "ok": True,
+        "rank": track.rank,
+        "message": "Single-track playback started",
+    }
+
+
 @router.get("/status", summary="Get current playback status")
 def status():
     return asdict(_flags)
