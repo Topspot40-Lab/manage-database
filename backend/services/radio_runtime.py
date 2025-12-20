@@ -57,19 +57,22 @@ async def _ensure_volume_ok() -> None:
         pass
 
 
+from backend.state.playback_flags import flags
+
 async def _respect_user_controls() -> None:
     """
-    Central cooperative checkpoint for:
-      • pause / resume
-      • stop
+    Central cooperative checkpoint for pause / stop.
+
+    IMPORTANT:
+    - Do NOT abort if a new playback session is actively running.
     """
     while status.is_paused:
         await asyncio.sleep(0.25)
 
-    if status.stopped:
+    # 🔒 Only stop if no active playback is intended
+    if status.stopped and not flags.is_playing:
         logger.info("🛑 Playback stopped by user.")
         raise asyncio.CancelledError("Playback stopped")
-
 
 def _phase_context(
     *,

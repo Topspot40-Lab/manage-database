@@ -1,18 +1,31 @@
 # backend/routers/playback_control.py
 from __future__ import annotations
-from backend.services.playback_engine import play_one_track_pipeline, TrackRef, PlaybackSelection
 
 import asyncio
-import time
 import logging
-# 🔒 Global playback sequence lock — prevents overlapping launches
-sequence_lock = asyncio.Lock()
-
-from dataclasses import dataclass, asdict
-from fastapi import APIRouter
+from dataclasses import asdict
 from typing import Literal, Optional
 
+from fastapi import APIRouter
+
+# ✅ KEEP data models, but not the pipeline
+from backend.services.playback_engine import (
+    TrackRef,
+    PlaybackSelection,
+)
+
+
+# ✅ shared playback state (NO circular import)
+from backend.state.playback_flags import (
+    flags,
+    touch,
+    reset_for_single_track,
+)
+
 logger = logging.getLogger(__name__)
+
+# 🔒 Global playback sequence lock — prevents overlapping launches
+sequence_lock = asyncio.Lock()
 
 # Try loading skip_event if available
 try:
@@ -20,47 +33,11 @@ try:
 except Exception:
     skip_event = None
 
+
 router = APIRouter(
     prefix="/playback",
-    tags=["Playback"],  # normalized to global category
+    tags=["Playback"],
 )
-
-
-# ─────────────────────────────────────────────
-# Global playback flags
-# ─────────────────────────────────────────────
-@dataclass
-class _PlayFlags:
-    # Core playback state
-    is_playing: bool = False
-    is_paused: bool = False
-    stopped: bool = True
-    cancel_requested: bool = False
-
-    # Context & metadata
-    language: Literal["en", "es", "ptbr", "pt-BR"] = "en"
-    mode: Optional[str] = None          # "decade_genre" or "collection"
-    context: Optional[dict] = None      # {decade, genre} or {collection_slug}
-    current_rank: Optional[int] = None
-    last_action_ts: float = 0.0
-
-    # 🔴 NEW: timing & progress for Car Mode UI
-    elapsed_seconds: float = 0.0        # how long current pipeline has been running
-    duration_seconds: float = 0.0       # total expected duration of current pipeline
-    percent_complete: float = 0.0       # 0.0–1.0
-
-    # 🔴 NEW: current phase + labels (handy for debugging in UI)
-    current_phase: str = "idle"         # e.g. "prelude", "intro", "detail", "artist", "track"
-    track_name: str = ""
-    artist_name: str = ""
-
-
-
-_flags = _PlayFlags()
-
-def _touch():
-    _flags.last_action_ts = time.time()
-
 
 # ─────────────────────────────────────────────
 # GLOBAL ASYNC TASK REFERENCE
@@ -80,16 +57,16 @@ async def cancel_current_sequence():
 
     if current_task:
         logger.warning("🛑 Cancelling existing playback sequence…")
-        _flags.cancel_requested = True
+        flags.cancel_requested = True
         try:
             current_task.cancel()
         except Exception:
             pass
         current_task = None
 
-    _flags.is_playing = False
-    _flags.stopped = True
-    _flags.is_paused = False
+    flags.is_playing = False
+    flags.stopped = True
+    flags.is_paused = False
 
     # 🔥 brief delay gives radio_runtime time to unwind Spotify + narration
     await asyncio.sleep(0.15)
@@ -99,12 +76,12 @@ async def cancel_current_sequence():
     # ─────────────────────────────────────────────
     try:
         from backend.services.spotify.playback import set_device_volume
-        await set_device_volume(100)   # fallback to 100%
+        await set_device_volume(100)
         logger.info("🔊 Restored Spotify volume to 100% after cancel")
     except Exception as exc:
         logger.warning(f"⚠️ Failed to restore volume after cancel: {exc}")
 
-    _flags.cancel_requested = False
+    flags.cancel_requested = False
 
 
 # ─────────────────────────────────────────────
@@ -119,9 +96,9 @@ async def start_new_sequence(coro):
         await cancel_current_sequence()
 
         global current_task
-        _flags.stopped = False
-        _flags.is_playing = True
-        _flags.cancel_requested = False
+        flags.stopped = False
+        flags.is_playing = True
+        flags.cancel_requested = False
 
         logger.info("🎬 Launching new playback background task…")
         current_task = asyncio.create_task(coro)
@@ -131,9 +108,8 @@ async def start_new_sequence(coro):
 # ─────────────────────────────────────────────
 # PUBLIC API ROUTES
 # ─────────────────────────────────────────────
-@router.post("/play-track", summary="Play exactly one track (PASS 1 engine)")
+@router.post("/play-track", summary="Play exactly one track via sequence engine")
 async def play_track(payload: dict):
-    # --- Extract track ---
     track = TrackRef(
         track_id=payload["track"]["track_id"],
         spotify_track_id=payload["track"]["spotify_track_id"],
@@ -142,7 +118,6 @@ async def play_track(payload: dict):
         artist_name=payload["track"]["artist_name"],
     )
 
-    # --- Extract selection ---
     selection = PlaybackSelection(
         language=payload["selection"]["language"],
         voices=payload["selection"]["voices"],
@@ -150,32 +125,78 @@ async def play_track(payload: dict):
         pauseMode=payload["selection"]["pauseMode"],
     )
 
+    context = payload.get("context")
+    if not context:
+        return {"ok": False, "error": "Missing playback context"}
+
     logger.info(
-        "▶️ /playback/play-track requested: rank=%s mode=%s",
+        "▶️ /playback/play-track (single-step via sequence): rank=%s mode=%s context=%s",
         track.rank,
         selection.voicePlayMode,
+        context.get("type"),
     )
 
-    # 🔥 Single-track playback: cancel + fire directly
     await cancel_current_sequence()
+    reset_for_single_track()
 
-    asyncio.create_task(
-        play_one_track_pipeline(
-            track=track,
-            selection=selection,
+    # ─────────────────────────────────────────────
+    # SINGLE STEP = SEQUENCE OF LENGTH 1
+    # ─────────────────────────────────────────────
+
+    if context["type"] == "decade_genre":
+        from backend.services.decade_genre_sequence import run_decade_genre_sequence
+
+        coro = run_decade_genre_sequence(
+            decade=context["decade"],
+            genre=context["genre"],
+            start_rank=track.rank,
+            end_rank=track.rank,
+            mode="count_up",
+            tts_language=selection.language,
+            play_intro=True,
+            play_detail="detail" in selection.voices,
+            play_artist_description="artist" in selection.voices,
+            play_track=True,
+            text_intro=True,
+            text_detail=False,
+            text_artist_description=False,
+            voice_style=selection.voicePlayMode,
         )
-    )
+
+    elif context["type"] == "collection":
+        from backend.routers.collections_player import _run_play_sequence_collection
+
+        coro = _run_play_sequence_collection(
+            collection_slug=context["collection_slug"],
+            start_rank=track.rank,
+            end_rank=track.rank,
+            mode="count_up",
+            tts_language=selection.language,
+            play_intro=True,
+            play_detail="detail" in selection.voices,
+            play_artist_description="artist" in selection.voices,
+            play_track=True,
+            text_intro=True,
+            text_detail=False,
+            text_artist_description=False,
+            voice_style=selection.voicePlayMode,
+        )
+
+    else:
+        return {"ok": False, "error": "Unknown playback context type"}
+
+    await start_new_sequence(coro)
 
     return {
         "ok": True,
         "rank": track.rank,
-        "message": "Single-track playback started",
+        "message": "Single-step playback started via sequence engine",
     }
 
 
 @router.get("/status", summary="Get current playback status")
 def status():
-    return asdict(_flags)
+    return asdict(flags)
 
 
 @router.post("/start", summary="Mark playback as started")
@@ -184,38 +205,37 @@ def start(
     mode: Optional[str] = None,
     current_rank: Optional[int] = None,
 ):
-    _flags.is_playing = True
-    _flags.is_paused = False
-    _flags.stopped = False
-    _flags.language = language
-    _flags.mode = mode
-    _flags.current_rank = current_rank
-    _touch()
-    return {"ok": True, "status": asdict(_flags)}
+    flags.is_playing = True
+    flags.is_paused = False
+    flags.stopped = False
+    flags.language = language
+    flags.mode = mode
+    flags.current_rank = current_rank
+    touch()
+    return {"ok": True, "status": asdict(flags)}
 
 
 @router.post("/pause", summary="Pause playback")
 def pause():
-    _flags.is_paused = True
-    _flags.is_playing = False
-    _touch()
-    return {"ok": True, "status": asdict(_flags)}
+    flags.is_paused = True
+    flags.is_playing = False
+    touch()
+    return {"ok": True, "status": asdict(flags)}
 
 
 @router.post("/resume", summary="Resume playback")
 def resume():
-    _flags.is_paused = False
-    _flags.is_playing = True
-    _touch()
-    return {"ok": True, "status": asdict(_flags)}
+    flags.is_paused = False
+    flags.is_playing = True
+    touch()
+    return {"ok": True, "status": asdict(flags)}
 
 
 @router.post("/stop", summary="Stop playback")
 async def stop():
     await cancel_current_sequence()
-    _touch()
-    return {"ok": True, "status": asdict(_flags)}
-
+    touch()
+    return {"ok": True, "status": asdict(flags)}
 
 
 @router.post("/skip", summary="Skip to next track")
@@ -226,5 +246,9 @@ def skip():
         except Exception:
             pass
 
-    _touch()
-    return {"ok": True, "message": "Skip signaled", "status": asdict(_flags)}
+    touch()
+    return {
+        "ok": True,
+        "message": "Skip signaled",
+        "status": asdict(flags),
+    }

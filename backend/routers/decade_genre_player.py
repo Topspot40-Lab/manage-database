@@ -20,10 +20,8 @@ from backend.models.dbmodels import (
 from backend.services.single_track_player import play_one_server_side
 from backend.services.decade_genre_sequence import run_decade_genre_sequence
 
-from backend.routers.playback_control import (
-    start_new_sequence,
-    _flags,
-)
+from backend.routers.playback_control import start_new_sequence
+from backend.state.playback_flags import flags
 
 router = APIRouter(prefix="/supabase/decade-genre", tags=["Supabase: Decade/Genre"])
 logger = logging.getLogger(__name__)
@@ -174,13 +172,13 @@ async def play_next_decade_genre():
     - current decade/genre
     """
 
-    if not _flags.context:
+    if not flags.context:
         return {"status": "error", "message": "No active decade/genre context."}
 
-    decade = _flags.context.get("decade")
-    genre = _flags.context.get("genre")
-    mode = getattr(_flags, "mode", "count_up")
-    current_rank = getattr(_flags, "rank", None)
+    decade = flags.context.get("decade")
+    genre = flags.context.get("genre")
+    mode = flags.mode or "count_up"
+    current_rank = flags.current_rank
 
     if not decade or not genre or current_rank is None:
         return {"status": "error", "message": "Missing playback state."}
@@ -242,13 +240,13 @@ async def play_next_decade_genre():
             decade=decade,
             genre=genre,
             rank=next_rank,
-            tts_language=getattr(_flags, "lang", "en"),
+            tts_language=getattr(flags, "lang", "en"),
             mode=mode,
             play_intro=True,
             play_detail=True,
             play_artist_description=True,
             play_track=True,
-            voice_style=getattr(_flags, "voice_style", "before"),
+            voice_style=getattr(flags, "voice_style", "before"),
         )
     )
 

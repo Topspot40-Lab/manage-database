@@ -11,6 +11,9 @@ from backend.services.radio_runtime import (
 )
 from backend.state.skip import skip_event
 from backend.state.playback_state import update_phase
+from backend.state.playback_flags import flags
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +71,11 @@ async def play_one_track_pipeline(
     )
 
     _clear_skip()
+
+    # 🚨 CRITICAL: clear cancel/stop flags before playback
+    flags.cancel_requested = False
+    flags.stopped = False
+    logger.info("🔄 Playback flags cleared before playback start")
 
     # ─────────────────────────────────────────────
     # PHASE 1: NARRATION (if any)
