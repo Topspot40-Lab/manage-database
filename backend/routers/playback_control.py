@@ -215,9 +215,10 @@ async def play_track(payload: dict):
     }
 
 
-@router.get("/status", summary="Get current playback status")
-def status():
+@router.get("/flags-status", summary="Legacy flags snapshot (debug)")
+def flags_status():
     return asdict(flags)
+
 
 
 @router.post("/start", summary="Mark playback as started")

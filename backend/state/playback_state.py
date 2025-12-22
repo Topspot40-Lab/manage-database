@@ -48,9 +48,32 @@ def _touch() -> None:
 
 def update_phase(phase: Phase, **kwargs) -> None:
     status.phase = phase
+
     for k, v in kwargs.items():
         setattr(status, k, v)
+
+    ctx = kwargs.get("context")
+    if isinstance(ctx, dict):
+        # ✅ Accept camelCase from _phase_context
+        elapsed = ctx.get("elapsedSeconds")
+        duration = ctx.get("durationSeconds")
+
+        if elapsed is not None:
+            status.elapsed_seconds = float(elapsed)
+
+        if duration is not None:
+            status.duration_seconds = float(duration)
+
+        if status.duration_seconds and status.duration_seconds > 0:
+            status.percent_complete = min(
+                100.0,
+                (status.elapsed_seconds / status.duration_seconds) * 100.0,
+            )
+        else:
+            status.percent_complete = 0.0
+
     _touch()
+
 
 
 def mark_playing(

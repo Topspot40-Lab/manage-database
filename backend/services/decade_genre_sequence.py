@@ -132,6 +132,19 @@ async def run_decade_genre_sequence(
         },
     )
 
+    update_phase(
+        "loading",
+        current_rank=start_rank,
+        track_name="",
+        artist_name="",
+        context={
+            "lang": tts_language,
+            "mode": "decade_genre",
+            "decade": decade,
+            "genre": genre,
+        },
+    )
+
     logger.info("🧭 STEP 2: mark_playing() returned")
 
     try:
@@ -339,7 +352,7 @@ async def run_decade_genre_sequence(
         logger.exception("⚠️ Sequence error for %s/%s", decade, genre)
 
     finally:
-        mark_stopped()
+        logger.debug("🧹 Sequence task ended (NOT marking stopped)")
 
         # 🔁 TEMP: reset legacy flags
         flags.is_playing = False

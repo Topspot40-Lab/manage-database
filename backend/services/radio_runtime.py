@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 # Single lock so intros/details/artist narrations never overlap
 _narration_lock = asyncio.Lock()
 
+logger.warning("✅ LOADED radio_runtime.py version=2025-12-22-A")
 
 # ─────────────────────────────────────────────
 # Safety guard: ensure Spotify volume is sane
@@ -96,10 +97,11 @@ def _phase_context(
     if artist_name is not None:
         ctx["artist_name"] = artist_name
     if elapsed_seconds is not None:
-        ctx["elapsedSeconds"] = float(elapsed_seconds)
+        ctx["elapsed_seconds"] = float(elapsed_seconds)     # ✅ change
     if duration_seconds is not None:
-        ctx["durationSeconds"] = float(duration_seconds)
+        ctx["duration_seconds"] = float(duration_seconds)   # ✅ change
     return ctx
+
 
 
 # ─────────────────────────────────────────────
@@ -586,11 +588,19 @@ async def _track_heartbeat(
     """
     try:
         while True:
-            elapsed = time.time() - start_ts
+            elapsed = time.time() - start_ts  # <-- elapsed is defined right here
 
+            # ✅ Update the top-level status fields (what /playback/status returns)
+            status.elapsed_seconds = float(elapsed)
+            status.duration_seconds = float(total_secs)
+            status.percent_complete = float(elapsed / total_secs) if total_secs else 0.0
+
+            # ✅ Keep your context updates too (useful for logging/debug)
             update_phase(
                 "track",
                 current_rank=rank,
+                track_name=track_name,
+                artist_name=artist_name,
                 context=_phase_context(
                     lang=lang,
                     mode=mode,
@@ -608,6 +618,7 @@ async def _track_heartbeat(
             await asyncio.sleep(0.25)
     except asyncio.CancelledError:
         return
+
 
 
 # ─────────────────────────────────────────────
@@ -649,10 +660,19 @@ async def play_track_with_skip(
         # Mark the system as playing (drives /playback/status)
         mark_playing(mode=mode, language=lang)
 
-        # Initial UI update (no elapsed yet, just labels/phase)
+        # Compute how long we'll play (this is what the heartbeat should use)
+        play_secs = compute_play_seconds(track)
+
+        # ✅ Initial UI state (heartbeat will take over)
+        status.elapsed_seconds = 0.0
+        status.duration_seconds = float(play_secs)
+        status.percent_complete = 0.0
+
         update_phase(
             "track",
             current_rank=rank_val,
+            track_name=track_label,
+            artist_name=artist_label,
             context=_phase_context(
                 lang=lang,
                 mode=mode,
@@ -660,13 +680,12 @@ async def play_track_with_skip(
                 track_name=track_label,
                 artist_name=artist_label,
                 elapsed_seconds=0.0,
-                duration_seconds=(duration_ms / 1000.0) if duration_ms else None,
+                duration_seconds=play_secs,
             ),
         )
 
         await _respect_user_controls()
 
-        play_secs = compute_play_seconds(track)
         logger.info(
             "🎵 Now playing track: %s (%s) for %ss (full=%s, already_playing=%s)",
             track_label or "Unknown Track",
@@ -675,6 +694,7 @@ async def play_track_with_skip(
             full_flag,
             already_playing,
         )
+
 
         # If we are *not* in over-track mode, start fresh playback
         if not already_playing:
@@ -712,7 +732,24 @@ async def play_track_with_skip(
                 await stop_spotify_playback(fade_out_seconds=1.0)
 
         logger.info("✅ Track finished normally.")
+        update_phase(
+            "track_finished",
+            current_rank=rank_val,
+            context=_phase_context(
+                lang=lang,
+                mode=mode,
+                rank=rank_val,
+                track_name=track_label,
+                artist_name=artist_label,
+                elapsed_seconds=play_secs,
+                duration_seconds=play_secs,
+            ),
+        )
+
         return False
+
+
+
 
     except asyncio.CancelledError:
         logger.info("🛑 Track playback cancelled.")
@@ -724,6 +761,7 @@ async def play_track_with_skip(
         with contextlib.suppress(Exception):
             await stop_spotify_playback(fade_out_seconds=1.5)
         return True
+
     finally:
         if heartbeat_task is not None:
             heartbeat_task.cancel()
