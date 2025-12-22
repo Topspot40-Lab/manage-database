@@ -23,6 +23,13 @@ def load_decade_genre_rows(
     Returns a list of tuples:
       (Track, Artist, TrackRanking, Decade, Genre)
     """
+
+    print("🧪 load_decade_genre_rows CALLED")
+    print("   decade arg    :", decade)
+    print("   genre arg     :", genre)
+    print("   start_rank    :", start_rank)
+    print("   end_rank      :", end_rank)
+
     with get_db_session() as db:
         q = (
             select(Track, Artist, TrackRanking, Decade, Genre)
@@ -37,5 +44,23 @@ def load_decade_genre_rows(
                 TrackRanking.ranking >= start_rank,
                 TrackRanking.ranking <= end_rank,
             )
+
         )
-        return db.exec(q).all()
+
+        rows = db.exec(q).all()
+
+        print("🧪 load_decade_genre_rows RESULT")
+        print("   rows returned :", len(rows))
+
+        if rows:
+            track, artist, tr_rank, dec, gen = rows[0]
+            print("   SAMPLE ROW →")
+            print("     track      :", track.track_name)
+            print("     artist     :", artist.artist_name)
+            print("     rank       :", tr_rank.ranking)
+            print("     decade DB  :", dec.decade_name)
+            print("     genre DB   :", gen.genre_name)
+        else:
+            print("   ⚠️ NO ROWS MATCHED QUERY")
+
+        return rows

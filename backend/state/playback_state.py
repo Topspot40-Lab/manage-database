@@ -53,12 +53,19 @@ def update_phase(phase: Phase, **kwargs) -> None:
     _touch()
 
 
-def mark_playing(*, mode: Mode, lang: str) -> None:
+def mark_playing(
+    *,
+    mode: Mode,
+    language: str,
+    context: Optional[dict[str, Any]] = None,
+) -> None:
     status.is_playing = True
     status.is_paused = False
     status.stopped = False
     status.mode = mode
-    status.language = lang
+    status.language = language
+    if context is not None:
+        status.context = context
     _touch()
 
 

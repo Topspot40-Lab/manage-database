@@ -39,9 +39,6 @@ async def play_first_decade_genre(
     play_detail: bool = Query(True),
     play_artist_description: bool = Query(True),
     play_track: bool = Query(True),
-    text_intro: bool = Query(True),
-    text_detail: bool = Query(False),
-    text_artist_description: bool = Query(False),
     voice_style: Literal["before", "over"] = Query("before"),
 ):
     logger.info(
@@ -65,9 +62,6 @@ async def play_first_decade_genre(
             play_detail=play_detail,
             play_artist_description=play_artist_description,
             play_track=play_track,
-            text_intro=text_intro,
-            text_detail=text_detail,
-            text_artist_description=text_artist_description,
             voice_style=voice_style,
         )
 
@@ -83,9 +77,6 @@ async def play_first_decade_genre(
             play_detail=play_detail,
             play_artist_description=play_artist_description,
             play_track=play_track,
-            text_intro=text_intro,
-            text_detail=text_detail,
-            text_artist_description=text_artist_description,
             voice_style=voice_style,
         )
 
@@ -115,9 +106,6 @@ async def play_sequence_decade_genre(
     play_detail: bool = Query(True),
     play_artist_description: bool = Query(True),
     play_track: bool = Query(False),
-    text_intro: bool = Query(True),
-    text_detail: bool = Query(False),
-    text_artist_description: bool = Query(False),
     voice_style: Literal["before", "over"] = Query("before"),
 ):
     logger.info(
@@ -142,9 +130,6 @@ async def play_sequence_decade_genre(
         play_detail=play_detail,
         play_artist_description=play_artist_description,
         play_track=play_track,
-        text_intro=text_intro,
-        text_detail=text_detail,
-        text_artist_description=text_artist_description,
         voice_style=voice_style,
     )
 

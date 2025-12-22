@@ -647,7 +647,7 @@ async def play_track_with_skip(
             return True
 
         # Mark the system as playing (drives /playback/status)
-        mark_playing(mode=mode, lang=lang)
+        mark_playing(mode=mode, language=lang)
 
         # Initial UI update (no elapsed yet, just labels/phase)
         update_phase(

@@ -7,6 +7,11 @@ from dataclasses import asdict
 from typing import Literal, Optional
 
 from fastapi import APIRouter
+from fastapi import HTTPException
+
+from backend.services.spotify.spotify_auth_user import get_spotify_user_client
+from backend.services.spotify.playback import set_device_volume
+
 
 # ✅ KEEP data models, but not the pipeline
 from backend.services.playback_engine import (
@@ -43,6 +48,15 @@ router = APIRouter(
 # GLOBAL ASYNC TASK REFERENCE
 # ─────────────────────────────────────────────
 current_task: asyncio.Task | None = None
+
+async def _run_sequence_guarded(coro):
+    try:
+        await coro
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("🔥 Playback sequence crashed")
+
 
 
 # ─────────────────────────────────────────────
@@ -101,7 +115,10 @@ async def start_new_sequence(coro):
         flags.cancel_requested = False
 
         logger.info("🎬 Launching new playback background task…")
-        current_task = asyncio.create_task(coro)
+        current_task = asyncio.create_task(
+            _run_sequence_guarded(coro)
+        )
+
         return current_task
 
 
@@ -110,6 +127,8 @@ async def start_new_sequence(coro):
 # ─────────────────────────────────────────────
 @router.post("/play-track", summary="Play exactly one track via sequence engine")
 async def play_track(payload: dict):
+    logger.info("🎯 /playback/play-track HIT")
+
     track = TrackRef(
         track_id=payload["track"]["track_id"],
         spotify_track_id=payload["track"]["spotify_track_id"],
@@ -136,7 +155,7 @@ async def play_track(payload: dict):
         context.get("type"),
     )
 
-    await cancel_current_sequence()
+    # await cancel_current_sequence()
     reset_for_single_track()
 
     # ─────────────────────────────────────────────
@@ -145,6 +164,10 @@ async def play_track(payload: dict):
 
     if context["type"] == "decade_genre":
         from backend.services.decade_genre_sequence import run_decade_genre_sequence
+
+        print("🔥 About to build decade_genre sequence")
+        print("FUNC:", run_decade_genre_sequence)
+        print("FILE:", run_decade_genre_sequence.__code__.co_filename)
 
         coro = run_decade_genre_sequence(
             decade=context["decade"],
@@ -157,11 +180,9 @@ async def play_track(payload: dict):
             play_detail="detail" in selection.voices,
             play_artist_description="artist" in selection.voices,
             play_track=True,
-            text_intro=True,
-            text_detail=False,
-            text_artist_description=False,
             voice_style=selection.voicePlayMode,
         )
+
 
     elif context["type"] == "collection":
         from backend.routers.collections_player import _run_play_sequence_collection
@@ -252,3 +273,70 @@ def skip():
         "message": "Skip signaled",
         "status": asdict(flags),
     }
+
+@router.post("/warmup", summary="Prepare Spotify playback environment")
+async def warmup_playback():
+    """
+    Prepare Spotify for playback:
+    - Ensure OAuth is valid
+    - Ensure at least one active device exists
+    - Set baseline volume
+
+    This endpoint NEVER starts playback.
+    It is safe and idempotent.
+    """
+
+    logger.info("🎛️ /playback/warmup requested")
+
+    try:
+        # 1️⃣ Ensure Spotify client (OAuth)
+        sp = get_spotify_user_client()
+        logger.info("🎧 Spotify client ready")
+
+        # 2️⃣ Discover devices
+        devices = sp.devices().get("devices", [])
+        logger.info("📱 Spotify devices found: %d", len(devices))
+
+        if not devices:
+            logger.warning("❌ No Spotify devices found")
+            return {
+                "ready": False,
+                "reason": "no_devices",
+                "message": "No Spotify devices found. Open Spotify on a device."
+            }
+
+        # 3️⃣ Require an active device
+        active_device = next((d for d in devices if d.get("is_active")), None)
+
+        if not active_device:
+            logger.warning("⚠️ No active Spotify device")
+            return {
+                "ready": False,
+                "reason": "no_active_device",
+                "message": "Open Spotify on a device to continue."
+            }
+
+        device_id = active_device["id"]
+        device_name = active_device.get("name", "Unknown device")
+
+        logger.info("▶️ Active device: %s (%s)", device_name, device_id)
+
+        # 4️⃣ Set baseline volume
+        # NOTE: set_device_volume may be async in some versions; yours supports await
+        try:
+            await set_device_volume(100, device_id=device_id)
+            logger.info("🔊 Spotify volume set to 100%%")
+        except Exception as exc:
+            logger.warning("⚠️ Failed to set volume during warmup: %s", exc)
+
+
+        return {
+            "ready": True,
+            "device_id": device_id,
+            "device_name": device_name,
+            "volume": 100
+        }
+
+    except Exception as exc:
+        logger.exception("🔥 Playback warmup failed")
+        raise HTTPException(status_code=500, detail=str(exc))
