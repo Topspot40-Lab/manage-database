@@ -242,7 +242,7 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
                     rc = await res if inspect.iscoroutine(res) else res
 
                 if rc == 0:
-                    return True
+                    return False  # finished normally
 
                 last_err = f"ffplay rc={rc}"
 
