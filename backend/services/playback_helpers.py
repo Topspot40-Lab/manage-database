@@ -2,25 +2,28 @@
 from __future__ import annotations
 
 import asyncio
-import logging
-import httpx
-import os
+import contextlib
 import inspect
+import logging
+import os
+from io import BytesIO
 from typing import Literal, Optional
 
-from backend.config import BUCKETS, AUDIO_PREFIXES, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-from backend.utils.tts_diagnostics import normalize_for_filename
-from backend.services.supabase_playback import play_mp3
+import httpx
+from mutagen.mp3 import MP3
 
-# 🔑 Single source of truth for playback state
-from backend.state.playback_state import (
-    status,
-    update_phase,
+from backend.config import (
+    AUDIO_PREFIXES,
+    BUCKETS,
+    SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_URL,
 )
-
+from backend.services.supabase_playback import play_mp3
 from backend.services.spotify.playback import play_spotify_track, stop_spotify_playback
 from backend.services.play_policy import compute_play_seconds, sleep_with_skip
+from backend.state.playback_state import status, update_phase
 from backend.state.skip import skip_event
+from backend.utils.tts_diagnostics import normalize_for_filename
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +48,7 @@ def _update_state_for_play(kind: str, bucket: str, key: str) -> None:
         is_playing=True,
         is_paused=False,
         stopped=False,
-        context={
-            "bucket": bucket,
-            "key": key,
-        },
+        context={"bucket": bucket, "key": key},
     )
 
 
@@ -154,7 +154,7 @@ def _gain_for_kind(kind_label: str) -> float:
 
 
 # ─────────────────────────────────────────────
-# MP3 Playback (Local ffplay)
+# MP3 helpers
 # ─────────────────────────────────────────────
 
 def _looks_like_mp3(b: bytes) -> bool:
@@ -163,8 +163,17 @@ def _looks_like_mp3(b: bytes) -> bool:
     )
 
 
-async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
-    """Play MP3 bytes using ffplay with a simple volume filter."""
+def mp3_duration_seconds(b: bytes) -> float:
+    """Return duration of MP3 bytes in seconds."""
+    try:
+        audio = MP3(BytesIO(b))
+        return float(audio.info.length)
+    except Exception:
+        return 0.0
+
+
+def _play_bytes_with_gain_sync(b: bytes, gain_db: float) -> int:
+    """BLOCKING ffplay execution (safe to run in a worker thread)."""
     import tempfile
     import subprocess
     from pathlib import Path
@@ -185,46 +194,95 @@ async def _play_bytes_with_gain(b: bytes, gain_db: float) -> int:
             str(src),
         ]
         try:
-            return subprocess.call(cmd)
+            return int(subprocess.call(cmd))
         except Exception as e:
             logger.warning("ffplay volume-filter failed: %s", e)
             return 1
 
 
+def _play_bytes_plain_sync(b: bytes) -> int:
+    """BLOCKING plain MP3 playback."""
+    res = play_mp3(b, block=True, diagnostics=False)
+    if inspect.iscoroutine(res):
+        return int(asyncio.run(res))
+    return int(res)
+
+
+async def _run_progress_heartbeat(phase: str, duration: float) -> None:
+    """
+    Update playback_state while narration audio is playing.
+    percent_complete stays normalized 0.0 -> 1.0 (same as track).
+    """
+    start = asyncio.get_running_loop().time()
+
+    while True:
+        await _respect_user_controls()
+
+        now = asyncio.get_running_loop().time()
+        elapsed = now - start
+
+        if duration > 0:
+            percent = min(elapsed / duration, 1.0)
+        else:
+            percent = 0.0
+
+        update_phase(
+            phase,
+            elapsed_seconds=min(elapsed, duration) if duration > 0 else elapsed,
+            duration_seconds=duration,
+            percent_complete=percent,
+        )
+
+        if duration > 0 and elapsed >= duration:
+            break
+
+        await asyncio.sleep(0.1)
+
+
 # ─────────────────────────────────────────────
-# safe_play — robust MP3 playback from Supabase
+# safe_play — MP3 playback + real-time progress updates
 # ─────────────────────────────────────────────
 
 async def safe_play(kind: str, bucket: str, key: str) -> bool:
+    """
+    Play a narration MP3 from Supabase while continuously updating playback_state.
+
+    Returns:
+      True  -> skip detected
+      False -> finished normally (or not played)
+    """
     if not (bucket and key):
         logger.warning("🚫 %s MP3 not attempted (empty bucket/key)", kind)
         return False
 
+    phase = (kind or "").strip().lower()  # "intro" | "detail" | "artist" | ...
+
     url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{key}"
     headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"}
 
-    # HEAD probe
+    # Optional HEAD probe (don’t fail hard if it errors)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             head = await client.head(url, headers=headers)
         if head.status_code != 200:
             logger.warning(
                 "❌ %s MP3 missing: %s/%s (status=%s)",
-                kind, bucket, key, head.status_code
+                phase, bucket, key, head.status_code
             )
             return False
     except Exception:
         pass
 
-    gain_db = _gain_for_kind(kind)
-    last_err = None
+    gain_db = _gain_for_kind(phase)
+    last_err: object | None = None
 
     async with _play_lock:
         for attempt in range(1, _SUPA_FETCH_RETRIES + 1):
             try:
                 await _respect_user_controls()
-                _update_state_for_play(kind, bucket, key)
+                _update_state_for_play(phase, bucket, key)
 
+                # Download MP3 bytes
                 async with httpx.AsyncClient(timeout=_SUPA_FETCH_TIMEOUT) as client:
                     resp = await client.get(url, headers=headers)
                     resp.raise_for_status()
@@ -233,27 +291,78 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
                 if len(b) < 1024 or not _looks_like_mp3(b):
                     raise RuntimeError("Bad MP3 download")
 
+                duration = float(mp3_duration_seconds(b) or 0.0)
+
+                # ✅ Initialize state immediately so status endpoint never shows zeros
+                update_phase(
+                    phase,
+                    is_playing=True,
+                    is_paused=False,
+                    stopped=False,
+                    elapsed_seconds=0.0,
+                    duration_seconds=duration,
+                    percent_complete=0.0,
+                    context={"bucket": bucket, "key": key},
+                )
+
                 await _respect_user_controls()
 
-                if abs(gain_db) > 0.05:
-                    rc = await _play_bytes_with_gain(b, gain_db)
-                else:
-                    res = play_mp3(b, block=True, diagnostics=False)
-                    rc = await res if inspect.iscoroutine(res) else res
+                # ✅ Single authority: narration timing lives here
+                heartbeat_task = asyncio.create_task(_run_progress_heartbeat(phase, duration))
 
-                if rc == 0:
-                    return False  # finished normally
+                try:
+                    # Run actual playback in worker thread
+                    if abs(gain_db) > 0.05:
+                        play_task = asyncio.create_task(
+                            asyncio.to_thread(_play_bytes_with_gain_sync, b, gain_db)
+                        )
+                    else:
+                        play_task = asyncio.create_task(
+                            asyncio.to_thread(_play_bytes_plain_sync, b)
+                        )
 
-                last_err = f"ffplay rc={rc}"
+                    # Cooperative loop for pause/stop + skip
+                    while not play_task.done():
+                        await _respect_user_controls()
+
+                        if skip_event.is_set():
+                            skip_event.clear()
+                            logger.info("⏭️ Skip detected during %s narration.", phase)
+                            play_task.cancel()
+                            with contextlib.suppress(asyncio.CancelledError, Exception):
+                                await play_task
+                            return True
+
+                        await asyncio.sleep(0.1)
+
+                    rc = await play_task
+                    if int(rc) != 0:
+                        last_err = f"play rc={rc}"
+                        raise RuntimeError(str(last_err))
+
+                    # ✅ Final state
+                    update_phase(
+                        phase,
+                        elapsed_seconds=duration,
+                        duration_seconds=duration,
+                        percent_complete=1.0 if duration > 0 else 0.0,
+                    )
+
+                    return False
+
+                finally:
+                    heartbeat_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
+                        await heartbeat_task
 
             except asyncio.CancelledError:
-                logger.info("🛑 %s playback cancelled by user", kind)
+                logger.info("🛑 %s playback cancelled by user", phase)
                 return False
             except Exception as e:
                 last_err = e
                 logger.warning(
                     "⚠️ %s exception attempt %d/%d: %s",
-                    kind, attempt, _SUPA_FETCH_RETRIES, e
+                    phase, attempt, _SUPA_FETCH_RETRIES, e
                 )
 
             if attempt < _SUPA_FETCH_RETRIES:
@@ -261,7 +370,7 @@ async def safe_play(kind: str, bucket: str, key: str) -> bool:
 
     logger.error(
         "❌ %s MP3 gave up after %d attempts: %s/%s :: %s",
-        kind, _SUPA_FETCH_RETRIES, bucket, key, last_err
+        phase, _SUPA_FETCH_RETRIES, bucket, key, last_err
     )
     return False
 
