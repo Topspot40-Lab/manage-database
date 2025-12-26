@@ -2,7 +2,7 @@ import logging
 from typing import Literal
 
 from backend.services.decade_genre_sequence import run_decade_genre_sequence
-
+from backend.state.playback_flags import flags
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ async def play_one_server_side(
 ) -> None:
     """
     Play a single track using the full sequence engine.
+    (Pause mode only — no auto-advance logic here.)
     """
 
     logger.info(
@@ -37,8 +38,22 @@ async def play_one_server_side(
         voice_style,
     )
 
-    await run_decade_genre_sequence(
+    # ─────────────────────────────────────────────
+    # ✅ STEP 1: Persist playback intent (NO behavior change)
+    # ─────────────────────────────────────────────
+    flags.mode = mode
+    flags.context = {
+        "decade": decade,
+        "genre": genre,
+    }
+    flags.current_rank = rank
+    flags.lang = tts_language
+    flags.voice_style = voice_style
 
+    # ─────────────────────────────────────────────
+    # Play exactly ONE rank (frontend controls selection)
+    # ─────────────────────────────────────────────
+    await run_decade_genre_sequence(
         decade=decade,
         genre=genre,
         start_rank=rank,
