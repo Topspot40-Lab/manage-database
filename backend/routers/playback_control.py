@@ -238,9 +238,29 @@ def start(
 
 
 @router.post("/pause", summary="Pause playback")
-def pause():
+async def pause():
+    logger.info("⏸️ Pause requested")
+
+    # Mark paused state
     flags.is_paused = True
     flags.is_playing = False
+    flags.cancel_requested = True
+
+    # 1️⃣ Stop narration immediately
+    if skip_event is not None:
+        try:
+            skip_event.set()
+        except Exception:
+            pass
+
+    # 2️⃣ Stop Spotify immediately
+    try:
+        await set_device_volume(100)
+        from backend.services.spotify.playback import stop_spotify_playback
+        await stop_spotify_playback(fade_out_seconds=0.3)
+    except Exception as exc:
+        logger.warning("⚠️ Pause Spotify stop failed: %s", exc)
+
     touch()
     return {"ok": True, "status": asdict(flags)}
 
