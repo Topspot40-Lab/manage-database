@@ -15,13 +15,76 @@ _DEFAULT_TIMEOUT = 30
 _MAX_RETRIES = 2
 _BACKOFF_SECS = 1.5
 
+def _detail_instruction_for_lang(lang: str) -> str:
+    if lang == "es":
+        return (
+            "detail: un mini-relato de EXACTAMENTE 4 a 6 oraciones completas (no menos de 4), con tono auténtico y natural de locutor de radio. "
+            "Escribe cada oración separada claramente con punto. Debe haber al menos 4 oraciones completas. "
+            "Si la respuesta tiene menos de 4 oraciones, es incorrecta. "
+
+            "Estructura: "
+            "Primera oración: introduce la canción o el artista. "
+            "Segunda y tercera: explican el significado, emoción o mensaje. "
+            "Última oración: incluye un dato concreto, contexto o impacto. "
+
+            "Incluye obligatoriamente el nombre del artista y el significado de la canción. "
+
+            "Describe con precisión el tono real de la canción (romántico, nostálgico, enérgico, etc.). "
+            "Para canciones en inglés, ayuda al oyente hispanohablante a entender su significado. "
+
+            "No traduzcas nombres de canciones ni de artistas. "
+            "No inventes escenas ficticias. "
+            "Evita descripciones genéricas que podrían aplicar a muchas canciones. "
+
+            "Haz que suene natural, fluido y creíble en español, como un locutor real."
+        )
+
+    if lang == "pt-BR":
+        return (
+            "detail: uma mini-história de 4 a 5 frases, com tom caloroso, animado e natural de locutor de rádio. "
+            "Pode repetir ocasionalmente e de forma natural o título da música e o nome do artista "
+            "se isso ajudar a dar mais clareza ao ouvinte, mas sem soar repetitivo. "
+            "Descreva o sentido, a emoção, a mensagem ou o contexto da música de forma clara e envolvente para falantes de português do Brasil, "
+            "especialmente quando se tratar de uma música em inglês. "
+            "Inclua pelo menos um fato concreto sobre a música, o artista, sua história ou seu impacto quando possível. "
+            "Não traduza nomes de músicas nem de artistas. "
+            "Não invente cenas de filmes, séries ou situações fictícias, a menos que estejam claramente relacionadas à música ou ao artista. "
+            "Certifique-se de que a descrição esteja claramente baseada no conteúdo, na mensagem ou no contexto real da música específica, e não em uma interpretação genérica. "
+            "Faça soar natural em português do Brasil, não como tradução literal do inglês."
+        )
+
+    return (
+        "detail: a 4–5 sentence radio-style mini-story with a warm, lively tone. "
+        "You may repeat the song title and artist name sparingly if it helps anchor the listener, but do not sound repetitive. "
+        "Explain the song’s meaning, emotion, message, or background in a clear and engaging way. "
+        "Include at least one concrete fact about the song, artist, history, or impact when possible. "
+        "Do not invent movie scenes, TV scenes, or fictional situations unless they are clearly related to the song or artist. "
+        "Make sure the description is clearly based on the actual content, message, or context of the specific song, not a generic interpretation."
+    )
+
+
+def _build_prompt(lang: str, formatted_input: list[dict]) -> str:
+    detail_instruction = _detail_instruction_for_lang(lang)
+
+    return (
+        f"Language: {lang}.\n"
+        "For each item, generate three fields:\n"
+        "  - id: copy the input id exactly.\n"
+        "  - intro: a short, varied one-sentence radio intro that mentions rank/category/genre context.\n"
+        f"  - {detail_instruction}\n\n"
+        "Return ONLY valid JSON, no commentary, as an array matching the input items. "
+        "Each array element must be an object with exactly these keys: id, intro, detail.\n\n"
+        f"Tracks:\n{json.dumps(formatted_input, ensure_ascii=False, indent=2)}"
+    )
+
+
 def _canon_lang(lang: str) -> str:
     if not lang:
         return "en"
     s = lang.strip().lower()
-    if s in {"ptbr", "pt-br", "pt_br"}:
+    if s in {"ptbr", "pt-br", "pt_br", "pt"}:
         return "pt-BR"
-    if s in {"es-mx", "es_ mx"}:
+    if s in {"es-mx", "es_mx", "es"}:
         return "es"
     return "en" if s.startswith("en") else s
 
@@ -58,6 +121,11 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
     Only fills fields that are missing/empty.
     """
     lang = _canon_lang(language)
+
+    run_id = int(time.time())
+    print(f"\n🚀 [{run_id}] START get_track_descriptions_from_xai")
+    print(f"[{run_id}] Language={lang}, Category={category}, Genre={genre}")
+
     tracks: List[Dict[str, Any]] = track_data if isinstance(track_data, list) else (track_data.get("tracks", []) or [])
     n = len(tracks)
     if n == 0:
@@ -67,6 +135,7 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
         batch = tracks[batch_index:batch_index + BATCH_SIZE]
         formatted_input = [
             {
+                "id": t.get("id"),
                 "rank": t.get("rank"),
                 "category": category,
                 "genre": genre,
@@ -77,16 +146,7 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
         ]
 
         # Prompt tightened to enforce strict JSON array of objects with intro/detail only
-        prompt = (
-            f"Language: {lang}.\n"
-            "For each item, generate two fields:\n"
-            "  - intro: a short, varied one-sentence radio intro that mentions rank/category/genre context.\n"
-            "  - detail: a 4–5 sentence Casey Kasem-style mini-story that does NOT repeat the intro info "
-            "(avoid re-stating rank, track title, or artist name explicitly—use pronouns), include one concrete fact.\n\n"
-            "Return ONLY valid JSON, no commentary, as an array matching the input order. "
-            "Each array element must be an object with exactly keys: intro, detail.\n\n"
-            f"Tracks:\n{json.dumps(formatted_input, ensure_ascii=False, indent=2)}"
-        )
+        prompt = _build_prompt(lang, formatted_input)
 
         payload = {
             "messages": [
@@ -116,14 +176,38 @@ def get_track_descriptions_from_xai(track_data, language, category, genre):
 
                 if not isinstance(parsed, list):
                     raise ValueError("Model did not return a JSON array.")
-                if len(parsed) != len(batch):
-                    raise ValueError(f"Array length mismatch: got {len(parsed)}, expected {len(batch)}.")
 
-                # merge results into original track dicts
-                for i, desc in enumerate(parsed):
+                batch_by_id = {}
+                for t in batch:
+                    track_id = t.get("id")
+                    if track_id is not None:
+                        batch_by_id[str(track_id)] = t
+
+                matched = 0
+                for desc in parsed:
                     if not isinstance(desc, dict):
                         continue
-                    _merge_intro_detail(batch[i], desc)
+
+                    desc_id = desc.get("id")
+                    if desc_id is None:
+                        logger.warning("⚠️ Skipping XAI item with no id: %s", desc)
+                        continue
+
+                    target = batch_by_id.get(str(desc_id))
+                    if not target:
+                        logger.warning("⚠️ XAI returned unknown id %s; skipping.", desc_id)
+                        continue
+
+                    _merge_intro_detail(target, desc)
+                    matched += 1
+
+                if matched != len(batch):
+                    logger.warning(
+                        "⚠️ Matched %s of %s returned descriptions in batch %s",
+                        matched,
+                        len(batch),
+                        batch_index // BATCH_SIZE + 1,
+                    )
 
                 logger.debug(
                     f"✅ XAI batch {batch_index // BATCH_SIZE + 1}: size={len(batch)} (attempt {attempt+1})"

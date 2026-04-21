@@ -3,7 +3,8 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 import os
-import requests  # swap for your xAI SDK if you have one
+import time
+import requests
 
 logger = logging.getLogger("xai_track_detail")
 
@@ -18,19 +19,25 @@ def _detail_constraints(t: Dict[str, Any], language: str) -> str:
     """
     System-level guardrails for detail generation.
     - Avoid repeating metadata covered in the intro.
-    - Emphasize placement/context (movie/TV/game), scene, mood, function.
+    - Emphasize real meaning, message, and context of the song.
     """
     guideline = (t.get("_detail_guidelines") or "").strip()
+
     base = (
         "Do NOT repeat the artist, album, rank, or year; the intro already covers those. "
-        "Focus on how the track functions in context—placement within a movie/TV/game scene, "
-        "the mood it establishes, story beat it supports, and why the music/lyrics fit that use. "
-        "Keep it concise and informative; no DJ patter."
+        "Focus on the real meaning, emotion, message, lyrical theme, or background of the specific song. "
+        "Explain what the song is expressing and why it connected with listeners. "
+        "Include at least one concrete fact about the song, artist, history, or impact when possible. "
+        "Do NOT invent movie scenes, TV scenes, bar scenes, fictional situations, or imagined story beats. "
+        "Avoid generic descriptions that could apply to many songs. "
+        "Keep it concise, natural, and informative; no DJ patter."
     )
+
     return f"{base} {guideline}".strip()
 
 
-def _xai_chat_complete(messages: List[Dict[str, str]], temperature: float | None = None, max_tokens: int | None = None) -> str:
+def _xai_chat_complete(messages: List[Dict[str, str]], temperature: float | None = None,
+                       max_tokens: int | None = None) -> str:
     """
     Minimal xAI chat wrapper using requests. Returns assistant text content.
     """
@@ -39,7 +46,7 @@ def _xai_chat_complete(messages: List[Dict[str, str]], temperature: float | None
         raise RuntimeError("XAI_API_KEY missing")
 
     temperature = cfg.TEMPERATURE_DEFAULT if temperature is None else temperature
-    max_tokens  = min(2048, getattr(cfg, "MAX_TOKENS_DEFAULT", 1024)) if max_tokens is None else max_tokens
+    max_tokens = min(2048, getattr(cfg, "MAX_TOKENS_DEFAULT", 1024)) if max_tokens is None else max_tokens
 
     resp = requests.post(
         cfg.XAI_API_URL,
@@ -69,10 +76,10 @@ def get_track_details_from_xai(tracks: List[Dict[str, Any]], language: str = "en
     # Tunables from config (rich 2–3 sentences by default)
     sentences_min = getattr(cfg, "DETAIL_SENTENCES_MIN", 2)
     sentences_max = getattr(cfg, "DETAIL_SENTENCES_MAX", 3)
-    words_min     = getattr(cfg, "DETAIL_WORDS_MIN", 60)
-    words_max     = getattr(cfg, "DETAIL_WORDS_MAX", 90)
-    forbid_new    = getattr(cfg, "DETAIL_FORBID_NEW_FACTS", False)
-    folk_mode     = getattr(cfg, "DETAIL_FOLK_ACOUSTIC_MODE", False)
+    words_min = getattr(cfg, "DETAIL_WORDS_MIN", 60)
+    words_max = getattr(cfg, "DETAIL_WORDS_MAX", 90)
+    forbid_new = getattr(cfg, "DETAIL_FORBID_NEW_FACTS", False)
+    folk_mode = getattr(cfg, "DETAIL_FOLK_ACOUSTIC_MODE", False)
 
     filled = 0
     for t in tracks:
@@ -80,11 +87,11 @@ def get_track_details_from_xai(tracks: List[Dict[str, Any]], language: str = "en
         if isinstance(t.get("detail"), str) and t["detail"].strip():
             continue
 
-        track_name  = (t.get("track_name") or t.get("title") or "").strip()
+        track_name = (t.get("track_name") or t.get("title") or "").strip()
         artist_name = (t.get("artist_name") or t.get("artistName") or t.get("artist") or "").strip()
-        album_name  = (t.get("album_name") or t.get("albumName") or None)
-        year_rel    = t.get("year_released") or t.get("year")
-        genre_ctx   = t.get("_genre_context") or getattr(cfg, "DETAIL_GENRE_CONTEXT_DEFAULT", "") or None
+        album_name = (t.get("album_name") or t.get("albumName") or None)
+        year_rel = t.get("year_released") or t.get("year")
+        genre_ctx = t.get("_genre_context") or getattr(cfg, "DETAIL_GENRE_CONTEXT_DEFAULT", "") or None
 
         if not (track_name and artist_name):
             continue
@@ -150,7 +157,7 @@ try:
     from backend.models.dbmodels import Track, Artist, TrackLocale  # preferred
 except Exception:
     try:
-        from backend.models.dbmodels import Track, Artist, TrackLocale       # fallback
+        from backend.models.dbmodels import Track, Artist, TrackLocale  # fallback
     except Exception:
         Track = Artist = TrackLocale = None  # type: ignore
 
@@ -164,24 +171,33 @@ _LANG_ALIASES = {
     "spanish": "es", "es": "es", "es-mx": "es",
     "portuguese": "pt-br", "pt": "pt-br", "pt-br": "pt-br", "português": "pt-br",
 }
+
+
 def _norm_lang(s: Optional[str]) -> str:
     if not s: return "en"
     return _LANG_ALIASES.get(s.strip().lower(), s.strip().lower())
 
+
 def _lang_label(code: str) -> str:
     return _LANG_LABELS.get(code, "English")
 
+
 def regenerate_missing_track_details(
-    db: Session,
-    *,
-    language: str = "English",
-    limit: int = 100,
-    offset: int = 0,
-    overwrite: bool = False,
-    dry_run: bool = False,
+        db: Session,
+        *,
+        language: str = "English",
+        limit: int = 100,
+        offset: int = 0,
+        overwrite: bool = False,
+        dry_run: bool = False,
 ) -> int:
-    lang_code = _norm_lang(language)        # "English" -> "en", etc.
-    lang_label = _lang_label(lang_code)     # "en" -> "English"
+    lang_code = _norm_lang(language)  # "English" -> "en", etc.
+    lang_label = _lang_label(lang_code)  # "en" -> "English"
+
+    run_id = int(time.time())
+    print(f"\n🚀 [{run_id}] ENTERED regenerate_missing_track_details")
+    print(f"[{run_id}] language={language} -> lang_code={lang_code}, lang_label={lang_label}")
+    print(f"[{run_id}] limit={limit}, offset={offset}, overwrite={overwrite}, dry_run={dry_run}")
 
     if Track is None or Artist is None or TrackLocale is None:
         logger.error("Required models not importable (Track/Artist/TrackLocale).")
@@ -224,7 +240,18 @@ def regenerate_missing_track_details(
                 "year_released": t.year_released,
             })
 
-        results = get_track_details_from_xai_batch(items, target_language_label="English")
+        BATCH_SIZE = 5
+        results = []
+
+        for i in range(0, len(items), BATCH_SIZE):
+            chunk = items[i:i + BATCH_SIZE]
+            batch_results = get_track_details_from_xai_batch(chunk, target_language_label=lang_label)
+            results.extend(batch_results)
+
+            if not results:
+                logger.warning("⚠️ Empty or invalid XAI response — skipping write")
+                return 0
+
         if dry_run:
             logger.info("🧪 dry_run=True — would update %d English rows.", len(results))
             return len(results)
@@ -289,7 +316,22 @@ def regenerate_missing_track_details(
         logger.info("✅ Nothing to process (overwrite=False skipped all).")
         return 0
 
-    results = get_track_details_from_xai_batch(items, target_language_label=lang_label)
+    print(f"\n📦 [{run_id}] ITEMS SENT TO XAI BATCH:")
+    for item in items:
+        print(item)
+
+    BATCH_SIZE = 5
+    results = []
+
+    for i in range(0, len(items), BATCH_SIZE):
+        chunk = items[i:i + BATCH_SIZE]
+        batch_results = get_track_details_from_xai_batch(chunk, target_language_label=lang_label)
+        results.extend(batch_results)
+
+        if not results:
+            logger.warning("⚠️ Empty or invalid XAI response — skipping write")
+            return 0
+
     if dry_run:
         logger.info("🧪 dry_run=True — would write %d locale rows for %s", len(results), lang_code)
         return len(results)
@@ -318,14 +360,16 @@ def regenerate_missing_track_details(
     logger.info("✅ Wrote %d locale detail rows for %s", updated, lang_code)
     return updated
 
+
 XAI_API_KEY = os.getenv("XAI_API_KEY", "").strip()
-XAI_MODEL   = os.getenv("XAI_MODEL", "grok-2-latest").strip()  # adjust if needed
+XAI_MODEL = os.getenv("XAI_MODEL", "grok-2-latest").strip()  # adjust if needed
 
 _JSON_SCHEMA_HELP = (
     "Return ONLY a JSON array. No commentary. No markdown. "
     "Each item MUST be an object with keys: track_id (int), track_name (str), "
     "artist_name (str), detail_text (str)."
 )
+
 
 def _safe_json_loads(s: str):
     try:
@@ -337,6 +381,43 @@ def _safe_json_loads(s: str):
             return json.loads(t)
         except Exception:
             return None
+
+
+def _batch_detail_instruction(target_language_label: str) -> str:
+    if target_language_label == "Spanish (Mexico)":
+        return (
+            "Write detail_text in Spanish (Mexico) using EXACTLY 4 complete sentences. "
+            "Sentence 1: introduce the song or artist naturally. "
+            "Sentences 2 and 3: explain the real meaning, emotion, message, or context of the song. "
+            "Sentence 4: include one concrete fact about the song, artist, history, or impact when possible. "
+            "You must include the meaning of the song. "
+            "Do not translate song titles or artist names. "
+            "Do not invent movie scenes, TV scenes, bar scenes, fictional situations, or imagined story beats. "
+            "Avoid generic descriptions that could apply to many songs. "
+            "Make it sound natural, fluid, and believable for Spanish-speaking listeners, not like a literal translation."
+        )
+
+    if target_language_label == "Portuguese (Brazil)":
+        return (
+            "Write detail_text in Brazilian Portuguese using EXACTLY 4 complete sentences. "
+            "Sentence 1: introduce the song or artist naturally. "
+            "Sentences 2 and 3: explain the real meaning, emotion, message, or context of the song. "
+            "Sentence 4: include one concrete fact about the song, artist, history, or impact when possible. "
+            "You must include the meaning of the song. "
+            "Do not translate song titles or artist names. "
+            "Do not invent movie scenes, TV scenes, bar scenes, fictional situations, or imagined story beats. "
+            "Avoid generic descriptions that could apply to many songs. "
+            "Make it sound natural in Brazilian Portuguese, not like a literal translation."
+        )
+
+    return (
+        "Write detail_text in exactly 4 complete sentences. "
+        "Sentence 1 should introduce the song or artist naturally. "
+        "Sentences 2 and 3 should explain the real meaning, emotion, message, or context of the song. "
+        "Sentence 4 should include one concrete fact when possible. "
+        "Do not invent fictional scenes or generic situations. "
+        "Avoid generic descriptions that could apply to many songs."
+    )
 
 
 def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_language_label: str) -> List[Dict[str, Any]]:
@@ -352,16 +433,20 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
         logger.warning("get_track_details_from_xai called with empty items")
         return []
 
-    # Keep prompt deterministic and schema-focused, with optional guardrails
+    logger.info("🔥 ENTERED get_track_details_from_xai_batch")
+    logger.info("🔥 target_language_label=%s", target_language_label)
+    logger.info("🔥 item_count=%d", len(items))
+
+    instruction = _batch_detail_instruction(target_language_label)
+
     system = (
         "You generate concise, engaging track detail blurbs for a music app. "
-        f"Write in {target_language_label}. {_JSON_SCHEMA_HELP} "
-        + (
-            "Do NOT repeat the artist, album, rank, or year; the intro already covers those. "
-            "Focus on placement/context (movie/TV/game), the scene/mood/story beat, and why the track fits. "
-            "No DJ patter."
-            if getattr(cfg, "AVOID_REPEATS_IN_DETAIL", True) else ""
-        )
+        f"Write in {target_language_label}. "
+        f"{_JSON_SCHEMA_HELP} "
+        "Do NOT repeat the artist, album, rank, or year if already covered elsewhere. "
+        "Do NOT invent movie scenes, TV scenes, bar scenes, fictional situations, or imagined story beats unless they are clearly part of the real history of the song or artist. "
+        "No DJ patter. "
+        f"{instruction}"
     )
 
     # Only pass fields we actually need; always include track_id to ensure stable mapping
@@ -376,17 +461,23 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
                  slim[0]["track_id"], slim[-1]["track_id"])
 
     ref_clause = (
-        "\n\nREFERENCE-ONLY (do NOT repeat in output): each item includes track_name, artist_name, year_released."
+        "\n\nREFERENCE-ONLY (do NOT repeat these mechanically in output unless helpful): "
+        "each item includes track_name, artist_name, year_released."
         if getattr(cfg, "AVOID_REPEATS_IN_DETAIL", True) else ""
     )
 
     user = (
-        "For each input item, output an element with the same track_id, plus track_name, artist_name, "
-        "and a detail_text in the requested language (1-2 sentences, no quotes around the title unless necessary). "
-        "Avoid DJ patter or station plugs."
-        + ref_clause
-        + "\n\nINPUT:\n" + json.dumps(slim, ensure_ascii=False) + "\n\nOUTPUT:"
+            "For each input item, return one JSON object with the same track_id, plus track_name, artist_name, and detail_text. "
+            "The detail_text must follow the instruction exactly and be specific to that song, not generic. "
+            "Do not invent fictional scenes. "
+            "Do not output markdown or commentary."
+            + ref_clause
+            + "\n\nINPUT:\n" + json.dumps(slim, ensure_ascii=False)
+            + "\n\nOUTPUT:"
     )
+
+    logger.info("🔥 SYSTEM PROMPT:\n%s", system)
+    logger.info("🔥 USER PROMPT:\n%s", user)
 
     try:
         resp = requests.post(
@@ -401,7 +492,7 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
                 "temperature": 0.2,
                 "max_tokens": 1200,
             },
-            timeout=60,
+            timeout=120,
         )
         if resp.status_code >= 400:
             logger.error("xAI HTTP %s: %s", resp.status_code, resp.text[:500])
@@ -409,18 +500,23 @@ def get_track_details_from_xai_batch(items: List[Dict[str, Any]], target_languag
 
         data = resp.json()
         content = (data.get("choices", [{}])[0]
-                        .get("message", {})
-                        .get("content", "")).strip()
+                   .get("message", {})
+                   .get("content", "")).strip()
+
+        logger.info("🔥 RAW RESPONSE FROM XAI:\n%s", content)
 
         # Try strict JSON first
         parsed = _safe_json_loads(content)
+
+        logger.info("🔥 PARSED RESPONSE: %r", parsed)
+
         if isinstance(parsed, list):
             out = []
             for r in parsed:
                 tid = r.get("track_id")
-                tn  = (r.get("track_name") or "").strip()
-                an  = (r.get("artist_name") or "").strip()
-                dt  = (r.get("detail_text") or "").strip()
+                tn = (r.get("track_name") or "").strip()
+                an = (r.get("artist_name") or "").strip()
+                dt = (r.get("detail_text") or "").strip()
                 if isinstance(tid, int) and tn and an and dt:
                     out.append({"track_id": tid, "track_name": tn, "artist_name": an, "detail_text": dt})
                 else:

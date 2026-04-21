@@ -19,9 +19,12 @@ router = APIRouter(
 # ── helpers ────────────────────────────────────────────────────────────────
 def _canon_lang(code: str) -> str:
     m = (code or "en").strip().lower().replace("_", "-")
-    if m in {"en", "en-us", "en-gb"}: return "en"
-    if m in {"es", "es-mx", "es-419", "es-es"}: return "es"
-    if m in {"pt", "pt-br", "ptbr", "pt-pt"}: return "pt-BR"
+    if m in {"en", "en-us", "en-gb"}:
+        return "en"
+    if m in {"es", "es-mx", "es-419", "es-es"}:
+        return "es"
+    if m in {"pt", "pt-br", "ptbr", "pt-pt"}:
+        return "ptbr"
     return "en"
 
 def _count(db: Session, stmt) -> int:

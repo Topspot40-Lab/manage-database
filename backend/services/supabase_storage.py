@@ -1,7 +1,6 @@
 # backend/services/supabase_storage.py
 import logging
 from typing import Iterable, List, Dict, Any
-from io import BytesIO
 from pathlib import PurePosixPath
 
 from backend.services.supabase_client import supabase
@@ -17,16 +16,14 @@ def upload_bytes(bucket: str, key: str, data: bytes, content_type: str = "audio/
     """Upload or overwrite an object."""
     supabase.storage.from_(bucket).upload(
         path=key,
-        file=BytesIO(data),
+        file=data,
         file_options={
             "content-type": content_type,
             "cache-control": "public, max-age=31536000, immutable",
-            # include both for widest compatibility across client versions
             "upsert": "true",
             "x-upsert": "true",
         },
     )
-
 
 def object_exists(bucket: str, key: str) -> bool:
     """Lightweight existence check by listing the parent folder."""
