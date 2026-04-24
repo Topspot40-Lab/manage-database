@@ -22,14 +22,14 @@ router = APIRouter(prefix="/tts-new", tags=["TTS New"])
 
 
 def _canon_lang(lang: str) -> str:
-    """Normalize incoming language values to the keys used in TTS_PROFILES."""
+    """Normalize incoming language values to the keys used in TTS_PROFILES/DB."""
     if not lang:
         return DEFAULT_TTS_LANGUAGE
 
     cleaned = lang.strip().lower()
 
-    if cleaned == "pt-br":
-        return "pt-BR"
+    if cleaned in {"pt-br", "ptbr", "pt_br"}:
+        return "ptbr"
     if cleaned in {"en", "es"}:
         return cleaned
 
@@ -51,11 +51,10 @@ def _settings(lang: str, kind: str) -> dict:
 
 
 def _bucket_for(lang: str) -> str:
-    """Map normalized language codes to your actual Supabase bucket names."""
     return {
         "en": "audio-en",
         "es": "audio-es",
-        "pt-BR": "audio-ptbr",
+        "ptbr": "audio-ptbr",
     }.get(lang, "audio-en")
 
 

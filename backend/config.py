@@ -119,9 +119,13 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 LANGUAGE_BUCKETS = {
     "en": "audio-en",
     "es": "audio-es",
-    "pt-BR": "audio-ptbr",
+    "ptbr": "audio-ptbr",
 }
 BUCKETS = {lang: {"intro": b, "detail": b, "artist": b} for lang, b in LANGUAGE_BUCKETS.items()}
+
+log.info("🎯 LANGUAGE_BUCKETS=%s", LANGUAGE_BUCKETS)
+log.info("🎯 BUCKETS keys=%s", list(BUCKETS.keys()))
+
 AUDIO_PREFIXES = {"intro": "intro", "detail": "detail", "artist": "artist"}
 
 BUCKET_TRACK_INTRO   = "track-intro-mp3-files"
@@ -206,7 +210,7 @@ ELEVEN_MODELS_SUPPORT_LANGUAGE = {"eleven_turbo_v2_5", "eleven_flash_v2_5"}
 ELEVEN_LANGUAGE_CODE_MAP = {
     "en": "en",
     "es": "es",
-    "pt-BR": "pt",
+    "ptbr": "pt",
 }
 
 MODEL_BY_LANG = {
@@ -215,7 +219,7 @@ MODEL_BY_LANG = {
     "pt-BR": ELEVEN_MODEL_ID_PT_BR,
 }
 
-SUPPORTED_LANGS  = ["en", "es", "pt-BR"]
+SUPPORTED_LANGS  = ["en", "es", "ptbr"]
 DEFAULT_LANGUAGE = os.getenv("DEFAULT_TTS_LANGUAGE", "en")
 DEFAULT_TTS_LANGUAGE = DEFAULT_LANGUAGE
 

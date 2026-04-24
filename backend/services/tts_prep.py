@@ -95,7 +95,7 @@ def _dedupe_numero_cero(s: str) -> str:
 def prepare_for_tts_es(
     text: str,
     *,
-    rank: int,
+    rank: int | None,
     track_name: str,
     artist_name: str,
     strip_markdown: bool = True,
@@ -112,9 +112,10 @@ def prepare_for_tts_es(
     t = strip_llm_brackets(t)
 
     # 1) Deterministic fixer (safe to run repeatedly)
-    t, _, _ = qa_fix_spanish_intro(
-        t, rank=rank, track_name=track_name, artist_name=artist_name
-    )
+    if rank is not None:
+        t, _, _ = qa_fix_spanish_intro(
+            t, rank=rank, track_name=track_name, artist_name=artist_name
+        )
 
     # 2) TTS-friendly cleanup
     if strip_markdown:
@@ -157,7 +158,7 @@ def prepare_for_tts_es(
 def prepare_for_tts_pt_br(
     text: str,
     *,
-    rank: int,
+    rank: int | None,
     track_name: str,
     artist_name: str,
     strip_markdown: bool = True,
