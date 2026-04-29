@@ -114,12 +114,11 @@ def generate_tts_batch(
 
             # Tag metadata (fallbacks are safe for missing fields)
             add_metadata_to_mp3(
-                mp3_path=out_path,
-                track_name=item.get("track_name", "Unknown"),
-                artist_name=item.get("artist_name", "Unknown"),
-                album_name=item.get("album_name", "TopSpot40"),
+                file_path=out_path,
+                title=item.get("track_name", "Unknown"),
+                artist=item.get("artist_name", "Unknown"),
+                album=item.get("album_name", "TopSpot40"),
             )
-
             log_tts_action(log_prefix, item_id, out_path, "✅ Generated", play)
             generated_paths.append(str(out_path))
 

@@ -72,7 +72,7 @@ Artist: {artist_name}
 {genre_line}
 """.strip()
 
-    if language == "ptbr":
+    if language == "pt-BR":
         return f"""
 Escreva uma descrição natural e envolvente do artista em português do Brasil para um público geral que gosta de música.
 
@@ -131,27 +131,17 @@ def count_artist_locale_rows(session: Session, language_code: str) -> int:
 
 def fetch_next_batch(session: Session, overwrite: bool) -> list[Artist]:
     if overwrite:
-        # Full rebuild/rewrite mode: walk artists in ID order.
-        # Best used after DELETE FROM artist_locale;
-        stmt = (
-            select(Artist)
-            .order_by(Artist.id)
-            .limit(BATCH_SIZE)
-        )
+        stmt = select(Artist).order_by(Artist.id).limit(BATCH_SIZE)
         return list(session.exec(stmt).all())
 
-    es_subq = sa_select(ArtistLocale.artist_id).where(
-        ArtistLocale.language_code == "es"
-    )
-    pt_subq = sa_select(ArtistLocale.artist_id).where(
-        ArtistLocale.language_code == "ptbr"
+    ptbr_subq = sa_select(ArtistLocale.artist_id).where(
+        ArtistLocale.language_code == "pt-BR",
+        ArtistLocale.artist_description_text.isnot(None)
     )
 
     stmt = (
         select(Artist)
-        .where(
-            (Artist.id.not_in(es_subq)) | (Artist.id.not_in(pt_subq))
-        )
+        .where(Artist.id.not_in(ptbr_subq))
         .order_by(Artist.id)
         .limit(BATCH_SIZE)
     )
@@ -198,7 +188,7 @@ def main(limit: int | None, overwrite: bool) -> None:
 
                 logger.info(f"Processing artist: {artist_name}")
 
-                for language_code in ["es", "ptbr"]:
+                for language_code in ["pt-BR"]:
                     try:
                         prompt = build_prompt(language_code, artist_name, genres)
                         artist_description = generate_text(prompt)
@@ -228,7 +218,7 @@ def main(limit: int | None, overwrite: bool) -> None:
             session.commit()
 
             current_es = count_artist_locale_rows(session, "es")
-            current_ptbr = count_artist_locale_rows(session, "ptbr")
+            current_ptbr = count_artist_locale_rows(session, "pt-BR")
 
             logger.info(
                 f"Batch {batch_number} committed. "
