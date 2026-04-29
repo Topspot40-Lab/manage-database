@@ -142,11 +142,20 @@ def populate_legends_collection(db: Session, collection: Collection, genre_id: i
         if not track:
             continue
 
+        genre_label = collection.name.replace("Legends – ", "").strip()
+        track_name = track.track_name
+        artist_name = track.artist_display_name or "this legendary artist"
+
+        intro = (
+            f"And now at number {rank} in the Legends {genre_label} collection, "
+            f"we have \"{track_name}\" by {artist_name}."
+        )
+
         ctr = CollectionTrackRanking(
             collection_id=collection.id,
             track_id=track.id,
             ranking=rank,
-            intro=f"Score {int(score)} — top {rank} artist for this genre.",
+            intro=intro,
         )
         db.add(ctr)
         added += 1
