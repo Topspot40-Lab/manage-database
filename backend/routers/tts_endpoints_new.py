@@ -60,10 +60,11 @@ def _bucket_for(lang: str) -> str:
 
 @router.post("/generate-detail-from-track-locale")
 async def generate_detail_from_track_locale(
-    language: str = Query("es"),
-    limit: int | None = Query(None, ge=1),
-    overwrite: bool = Query(False),
-    db: Session = Depends(get_db),
+        language: str = Query("es"),
+        limit: int | None = Query(None, ge=1),
+        track_id: int | None = Query(None),
+        overwrite: bool = Query(False),
+        db: Session = Depends(get_db),
 ):
     """
     Generate detail MP3 files from public.track_locale.detail_text.
@@ -91,6 +92,14 @@ async def generate_detail_from_track_locale(
         .where(TrackLocale.detail_text.is_not(None))  # type: ignore
     )
 
+    if track_id is not None:
+        stmt = stmt.where(TrackLocale.track_id == track_id)
+
+    if not overwrite:
+        stmt = stmt.where(
+            (TrackLocale.tts_key.is_(None)) | (TrackLocale.tts_bucket.is_(None))  # type: ignore
+        )
+
     rows = db.exec(stmt).all()
 
     if limit:
@@ -111,18 +120,19 @@ async def generate_detail_from_track_locale(
         detail_text = (row.detail_text or "").strip()
         spotify_track_id = (track.spotify_track_id or "").strip()
 
-        if not detail_text or not spotify_track_id:
+        if not detail_text:
             skipped += 1
             continue
 
-        key = f"detail/{spotify_track_id}.mp3"
+        key_id = spotify_track_id if spotify_track_id else str(row.track_id)
+        key = f"detail/{key_id}.mp3"
 
         # Skip if already recorded in DB and overwrite is False
         if (
-            not overwrite
-            and SKIP_TTS_IF_EXISTS
-            and row.tts_bucket == bucket
-            and row.tts_key == key
+                not overwrite
+                and SKIP_TTS_IF_EXISTS
+                and row.tts_bucket == bucket
+                and row.tts_key == key
         ):
             skipped += 1
             logger.info(f"⏭️ Skipping existing DB-linked file: {bucket}/{key}")
@@ -278,15 +288,16 @@ async def generate_detail_from_track(
         "generated": generated,
     }
 
+
 from backend.models.dbmodels import ArtistLocale, Artist
 
 
 @router.post("/generate-artist-from-locale")
 async def generate_artist_from_locale(
-    language: str = Query("es"),
-    limit: int | None = Query(None, ge=1),
-    overwrite: bool = Query(False),
-    db: Session = Depends(get_db),
+        language: str = Query("es"),
+        limit: int | None = Query(None, ge=1),
+        overwrite: bool = Query(False),
+        db: Session = Depends(get_db),
 ):
     language = _canon_lang(language)
     db_language = "pt-BR" if language == "ptbr" else language
@@ -331,10 +342,10 @@ async def generate_artist_from_locale(
         )
 
         if (
-            not overwrite
-            and SKIP_TTS_IF_EXISTS
-            and row.tts_bucket == bucket
-            and row.tts_key == key
+                not overwrite
+                and SKIP_TTS_IF_EXISTS
+                and row.tts_bucket == bucket
+                and row.tts_key == key
         ):
             skipped += 1
             continue
